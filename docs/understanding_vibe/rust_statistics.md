@@ -2,7 +2,7 @@
 
 Last updated: 2026-10-19 (v2.26.1)
 
-Deep-dive into the Rust side of the codebase, mirroring the Python analysis in `statistics.md`.
+Deep-dive into the Rust side of the codebase. See [Python Statistics](python_statistics.md) for the Python counterpart, and [Statistics](statistics.md) for the cross-language overview.
 
 ## Overview
 
