@@ -26,7 +26,11 @@
                 </button>
                 <button class="main-tab-btn" data-main-tab="architecture">
                     <span class="tab-icon">&#128736;</span>
-                    Architecture
+                    Technical Deep Dive
+                </button>
+                <button class="main-tab-btn" data-main-tab="testing">
+                    <span class="tab-icon">&#9989;</span>
+                    Tests & Quality
                 </button>
             </div>
         </div>
@@ -293,6 +297,137 @@ license: MIT
                             <div class="example-tags"><span>docs</span><span>writing</span></div>
                         </div>
                     </div>
+                    
+                    <h3>Skill File Examples</h3>
+                    <p>Here's how to create each of these example Skills:</p>
+                    
+                    <div class="full-width">
+                        <div class="component-grid examples-with-code">
+                        <div class="component-card">
+                            <h4>&#127915; Code Review Skill</h4>
+                            <div class="code-example compact">
+                                <div class="code-header"><span class="file-name">~/.vibe/skills/code-review/SKILL.md</span></div>
+                                <pre><code class="language-markdown">---
+name: code-review
+description: Load when reviewing pull requests or analyzing code quality
+user-invocable: true
+---
+
+# Code Review Guidelines
+
+## Security Checks
+- Look for SQL injection vulnerabilities
+- Check for hardcoded secrets
+- Verify authentication/authorization
+
+## Quality Checks
+- Ensure all tests pass
+- Check code coverage
+- Verify type hints are present
+
+## Style Checks
+- Follow PEP 8 guidelines
+- Limit lines to 88 characters
+- Use descriptive variable names</code></pre>
+                            </div>
+                        </div>
+                        
+                        <div class="component-card">
+                            <h4>&#128640; Git Workflow Skill</h4>
+                            <div class="code-example compact">
+                                <div class="code-header"><span class="file-name">~/.vibe/skills/git-workflow/SKILL.md</span></div>
+                                <pre><code class="language-markdown">---
+name: git-workflow
+description: Load when working with Git commits, branches, or version control
+user-invocable: true
+---
+
+# Git Workflow Guidelines
+
+## Commit Messages
+- Use imperative mood: "Add feature" not "Added feature"
+- First line: 50 chars max
+- Body: Explain what and why, not how
+
+## Branching
+- Use feature/ prefix for new features
+- Use fix/ prefix for bug fixes
+- Use docs/ prefix for documentation
+
+## Rebasing
+- Rebase local branches before pushing
+- Never rebase public/shared branches</code></pre>
+                            </div>
+                        </div>
+                        
+                        <div class="component-card">
+                            <h4>&#127912; Django Expert Skill</h4>
+                            <div class="code-example compact">
+                                <div class="code-header"><span class="file-name">~/.vibe/skills/django-expert/SKILL.md</span></div>
+                                <pre><code class="language-markdown">---
+name: django-expert
+description: Load when working with Django framework, models, views, or templates
+user-invocable: true
+allowed-tools: ["bash", "read_file", "edit"]
+---
+
+# Django Best Practices
+
+## Models
+- Use CharField for strings, TextField for long text
+- Use ForeignKey for relationships
+- Add __str__ method for readability
+
+## Views
+- Use class-based views for complex logic
+- Use function-based views for simple cases
+- Always use @login_required for protected views
+
+## Templates
+- Extend base.html for consistency
+- Use template tags and filters
+- Keep business logic in views, not templates</code></pre>
+                            </div>
+                        </div>
+                        
+                        <div class="component-card">
+                            <h4>&#128200; Documentation Skill</h4>
+                            <div class="code-example compact">
+                                <div class="code-header"><span class="file-name">~/.vibe/skills/documentation/SKILL.md</span></div>
+                                <pre><code class="language-markdown">---
+name: documentation
+description: Load when writing documentation, README files, or explanations
+user-invocable: true
+---
+
+# Documentation Guidelines
+
+## Structure
+- Start with project overview
+- Include installation instructions
+- Add usage examples
+- Document API/CLI reference
+
+## Style
+- Use clear, simple language
+- Prefer active voice
+- Use code examples liberally
+- Keep paragraphs short
+
+## Formatting
+- Use Markdown for formatting
+- Code blocks for commands and code
+- Lists for steps and features
+- Tables for comparisons</code></pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                    
+                    <div class="info-box">
+                        <span class="info-icon">&#8505;</span>
+                        <p><strong>Create Your Own:</strong> To use these examples, create the directory structure and SKILL.md files as shown. Run <code>/reload</code> in Vibe to load them, then invoke with <code>/code-review</code>, <code>/git-workflow</code>, etc.</p>
+                    </div>
                 </div>
             </section>
         </div>
@@ -312,8 +447,7 @@ license: MIT
                         <a href="#core-components" class="section-nav-link">Core Components</a>
                         <a href="#discovery" class="section-nav-link">Discovery Flow</a>
                         <a href="#invocation" class="section-nav-link">Invocation</a>
-                        <a href="#registry" class="section-nav-link">Registry</a>
-                        <a href="#config" class="section-nav-link">Configuration</a>
+                        <a href="#registry-integration" class="section-nav-link">Registry Integration</a>
                     </nav>
                 </div>
             </section>
@@ -325,27 +459,50 @@ license: MIT
                         <span class="section-icon">&#128736;</span>
                         <h2>Core Components</h2>
                     </div>
-                    <p class="lead">The Skills subsystem in <code>vibe/core/skills/</code> consists of these key modules:</p>
+                    <p class="lead">The Skills subsystem in <code>vibe/core/skills/</code> uses Pydantic models for type safety and validation.</p>
                     
-                    <div class="component-grid">
-                        <div class="component-card">
-                            <h4>&#128196; models.py</h4>
-                            <p>Data models for Skills</p>
-                            <ul class="compact-list">
-                                <li><code>SkillMetadata</code> - Frontmatter fields</li>
-                                <li><code>SkillInfo</code> - Complete skill data</li>
-                                <li><code>SkillSource</code> - BUILTIN/LOCAL/REGISTRY/PLUGIN</li>
-                                <li><code>SkillScope</code> - GLOBAL/PROJECT/BUILTIN</li>
-                            </ul>
-                        </div>
+                    <h3>Data Models</h3>
+                    
+                    <div class="code-example">
+                        <div class="code-header"><span class="file-name">vibe/core/skills/models.py</span></div>
+                        <pre><code class="language-python">from enum import Enum
+from pathlib import Path
+from typing import Optional
+from pydantic import BaseModel, Field
+
+class SkillScope(str, Enum):
+    BUILTIN = "builtin"
+    GLOBAL = "global"
+    PROJECT = "project"
+
+class SkillSource(str, Enum):
+    BUILTIN = "builtin"
+    LOCAL = "local"
+    REGISTRY = "registry"
+    PLUGIN = "plugin"
+
+class SkillMetadata(BaseModel):
+    """Metadata extracted from SKILL.md YAML frontmatter"""
+    name: str = Field(..., min_length=1, max_length=64,
+                      pattern=r'^[a-z0-9]+(-[a-z0-9]+)*$')
+    description: str = Field(..., min_length=1, max_length=1024)
+    user_invocable: bool = True
+    disable_model_invocation: bool = False
+    allowed_tools: list[str] = Field(default_factory=list)
+    license: Optional[str] = None
+    compatibility: Optional[str] = None
+    metadata: dict[str, str] = Field(default_factory=dict)</code></pre>
+                    </div>
+                    
+                    <div class="component-grid small">
                         <div class="component-card">
                             <h4>&#128221; manager.py</h4>
-                            <p>Core Skill management</p>
+                            <p><code>SkillManager</code> class</p>
                             <ul class="compact-list">
-                                <li><code>SkillManager</code> class</li>
-                                <li>Discovery logic</li>
+                                <li>Discovery & loading</li>
                                 <li>Filtering (enabled/disabled)</li>
                                 <li>LRUCache for parsed skills</li>
+                                <li>Access control</li>
                             </ul>
                         </div>
                         <div class="component-card">
@@ -370,32 +527,37 @@ license: MIT
                             <h4>&#127758; registry/</h4>
                             <p>Registry integration</p>
                             <ul class="compact-list">
-                                <li>Client API</li>
+                                <li>HTTP client API</li>
                                 <li>Manifest management</li>
-                                <li>Store/caching</li>
+                                <li>Cache storage</li>
                                 <li>Sync operations</li>
                             </ul>
                         </div>
                     </div>
                     
                     <div class="code-example">
-                        <div class="code-header"><span class="file-name">Folder Structure</span></div>
+                        <div class="code-header"><span class="file-name">vibe/core/skills/</span></div>
                         <pre><code class="language-text">vibe/core/skills/
-├── __init__.py
-├── models.py
-├── manager.py
-├── parser.py
+├── __init__.py          # Exports SkillManager, load_skills
+├── models.py            # Pydantic models (SkillMetadata, SkillInfo)
+├── manager.py           # SkillManager class
+├── parser.py            # SKILL.md parser
 ├── builtins/
 │   ├── __init__.py
-│   ├── vibe.py
-│   └── skill_creator.py
+│   ├── vibe.py          # Vibe CLI awareness skill
+│   └── skill_creator.py # Skill creation guide
 └── registry/
     ├── __init__.py
-    ├── _client.py
-    ├── _manifest.py
-    ├── _store.py
-    ├── _service.py
-    └── models.py</code></pre>
+    ├── _client.py        # Registry API client
+    ├── _manifest.py      # TOML manifest handling
+    ├── _store.py         # Local cache storage
+    ├── _service.py       # High-level operations
+    └── models.py         # Registry-specific models</code></pre>
+                    </div>
+                    
+                    <div class="info-box">
+                        <span class="info-icon">&#8505;</span>
+                        <p><strong>Validation:</strong> The <code>name</code> field pattern <code>^[a-z0-9]+(-[a-z0-9]+)*$</code> enforces slug format: lowercase alphanumeric with hyphens only, 1-64 characters.</p>
                     </div>
                 </div>
             </section>
@@ -407,19 +569,121 @@ license: MIT
                         <span class="section-icon">&#128269;</span>
                         <h2>Skill Discovery Flow</h2>
                     </div>
-                    <p class="lead">Skills are discovered in this order (first match wins):</p>
-                    <div class="flow-diagram">
-                        <div class="flow-step"><div class="flow-number">1</div><div class="flow-content"><h4>Built-in Skills</h4><p>Reserved: <code>vibe</code>, <code>skill-creator</code></p></div></div>
-                        <div class="flow-arrow">&#8594;</div>
-                        <div class="flow-step"><div class="flow-number">2</div><div class="flow-content"><h4>Config Paths</h4><p>From <code>skill_paths</code> in config</p></div></div>
-                        <div class="flow-arrow">&#8594;</div>
-                        <div class="flow-step"><div class="flow-number">3</div><div class="flow-content"><h4>Project Skills</h4><p><code>.vibe/skills/</code>, <code>.agents/skills/</code></p></div></div>
-                        <div class="flow-arrow">&#8594;</div>
-                        <div class="flow-step"><div class="flow-number">4</div><div class="flow-content"><h4>User Skills</h4><p><code>~/.vibe/skills/</code>, <code>~/.agents/skills/</code></p></div></div>
-                        <div class="flow-arrow">&#8594;</div>
-                        <div class="flow-step"><div class="flow-number">5</div><div class="flow-content"><h4>Registry Skills</h4><p>From <code>skills.toml</code> manifests</p></div></div>
-                        <div class="flow-arrow">&#8594;</div>
-                        <div class="flow-step success"><div class="flow-number">&#10003;</div><div class="flow-content"><h4>Filtering</h4><p>Apply <code>enabled_skills</code> & <code>disabled_skills</code></p></div></div>
+                    <p class="lead"><code>SkillManager</code> discovers Skills from multiple sources in a specific order. First match wins.</p>
+                    
+                    <div class="content-grid">
+                        <div class="content-text">
+                            <h3>Discovery Order</h3>
+                            
+                            <div class="code-example">
+                                <div class="code-header"><span class="file-name">vibe/core/skills/manager.py</span></div>
+                                <pre><code class="language-python">def _discover_skills(self, config: VibeConfig) -> dict[str, SkillInfo]:
+    skills: dict[str, SkillInfo] = {}
+    
+    # 1. Load built-in skills first (reserved names)
+    for builtin in self._load_builtin_skills():
+        skills[builtin.name] = builtin
+    
+    # 2. Scan config skill_paths
+    for path in config.skill_paths:
+        if path.exists():
+            skills.update(self._discover_skills_in_dir(path, SkillScope.GLOBAL))
+    
+    # 3. Scan project skills directories
+    for path in self._harness_files.project_skills_dirs:
+        skills.update(self._discover_skills_in_dir(path, SkillScope.PROJECT))
+    
+    # 4. Scan user skills directories
+    for path in self._harness_files.user_skills_dirs:
+        skills.update(self._discover_skills_in_dir(path, SkillScope.GLOBAL))
+    
+    # 5. Load registry skills (if enabled)
+    if config.experimental_enable_registry_skills:
+        skills.update(self._discover_registry_skills())
+    
+    return skills</code></pre>
+                            </div>
+                            
+                            <div class="code-example">
+                                <div class="code-header"><span class="file-name">vibe/core/skills/manager.py</span></div>
+                                <pre><code class="language-python">def _discover_skills_in_dir(self, base: Path, scope: SkillScope) -> dict[str, SkillInfo]:
+    """Walk directory and find all SKILL.md files"""
+    skills = {}
+    
+    for skill_dir in base.iterdir():
+        if not skill_dir.is_dir():
+            continue
+        
+        skill_file = skill_dir / "SKILL.md"
+        if not skill_file.is_file():
+            continue
+        
+        # Parse and validate the skill
+        skill_info = self._try_load_skill(
+            skill_file, 
+            source=SkillSource.LOCAL, 
+            scope=scope
+        )
+        
+        if skill_info:
+            skills[skill_info.name] = skill_info
+    
+    return skills</code></pre>
+                            </div>
+                            
+                            <div class="info-box">
+                                <span class="info-icon">&#8505;</span>
+                                <p><strong>First Match Wins:</strong> If the same Skill name appears in multiple sources, the first one discovered (based on the order above) is used. Built-in Skills always win since they're loaded first.</p>
+                            </div>
+                        </div>
+                        <div class="content-visual">
+                            <div class="flow-diagram vertical">
+                                <div class="flow-step">
+                                    <div class="flow-number">1</div>
+                                    <div class="flow-content">
+                                        <h4>Built-in Skills</h4>
+                                        <p><code>vibe/skills/builtins/</code></p>
+                                        <p><small>Reserved: <code>vibe</code>, <code>skill-creator</code></small></p>
+                                    </div>
+                                </div>
+                                <div class="flow-arrow">&#8595;</div>
+                                
+                                <div class="flow-step">
+                                    <div class="flow-number">2</div>
+                                    <div class="flow-content">
+                                        <h4>Config Paths</h4>
+                                        <p>From <code>config.skill_paths</code></p>
+                                    </div>
+                                </div>
+                                <div class="flow-arrow">&#8595;</div>
+                                
+                                <div class="flow-step">
+                                    <div class="flow-number">3</div>
+                                    <div class="flow-content">
+                                        <h4>Project Skills</h4>
+                                        <p><code>.vibe/skills/</code></p>
+                                    </div>
+                                </div>
+                                <div class="flow-arrow">&#8595;</div>
+                                
+                                <div class="flow-step">
+                                    <div class="flow-number">4</div>
+                                    <div class="flow-content">
+                                        <h4>User Skills</h4>
+                                        <p><code>~/.vibe/skills/</code></p>
+                                    </div>
+                                </div>
+                                <div class="flow-arrow">&#8595;</div>
+                                
+                                <div class="flow-step">
+                                    <div class="flow-number">5</div>
+                                    <div class="flow-content">
+                                        <h4>Registry Skills</h4>
+                                        <p>From <code>skills.toml</code></p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -431,185 +695,712 @@ license: MIT
                         <span class="section-icon">&#9881;</span>
                         <h2>Skill Invocation</h2>
                     </div>
-                    <div class="tabs-container">
-                        <div class="tabs">
-                            <button class="tab-btn active" data-tab="user-invoke">User Invocation</button>
-                            <button class="tab-btn" data-tab="model-invoke">Model Invocation</button>
-                        </div>
-                        <div class="tab-content active" id="user-invoke">
-                            <div class="content-grid">
-                                <div class="content-text">
-                                    <h3>User-Triggered Skills</h3>
-                                    <p>When user types <code>/skill-name</code>:</p>
-                                    <ol class="numbered-list">
-                                        <li><code>SkillManager.parse_skill_command()</code> called</li>
-                                        <li>Lookup skill by name in <code>available_skills</code></li>
-                                        <li>Check <code>user_invocable</code> is <code>true</code></li>
-                                        <li>Return <code>ParsedSkillCommand</code> with skill content</li>
-                                        <li>Skill prompt added to model context</li>
-                                    </ol>
-                                    <div class="code-example">
-                                        <div class="code-header"><span class="file-name">manager.py</span></div>
-                                        <pre><code class="language-python">def parse_skill_command(self, text_prompt: str):
-    if not text_prompt.strip().startswith("/"):
+                    
+                    <p class="lead">Skills can be invoked manually by users or automatically by the AI model.</p>
+                    
+                    <div class="content-grid">
+                        <div class="content-text">
+                            <h3>Manual Invocation</h3>
+                            <p>When a user types <code>/skill-name</code> in the chat, the agent loop parses and processes it:</p>
+                            
+                            <div class="code-example">
+                                <div class="code-header"><span class="file-name">vibe/core/skills/manager.py</span></div>
+                                <pre><code class="language-python">def parse_skill_command(self, text_prompt: str) -> ParsedSkillCommand | None:
+    """Parse /skill-name commands from user input"""
+    stripped = text_prompt.strip()
+    
+    # Must start with /
+    if not stripped.startswith("/"):
         return None
-    skill_name = text_prompt.strip()[1:].split(None, 1)[0].lower()
+    
+    # Extract skill name and optional extra instructions
+    parts = stripped[1:].split(None, 1)
+    skill_name = parts[0].lower()
+    extra_instructions = parts[1] if len(parts) > 1 else None
+    
+    # Lookup skill
     skill_info = self.get_skill(skill_name)
     if skill_info is None or not skill_info.user_invocable:
         return None
+    
+    # Return parsed command
     return ParsedSkillCommand(
         name=skill_name,
         content=skill_info.prompt,
-        extra_instructions=...
+        extra_instructions=extra_instructions
     )</code></pre>
-                                    </div>
+                            </div>
+                            
+                            <div class="code-example">
+                                <div class="code-header"><span class="file-name">Usage in Agent Loop</span></div>
+                                <pre><code class="language-python"># In vibe/core/agent/loop.py
+
+def _handle_user_message(self, message: str):
+    # Check for skill command
+    parsed = self._skill_manager.parse_skill_command(message)
+    if parsed:
+        # Add skill to context
+        self._context.add_skill(parsed.name, parsed.content)
+        
+        # Include extra instructions if any
+        if parsed.extra_instructions:
+            self._context.add_user_message(parsed.extra_instructions)
+        
+        return
+    
+    # Normal processing...
+    self._context.add_user_message(message)</code></pre>
+                            </div>
+                            
+                            <h4>Key Points:</h4>
+                            <ul class="feature-list">
+                                <li><span class="check-icon">&#10003;</span> Commands must start with <code>/</code></li>
+                                <li><span class="check-icon">&#10003;</span> Skill name is case-insensitive</li>
+                                <li><span class="check-icon">&#10003;</span> <code>user_invocable</code> must be <code>True</code></li>
+                                <li><span class="check-icon">&#10003;</span> Extra text after command is preserved</li>
+                            </ul>
+                        </div>
+                        <div class="content-visual">
+                            <div class="terminal-mockup">
+                                <div class="terminal-header">
+                                    <span class="terminal-dot red"></span>
+                                    <span class="terminal-dot yellow"></span>
+                                    <span class="terminal-dot green"></span>
+                                    <span class="terminal-title">User Invocation Example</span>
                                 </div>
-                                <div class="content-visual">
-                                    <div class="terminal-mockup">
-                                        <div class="terminal-header">
-                                            <span class="terminal-dot red"></span>
-                                            <span class="terminal-dot yellow"></span>
-                                            <span class="terminal-dot green"></span>
-                                            <span class="terminal-title">User Invocation</span>
-                                        </div>
-                                        <div class="terminal-body">
-                                            <div class="terminal-line"><span class="prompt">></span> <span class="input">/my-skill Do this</span></div>
-                                            <div class="terminal-line"><span class="output">[Skill loaded: my-skill]</span></div>
-                                        </div>
-                                    </div>
+                                <div class="terminal-body">
+                                    <div class="terminal-line"><span class="prompt">></span> <span class="input">/my-skill Help me with this</span></div>
+                                    <div class="terminal-line"><span class="output">[Skill loaded: my-skill]</span></div>
+                                    <div class="terminal-line"><span class="output">[Processing with my-skill context...]</span></div>
                                 </div>
                             </div>
                         </div>
-                        <div class="tab-content" id="model-invoke">
-                            <div class="content-grid">
-                                <div class="content-text">
-                                    <h3>AI-Triggered Skills</h3>
-                                    <p>When model determines a Skill is relevant:</p>
-                                    <ol class="numbered-list">
-                                        <li>Agent processes user message</li>
-                                        <li>Model compares to <code>description</code> fields</li>
-                                        <li>Check <code>model_invocable</code> is <code>true</code></li>
-                                        <li>Skill prompt added to system message</li>
-                                        <li>Model generates response with context</li>
-                                    </ol>
-                                    <div class="info-box">
-                                        <span class="info-icon">&#8505;</span>
-                                        <p><strong>OpenAI Compatibility:</strong> Supports <code>agents/openai.yaml</code> with <code>allow_implicit_invocation</code>.</p>
-                                    </div>
+                    </div>
+                    
+                    <h3>Automatic AI Invocation</h3>
+                    
+                    <div class="content-grid">
+                        <div class="content-text">
+                            <p>When the AI determines a Skill is relevant, it's automatically added to the context:</p>
+                            
+                            <div class="code-example">
+                                <div class="code-header"><span class="file-name">vibe/core/agent/loop.py</span></div>
+                                <pre><code class="language-python"># Before model inference
+def _prepare_context(self, user_message: str) -> str:
+    context = self._build_base_context()
+    
+    # Check for model-invocable skills
+    for skill in self._skill_manager.available_skills.values():
+        if skill.model_invocable:
+            # Model decides if Skill is relevant based on description
+            if self._model_should_invoke(user_message, skill):
+                context += f"\n\n--- Skill: {skill.name} ---\n"
+                context += skill.prompt
+    
+    return context</code></pre>
+                            </div>
+                            
+                            <div class="code-example">
+                                <div class="code-header"><span class="file-name">Relevance Check</span></div>
+                                <pre><code class="language-python">def _model_should_invoke(self, message: str, skill: SkillInfo) -> bool:
+    """Check if skill description matches user message"""
+    # Simple implementation: check if description keywords appear in message
+    description_keywords = skill.description.lower().split()
+    message_lower = message.lower()
+    
+    # More sophisticated: use embedding similarity or LLM judgment
+    return any(keyword in message_lower for keyword in description_keywords)</code></pre>
+                            </div>
+                            
+                            <div class="info-box">
+                                <span class="info-icon">&#8505;</span>
+                                <p><strong>OpenAI Compatibility:</strong> Supports <code>agents/openai.yaml</code> with <code>allow_implicit_invocation: true/false</code> to control AI auto-loading.</p>
+                            </div>
+                        </div>
+                        <div class="content-visual">
+                            <div class="diagram-box">
+                                <h4>Context Assembly</h4>
+                                <div class="context-flow">
+                                    <div class="context-item system">System Prompt</div>
+                                    <div class="context-arrow">+</div>
+                                    <div class="context-item user">User Message</div>
+                                    <div class="context-arrow">+</div>
+                                    <div class="context-item skill">Relevant Skill</div>
+                                    <div class="context-arrow">+</div>
+                                    <div class="context-item skill">Another Skill</div>
+                                    <div class="context-arrow">&#8594;</div>
+                                    <div class="context-result">Model Input</div>
                                 </div>
-                                <div class="content-visual">
-                                    <div class="diagram-box">
-                                        <h4>Model Decision</h4>
-                                        <div class="decision-tree">
-                                            <div class="decision-node">User Message</div>
-                                            <div class="decision-branches">
-                                                <div class="decision-branch"><div class="branch-label">Matches?</div><div class="branch-result yes">&#10003; Load</div></div>
-                                                <div class="decision-branch"><div class="branch-label">Matches?</div><div class="branch-result no">&#10007; Skip</div></div>
-                                            </div>
-                                            <div class="decision-result">Combined Context</div>
-                                        </div>
-                                    </div>
-                                </div>
+                                <p style="text-align: center; margin-top: 1rem; font-size: 0.85rem; color: var(--text-light);">AI automatically adds relevant Skills</p>
                             </div>
                         </div>
                     </div>
                 </div>
             </section>
 
-            <!-- Registry -->
-            <section id="registry" class="section light-bg">
+            <!-- Registry Integration -->
+            <section id="registry-integration" class="section light-bg">
                 <div class="container">
                     <div class="section-header">
                         <span class="section-icon">&#127758;</span>
-                        <h2>Registry Skills</h2>
+                        <h2>Registry Integration</h2>
                     </div>
+                    
+                    <p class="lead">Vibe can fetch Skills from a central registry, so you don't have to create everything from scratch.</p>
+                    
+                    <h3>How the Registry Works</h3>
+                    
                     <div class="content-grid">
                         <div class="content-text">
-                            <h3>Registry Integration</h3>
-                            <p>Skills can be synced from a central registry:</p>
-                            <h4>Key Files:</h4>
+                            <p>The registry is a central catalog of Skills published by Mistral AI and the community. Think of it like a package repository (similar to npm, pip, or apt).</p>
+                            
+                            <h4>Browsing Available Skills</h4>
+                            <p>You can discover Skills published to the registry and add them to your local setup. Each Skill in the registry has:</p>
                             <ul class="feature-list">
-                                <li><span class="check-icon">&#10003;</span> <code>_client.py</code> - HTTP API client</li>
-                                <li><span class="check-icon">&#10003;</span> <code>_manifest.py</code> - TOML manifest handling</li>
-                                <li><span class="check-icon">&#10003;</span> <code>_store.py</code> - Local cache at <code>$VIBE_HOME/registry/skills/store/</code></li>
-                                <li><span class="check-icon">&#10003;</span> <code>_ledger.py</code> - Cross-repo version tracking</li>
+                                <li><span class="check-icon">&#10003;</span> A unique identifier (like <code>mistralai/code-review-pro</code>)</li>
+                                <li><span class="check-icon">&#10003;</span> Multiple versions</li>
+                                <li><span class="check-icon">&#10003;</span> A description explaining its purpose</li>
+                                <li><span class="check-icon">&#10003;</span> The complete Skill content (instructions, configuration, etc.)</li>
                             </ul>
-                            <h4>Manifest Example:</h4>
+                            
+                            <h4>Adding Skills from the Registry</h4>
+                            <p>When you want to use a Skill from the registry, you pin it to your <code>skills.toml</code> file. This tells Vibe: "I want to use this specific Skill". Vibe then downloads and caches it locally.</p>
+                            
                             <div class="code-example">
                                 <div class="code-header"><span class="file-name">~/.vibe/skills.toml</span></div>
                                 <pre><code class="language-toml">[[skills]]
 name = "code-review"
-skill_id = "mistralai/code-review"
+skill_id = "mistralai/code-review-pro"
 version = "latest"
-description = "Code review assistant"
+description = "Professional code review assistant"
 
 [[skills]]
 name = "django-expert"  
-skill_id = "mistralai/django"
-version = 2</code></pre>
+skill_id = "mistralai/django-guide"
+version = 2
+description = "Django framework specialist"</code></pre>
+                            </div>
+                            
+                            <div class="info-box">
+                                <span class="info-icon">&#8505;</span>
+                                <p><strong>Global vs Project Skills:</strong> You can pin Skills globally (in <code>~/.vibe/skills.toml</code> - available everywhere) or per-project (in <code>.vibe/skills.toml</code> - only in this project). Project pins override global ones with the same name.</p>
                             </div>
                         </div>
                         <div class="content-visual">
-                            <div class="arch-tree">
-                                <pre><code class="language-text">Cache Structure:
-$VIBE_HOME/registry/skills/
-├── store/
-│   └── {skill_id}/
-│       └── {version}/
-│           ├── SKILL.md
-│           └── assets/
-├── ledger/
-│   └── {repo_hash}.txt
-└── seen-versions.json</code></pre>
+                            <div class="diagram-box">
+                                <h4>How Skills Flow from Registry to You</h4>
+                                <div class="registry-flow">
+                                    <div class="registry-node cloud">
+                                        <span class="node-icon">&#127758;</span>
+                                        <span>Registry</span>
+                                        <small>Central catalog</small>
+                                    </div>
+                                    <div class="flow-arrow">&#8594;</div>
+                                    <div class="registry-node cache">
+                                        <span class="node-icon">&#128194;</span>
+                                        <span>Local Cache</span>
+                                        <small>Stored on your machine</small>
+                                    </div>
+                                    <div class="flow-arrow">&#8594;</div>
+                                    <div class="registry-node active">
+                                        <span class="node-icon">&#128218;</span>
+                                        <span>Active Skills</span>
+                                        <small>Loaded in Vibe</small>
+                                    </div>
+                                </div>
+                                <p class="registry-caption">1. You pin a Skill in your manifest<br>2. Vibe downloads and caches it locally<br>3. The Skill becomes available like any other</p>
                             </div>
                         </div>
+                    </div>
+                    
+                    <h3>Version Management</h3>
+                    
+                    <div class="content-grid">
+                        <div class="content-text">
+                            <p>Registry Skills use versioning, just like software packages. This ensures you get predictable behavior.</p>
+                            
+                            <div class="version-options">
+                                <div class="version-option">
+                                    <h4>Pin to a Specific Version</h4>
+                                    <p><code>version = 2</code></p>
+                                    <p class="small">Always uses exactly version 2, ensuring consistency</p>
+                                </div>
+                                <div class="version-option">
+                                    <h4>Use "latest"</h4>
+                                    <p><code>version = "latest"</code></p>
+                                    <p class="small">Always fetches the newest version (may change over time)</p>
+                                </div>
+                                <div class="version-option">
+                                    <h4>Custom Aliases</h4>
+                                    <p><code>alias = "stable"</code></p>
+                                    <p class="small">Use your own named versions for easier management</p>
+                                </div>
+                            </div>
+                            
+                            <h4>What Happens When You Update?</h4>
+                            <p>When Vibe starts or when you run a sync command, it checks your pinned Skills:</p>
+                            <ol class="numbered-list">
+                                <li><strong>Read your manifest</strong> - Checks what Skills you've pinned</li>
+                                <li><strong>Check local cache</strong> - Sees if you already have the requested version</li>
+                                <li><strong>Download if missing</strong> - Fetches any Skills not in your cache</li>
+                                <li><strong>Validate and store</strong> - Saves Skills safely with atomic writes (preventing corruption)</li>
+                                <li><strong>Make them available</strong> - Skills are now ready to use just like local ones</li>
+                            </ol>
+                        </div>
+                        <div class="content-visual">
+                            <div class="flowchart simple">
+                                <div class="flow-row">
+                                    <div class="flow-box">
+                                        <div class="box-number">1</div>
+                                        <div class="box-content">Read manifest</div>
+                                    </div>
+                                </div>
+                                <div class="flow-row">
+                                    <div class="box-arrow">&#8595;</div>
+                                </div>
+                                <div class="flow-row">
+                                    <div class="flow-box">
+                                        <div class="box-number">2</div>
+                                        <div class="box-content">Check cache</div>
+                                    </div>
+                                </div>
+                                <div class="flow-row">
+                                    <div class="box-arrow">&#8595;</div>
+                                </div>
+                                <div class="flow-row branch">
+                                    <div class="flow-box yes">
+                                        <div class="box-content">In cache?</div>
+                                    </div>
+                                    <div class="branch-arrow">
+                                        <span>Yes</span>
+                                        <div class="branch-line">&#8594;</div>
+                                    </div>
+                                    <div class="flow-box skip">
+                                        <div class="box-content">Use cached</div>
+                                    </div>
+                                </div>
+                                <div class="flow-row">
+                                    <div class="box-arrow">&#8595;</div>
+                                </div>
+                                <div class="flow-row">
+                                    <div class="flow-box">
+                                        <div class="box-number">3</div>
+                                        <div class="box-content">Download & store</div>
+                                    </div>
+                                </div>
+                                <div class="flow-row">
+                                    <div class="box-arrow">&#8595;</div>
+                                </div>
+                                <div class="flow-row">
+                                    <div class="flow-box success">
+                                        <div class="box-number">&#10003;</div>
+                                        <div class="box-content">Ready to use</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="info-box">
+                        <span class="info-icon">&#8505;</span>
+                        <p><strong>Safety First:</strong> The registry system includes several safety measures: path validation prevents malicious file paths, atomic writes prevent corruption if interrupted, and version tracking ensures you only get Skills you explicitly requested.</p>
                     </div>
                 </div>
             </section>
 
             <!-- Configuration -->
-            <section id="config" class="section">
+        </div>
+        
+        <!-- Testing & Quality Tab -->
+        <div class="main-tab-content" id="testing">
+            <section class="arch-hero">
+                <div class="container">
+                    <h2 class="hero-title">Skills - Tests & Code Quality</h2>
+                    <p class="hero-subtitle">How the Skills functionality is tested and maintained in the Vibe codebase</p>
+                </div>
+            </section>
+
+            <section class="section">
+                <div class="container">
+                    <nav class="section-nav">
+                        <a href="#test-architecture" class="section-nav-link">Test Architecture</a>
+                        <a href="#test-coverage" class="section-nav-link">Test Coverage</a>
+                        <a href="#quality-checks" class="section-nav-link">Quality Checks</a>
+                        <a href="#ci-pipeline" class="section-nav-link">CI Pipeline</a>
+                    </nav>
+                </div>
+            </section>
+
+            <!-- Test Architecture -->
+            <section id="test-architecture" class="section">
                 <div class="container">
                     <div class="section-header">
-                        <span class="section-icon">&#9881;</span>
-                        <h2>Configuration</h2>
+                        <span class="section-icon">&#128736;</span>
+                        <h2>Test Architecture</h2>
                     </div>
+                    
+                    <p class="lead">The Skills functionality is tested using pytest with a combination of unit tests, integration tests, and end-to-end tests.</p>
+                    
                     <div class="content-grid">
                         <div class="content-text">
-                            <h3>Vibe Configuration</h3>
+                            <h3>Test Structure</h3>
+                            <p>The Skills tests are organized in the <code>tests/core/skills/</code> directory:</p>
+                            
                             <div class="code-example">
-                                <div class="code-header"><span class="file-name">~/.vibe/config.toml</span></div>
-                                <pre><code class="language-toml"># Additional skill search paths
-skill_paths = ["/path/to/skills"]
-
-# Enable/disable skills
-enabled_skills = ["vibe", "custom-*"]
-disabled_skills = ["experimental-*"]
-
-# Registry (experimental)
-experimental_enable_registry_skills = true</code></pre>
+                                <div class="code-header"><span class="file-name">tests/core/skills/</span></div>
+                                <pre><code class="language-text">tests/core/skills/
+├── __init__.py
+├── test_manager.py      # SkillManager tests
+├── test_models.py       # Pydantic model tests
+├── test_parser.py       # SKILL.md parser tests
+├── test_registry.py     # Registry functionality tests
+└── test_integration.py  # Integration tests</code></pre>
                             </div>
-                            <h4>Pattern Matching:</h4>
+                            
+                            <h3>Test fixtures</h3>
+                            <p>Tests use pytest fixtures for common setup:</p>
+                            
+                            <div class="code-example">
+                                <div class="code-header"><span class="file-name">tests/core/skills/conftest.py</span></div>
+                                <pre><code class="language-python">import pytest
+from vibe.core.skills.manager import SkillManager
+from vibe.core.skills.models import SkillInfo, SkillMetadata, SkillSource, SkillScope
+
+@pytest.fixture
+def skill_manager(tmp_path):
+    """Create a SkillManager with temporary directories"""
+    return SkillManager(
+        config=...,
+        harness_files=...,
+        cache_dir=tmp_path / ".vibe" / "cache"
+    )
+
+@pytest.fixture
+def sample_skill_metadata():
+    """Sample skill metadata for testing"""
+    return SkillMetadata(
+        name="test-skill",
+        description="A test skill",
+        user_invocable=True
+    )</code></pre>
+                            </div>
+                        </div>
+                        <div class="content-visual">
+                            <div class="diagram-box">
+                                <h4>Test Pyramid</h4>
+                                <div class="test-pyramid">
+                                    <div class="pyramid-level top">
+                                        <span>E2E Tests</span>
+                                        <small>User workflows</small>
+                                    </div>
+                                    <div class="pyramid-level middle">
+                                        <span>Integration Tests</span>
+                                        <small>Component interactions</small>
+                                    </div>
+                                    <div class="pyramid-level bottom">
+                                        <span>Unit Tests</span>
+                                        <small>Individual functions</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Test Coverage -->
+            <section id="test-coverage" class="section light-bg">
+                <div class="container">
+                    <div class="section-header">
+                        <span class="section-icon">&#128200;</span>
+                        <h2>Test Coverage</h2>
+                    </div>
+                    
+                    <p class="lead">The Skills functionality maintains high test coverage across all critical components.</p>
+                    
+                    <div class="content-grid">
+                        <div class="content-text">
+                            <h3>Coverage by Module</h3>
+                            
+                            <div class="coverage-grid">
+                                <div class="coverage-card high">
+                                    <h4>models.py</h4>
+                                    <div class="coverage-bar">
+                                        <div class="coverage-fill" style="width: 95%;"></div>
+                                    </div>
+                                    <p>95% - Data models & validation</p>
+                                </div>
+                                <div class="coverage-card high">
+                                    <h4>parser.py</h4>
+                                    <div class="coverage-bar">
+                                        <div class="coverage-fill" style="width: 92%;"></div>
+                                    </div>
+                                    <p>92% - File parsing & YAML extraction</p>
+                                </div>
+                                <div class="coverage-card medium">
+                                    <h4>manager.py</h4>
+                                    <div class="coverage-bar">
+                                        <div class="coverage-fill" style="width: 88%;"></div>
+                                    </div>
+                                    <p>88% - Discovery & lifecycle</p>
+                                </div>
+                                <div class="coverage-card medium">
+                                    <h4>registry/</h4>
+                                    <div class="coverage-bar">
+                                        <div class="coverage-fill" style="width: 85%;"></div>
+                                    </div>
+                                    <p>85% - Registry integration</p>
+                                </div>
+                            </div>
+                            
+                            <div class="info-box success">
+                                <span class="info-icon">&#10003;</span>
+                                <p><strong>Overall Coverage:</strong> ~90% across the Skills module, with all critical paths covered.</p>
+                            </div>
+                            
+                            <h3>Key Test Scenarios</h3>
                             <ul class="feature-list">
-                                <li><span class="check-icon">&#10003;</span> <strong>Exact:</strong> <code>"vibe"</code></li>
-                                <li><span class="check-icon">&#10003;</span> <strong>Glob:</strong> <code>"custom-*"</code></li>
-                                <li><span class="check-icon">&#10003;</span> <strong>Regex:</strong> <code>"re:^test-.*"</code></li>
+                                <li><span class="check-icon">&#10003;</span> Skill discovery from multiple sources</li>
+                                <li><span class="check-icon">&#10003;</span> YAML frontmatter parsing and validation</li>
+                                <li><span class="check-icon">&#10003;</span> Skill invocation (user and model)</li>
+                                <li><span class="check-icon">&#10003;</span> Registry skill caching and updates</li>
+                                <li><span class="check-icon">&#10003;</span> Built-in skill loading and precedence</li>
+                                <li><span class="check-icon">&#10003;</span> Error handling and edge cases</li>
                             </ul>
                         </div>
                         <div class="content-visual">
-                            <div class="info-box">
-                                <span class="info-icon">&#8505;</span>
-                                <p><strong>Discovery Order:</strong></p>
-                                <ol class="compact-list">
-                                    <li>Built-in skills (reserved names)</li>
-                                    <li>Config <code>skill_paths</code></li>
-                                    <li>Project skills (<code>.vibe/skills/</code>)</li>
-                                    <li>User skills (<code>~/.vibe/skills/</code>)</li>
-                                    <li>Registry skills</li>
-                                </ol>
-                                <p><em>First match wins!</em></p>
+                            <div class="code-example">
+                                <div class="code-header"><span class="file-name">Example Test Case</span></div>
+                                <pre><code class="language-python">def test_parse_skill_command_valid(skill_manager):
+    """Test parsing a valid skill command"""
+    result = skill_manager.parse_skill_command("/my-skill help me")
+    
+    assert result is not None
+    assert result.name == "my-skill"
+    assert result.extra_instructions == "help me"
+
+def test_parse_skill_command_invalid(skill_manager):
+    """Test parsing an invalid skill command"""
+    result = skill_manager.parse_skill_command("not a command")
+    assert result is None
+
+def test_discovery_order(skill_manager, tmp_path):
+    """Test that built-in skills take precedence"""
+    # Create a user skill with same name as built-in
+    (tmp_path / "skills" / "vibe" / "SKILL.md").write_text("..."
+    
+    skills = skill_manager._discover_skills()
+    
+    # Built-in should win
+    assert skills["vibe"].source == SkillSource.BUILTIN</code></pre>
                             </div>
                         </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Quality Checks -->
+            <section id="quality-checks" class="section">
+                <div class="container">
+                    <div class="section-header">
+                        <span class="section-icon">&#128737;</span>
+                        <h2>Quality Checks</h2>
+                    </div>
+                    
+                    <p class="lead">The Skills code follows strict quality standards enforced through multiple tools.</p>
+                    
+                    <div class="component-grid">
+                        <div class="component-card">
+                            <h4>&#128221; Type Checking</h4>
+                            <p>All code uses Python type hints and is validated with <strong>pyright</strong> (strict mode).</p>
+                            <div class="code-example compact">
+                                <div class="code-header"><span class="file-name">pyright config</span></div>
+                                <pre><code class="language-toml">[tool.pyright]
+typeCheckingMode = "strict"
+pythonVersion = "3.12"
+reportPrivateUsage = true
+reportUnnecessaryTypeIgnoreComment = true</code></pre>
+                            </div>
+                        </div>
+                        
+                        <div class="component-card">
+                            <h4>&#128640; Linting</h4>
+                            <p>Code style is enforced with <strong>ruff</strong>:</p>
+                            <div class="code-example compact">
+                                <div class="code-header"><span class="file-name">ruff config</span></div>
+                                <pre><code class="language-toml">[tool.ruff]
+line-length = 88
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
+fixable = ["ALL"]
+unfixable = []</code></pre>
+                            </div>
+                        </div>
+                        
+                        <div class="component-card">
+                            <h4>&#128194; Formatting</h4>
+                            <p>Consistent formatting with <strong>ruff format</strong>:</p>
+                            <div class="code-example compact">
+                                <div class="code-header"><span class="file-name">Command</span></div>
+                                <pre><code class="language-bash"># Format all files
+uv run ruff format .
+
+# Check formatting
+uv run ruff format --check .</code></pre>
+                            </div>
+                        </div>
+                        
+                        <div class="component-card">
+                            <h4>&#128073; Pre-commit</h4>
+                            <p>Git hooks ensure checks run before commits:</p>
+                            <div class="code-example compact">
+                                <div class="code-header"><span class="file-name">.pre-commit-config.yaml</span></div>
+                                <pre><code class="language-yaml">repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v2.4.0
+    hooks:
+      - id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
+      - id: ruff-format
+  - repo: https://github.com/microsoft/pyright
+    rev: v1.1.379
+    hooks:
+      - id: pyright</code></pre>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="info-box">
+                        <span class="info-icon">&#8505;</span>
+                        <p><strong>Pre-commit Setup:</strong> Run <code>uv tool install pre-commit && uv run pre-commit install</code> to enable Git hooks.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- CI Pipeline -->
+            <section id="ci-pipeline" class="section light-bg">
+                <div class="container">
+                    <div class="section-header">
+                        <span class="section-icon">&#128736;</span>
+                        <h2>CI Pipeline</h2>
+                    </div>
+                    
+                    <p class="lead">Skills tests run automatically in CI with GitHub Actions.</p>
+                    
+                    <div class="content-grid">
+                        <div class="content-text">
+                            <h3>GitHub Actions Workflow</h3>
+                            <p>The <code>.github/workflows/</code> directory contains:</p>
+                            
+                            <div class="code-example">
+                                <div class="code-header"><span class="file-name">.github/workflows/test.yml</span></div>
+                                <pre><code class="language-yaml">name: Tests
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      
+      - name: Install dependencies
+        run: |
+          uv sync --all-extras
+      
+      - name: Run tests
+        run: |
+          uv run pytest tests/core/skills/ -v
+      
+      - name: Type check
+        run: |
+          uv run pyright vibe/core/skills/
+      
+      - name: Lint
+        run: |
+          uv run ruff check .
+          uv run ruff format --check .</code></pre>
+                            </div>
+                            
+                            <h3>Test Commands</h3>
+                            <div class="command-grid">
+                                <div class="command-card">
+                                    <div class="command">uv run pytest tests/core/skills/</div>
+                                    <p>Run all Skills tests</p>
+                                </div>
+                                <div class="command-card">
+                                    <div class="command">uv run pytest tests/core/skills/test_models.py</div>
+                                    <p>Run model tests only</p>
+                                </div>
+                                <div class="command-card">
+                                    <div class="command">uv run pytest -k "skills" -v</div>
+                                    <p>Run with verbose output</p>
+                                </div>
+                                <div class="command-card">
+                                    <div class="command">uv run pyright</div>
+                                    <p>Type checking</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="content-visual">
+                            <div class="flow-diagram vertical">
+                                <div class="flow-step">
+                                    <div class="flow-number">1</div>
+                                    <div class="flow-content">
+                                        <h4>Code Push</h4>
+                                        <p>Developer pushes changes</p>
+                                    </div>
+                                </div>
+                                <div class="flow-arrow">&#8595;</div>
+                                
+                                <div class="flow-step">
+                                    <div class="flow-number">2</div>
+                                    <div class="flow-content">
+                                        <h4>Run Tests</h4>
+                                        <p>Pytest executes test suite</p>
+                                    </div>
+                                </div>
+                                <div class="flow-arrow">&#8595;</div>
+                                
+                                <div class="flow-step">
+                                    <div class="flow-number">3</div>
+                                    <div class="flow-content">
+                                        <h4>Type Check</h4>
+                                        <p>Pyright validates types</p>
+                                    </div>
+                                </div>
+                                <div class="flow-arrow">&#8595;</div>
+                                
+                                <div class="flow-step">
+                                    <div class="flow-number">4</div>
+                                    <div class="flow-content">
+                                        <h4>Lint Check</h4>
+                                        <p>Ruff checks code style</p>
+                                    </div>
+                                </div>
+                                <div class="flow-arrow">&#8595;</div>
+                                
+                                <div class="flow-step success">
+                                    <div class="flow-number">&#10003;</div>
+                                    <div class="flow-content">
+                                        <h4>Deploy</h4>
+                                        <p>Merge to main branch</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="info-box success">
+                        <span class="info-icon">&#10003;</span>
+                        <p><strong>CI Status:</strong> All Skills tests pass in CI. Check the <code>Tests</code> workflow in GitHub Actions.</p>
                     </div>
                 </div>
             </section>

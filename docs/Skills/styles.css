@@ -38,7 +38,7 @@
     --font-mono: 'Fira Code', 'Monaco', 'Consolas', monospace;
     
     /* Spacing */
-    --container-width: 1200px;
+    --container-width: 1600px;
     --section-padding: 60px 0;
     
     /* Transitions */
@@ -1445,4 +1445,407 @@ blockquote {
 
 .card, .example-card, .component-card, .security-card {
     animation: scaleIn 0.5s ease forwards;
+}
+
+/* ===== Registry Flow Styles ===== */
+.registry-flow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+}
+
+.registry-node {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 1rem;
+    border-radius: 8px;
+    min-width: 120px;
+    text-align: center;
+}
+
+.registry-node.cloud {
+    background: var(--primary-bg);
+    border: 1px solid var(--primary);
+}
+
+.registry-node.cache {
+    background: var(--warning-bg);
+    border: 1px solid var(--warning);
+}
+
+.registry-node.active {
+    background: var(--success-bg);
+    border: 1px solid var(--success);
+}
+
+.registry-node .node-icon {
+    font-size: 1.5rem;
+}
+
+.registry-node span:not(.node-icon) {
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.registry-node small {
+    font-size: 0.75rem;
+    color: var(--text-light);
+}
+
+.registry-caption {
+    font-size: 0.85rem;
+    color: var(--text-light);
+    text-align: center;
+    line-height: 1.4;
+}
+
+/* ===== Version Options ===== */
+.version-options {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin: 1rem 0;
+}
+
+.version-option {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem;
+}
+
+.version-option h4 {
+    margin-bottom: 0.5rem;
+    color: var(--primary);
+    font-size: 1rem;
+}
+
+.version-option p {
+    margin: 0;
+    font-size: 0.875rem;
+}
+
+.version-option p:first-of-type {
+    margin-bottom: 0.5rem;
+}
+
+.version-option .small {
+    color: var(--text-light);
+    font-size: 0.8rem;
+}
+
+/* ===== Simple Flowchart ===== */
+.flowchart.simple {
+    background: var(--bg-light);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.5rem;
+}
+
+.flow-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.flow-row.branch {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.flow-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.75rem 1.25rem;
+    border-radius: 8px;
+    text-align: center;
+}
+
+.flow-box .box-number {
+    width: 30px;
+    height: 30px;
+    background: var(--primary);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+    font-weight: 700;
+}
+
+.flow-box .box-number.skip {
+    background: var(--text-lighter);
+    color: var(--text-light);
+}
+
+.flow-box.success .box-number {
+    background: var(--success);
+}
+
+.flow-box .box-number.yes {
+    background: var(--success);
+}
+
+.flow-box .box-content {
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.box-arrow {
+    color: var(--text-lighter);
+    font-size: 1.25rem;
+}
+
+.branch-arrow {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.branch-arrow span {
+    font-size: 0.8rem;
+    color: var(--text-light);
+}
+
+.branch-line {
+    color: var(--text-lighter);
+    font-size: 1.25rem;
+}
+
+/* ===== Numbered List ===== */
+.numbered-list {
+    list-style: none;
+    padding-left: 0;
+}
+
+.numbered-list li {
+    padding: 0.5rem 0;
+    padding-left: 1.75rem;
+    position: relative;
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+
+.numbered-list li strong {
+    color: var(--text);
+}
+
+.numbered-list li::before {
+    content: counter(list-item) ".";
+    counter-increment: list-item;
+    position: absolute;
+    left: 0;
+    width: 24px;
+    height: 24px;
+    background: var(--primary);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+
+/* ===== Compact Code Example - Fixed ===== */
+.code-example.compact {
+    background: transparent;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: none;
+    margin: 0.5rem 0;
+    border: 1px solid var(--border);
+}
+
+.code-example.compact .code-header {
+    background: var(--bg-light);
+    border-bottom: 1px solid var(--border);
+}
+
+.code-example.compact pre {
+    background: var(--bg-dark);
+    border-radius: 0;
+    max-height: none;
+    overflow-y: visible;
+    font-size: 0.8rem;
+}
+
+.code-example.compact code {
+    font-size: 0.8rem;
+}
+
+
+/* Examples with code need more width */
+.component-grid.examples-with-code {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (max-width: 900px) {
+    .component-grid.examples-with-code {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Wider layout for examples with code */
+.full-width {
+    width: 100%;
+    margin-left: -20px;
+    margin-right: -20px;
+    padding-left: 20px;
+    padding-right: 20px;
+}
+
+.full-width .container {
+    max-width: none;
+    padding-left: 0;
+    padding-right: 0;
+}
+
+.component-grid.wider {
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    max-width: 1400px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* ===== Testing Tab Styles ===== */
+
+/* Test Pyramid */
+.test-pyramid {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+    width: 100%;
+    max-width: 300px;
+    margin: 0 auto;
+}
+
+.pyramid-level {
+    width: 100%;
+    padding: 1rem;
+    text-align: center;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.pyramid-level.top {
+    background: var(--primary-bg);
+    border-bottom: 1px solid var(--primary);
+}
+
+.pyramid-level.middle {
+    background: var(--primary-bg);
+    border-bottom: 1px solid var(--primary);
+}
+
+.pyramid-level.bottom {
+    background: var(--primary-bg);
+}
+
+.pyramid-level small {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--text-light);
+    margin-top: 0.25rem;
+}
+
+/* Coverage Grid */
+.coverage-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin: 1.5rem 0;
+}
+
+.coverage-card {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem;
+}
+
+.coverage-card h4 {
+    margin: 0 0 0.75rem 0;
+    color: var(--text);
+    font-size: 1rem;
+}
+
+.coverage-bar {
+    height: 8px;
+    background: var(--bg-light);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 0.5rem;
+}
+
+.coverage-fill {
+    height: 100%;
+    background: var(--success);
+    border-radius: 4px;
+}
+
+.coverage-card.high .coverage-fill {
+    background: var(--success);
+}
+
+.coverage-card.medium .coverage-fill {
+    background: var(--warning);
+}
+
+.coverage-card.low .coverage-fill {
+    background: var(--danger);
+}
+
+.coverage-card p {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--text-light);
+}
+
+/* Command Grid */
+.command-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem;
+    margin: 1.5rem 0;
+}
+
+.command-card {
+    background: var(--bg-light);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem;
+}
+
+.command-card .command {
+    font-family: var(--font-mono);
+    font-size: 0.9rem;
+    color: var(--primary);
+    padding: 0.5rem;
+    background: var(--bg);
+    border-radius: 4px;
+    margin-bottom: 0.75rem;
+    border: 1px solid var(--border);
+    display: block;
+    overflow-x: auto;
+}
+
+.command-card p {
+    margin: 0;
+    font-size: 0.9rem;
+    color: var(--text-light);
 }
