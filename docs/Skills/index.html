@@ -13,200 +13,169 @@
                 <span class="logo-icon">&#9889;</span>
                 <h1>Vibe Skills</h1>
             </div>
-            <nav class="nav">
-                <a href="#what" class="nav-link active">What is a Skill?</a>
-                <a href="#use" class="nav-link">How to Use</a>
-                <a href="#create" class="nav-link">How to Create</a>
-            </nav>
         </div>
     </header>
 
-    <main class="main">
-        <!-- Hero Section -->
-        <section class="hero">
-            <div class="container">
-                <h2 class="hero-title">Supercharge Your Vibe Experience</h2>
-                <p class="hero-subtitle">Skills are custom instructions that teach Vibe how to help you better</p>
-                <div class="hero-cards">
-                    <div class="card">
-                        <div class="card-icon">&#128218;</div>
-                        <h3>Custom Instructions</h3>
-                        <p>Teach Vibe your workflows and preferences</p>
-                    </div>
-                    <div class="card">
-                        <div class="card-icon">&#128279;</div>
-                        <h3>Context-Aware</h3>
-                        <p>Skills load automatically when relevant</p>
-                    </div>
-                    <div class="card">
-                        <div class="card-icon">&#128293;</div>
-                        <h3>Shareable</h3>
-                        <p>Share skills across projects and teams</p>
-                    </div>
-                </div>
+    <!-- Main Tabs -->
+    <div class="main-tabs-container">
+        <div class="container">
+            <div class="main-tabs">
+                <button class="main-tab-btn active" data-main-tab="overview">
+                    <span class="tab-icon">&#128218;</span>
+                    Overview
+                </button>
+                <button class="main-tab-btn" data-main-tab="architecture">
+                    <span class="tab-icon">&#128736;</span>
+                    Architecture
+                </button>
             </div>
-        </section>
+        </div>
+    </div>
 
-        <!-- What is a Skill Section -->
-        <section id="what" class="section">
-            <div class="container">
-                <div class="section-header">
-                    <span class="section-icon">&#128218;</span>
-                    <h2>What is a Skill?</h2>
-                </div>
-                <div class="content-grid">
-                    <div class="content-text">
-                        <p class="lead">A <strong>Skill</strong> is a set of custom instructions that you can add to Mistral Vibe to teach it how to better assist you with specific tasks or workflows.</p>
-                        
-                        <p>Think of Skills as "plugins" or "extensions" for Vibe's brain. Each Skill contains:</p>
-                        
-                        <ul class="feature-list">
-                            <li>
-                                <span class="check-icon">&#10003;</span>
-                                <strong>Metadata</strong> - Name, description, and configuration
-                            </li>
-                            <li>
-                                <span class="check-icon">&#10003;</span>
-                                <strong>Instructions</strong> - The actual guidance for the AI
-                            </li>
-                            <li>
-                                <span class="check-icon">&#10003;</span>
-                                <strong>Scope</strong> - Global (all projects) or Project-specific
-                            </li>
-                            <li>
-                                <span class="check-icon">&#10003;</span>
-                                <strong>Access Control</strong> - Who can invoke it (you or the AI)
-                            </li>
-                        </ul>
+    <main class="main">
+        <!-- Overview Tab -->
+        <div class="main-tab-content active" id="overview">
+            <!-- Hero Section -->
+            <section class="hero">
+                <div class="container">
+                    <h2 class="hero-title">Supercharge Your Vibe Experience</h2>
+                    <p class="hero-subtitle">Skills are custom instructions that teach Vibe how to help you better</p>
+                    <div class="hero-cards">
+                        <div class="card">
+                            <div class="card-icon">&#128218;</div>
+                            <h3>Custom Instructions</h3>
+                            <p>Teach Vibe your workflows and preferences</p>
+                        </div>
+                        <div class="card">
+                            <div class="card-icon">&#128279;</div>
+                            <h3>Context-Aware</h3>
+                            <p>Skills load automatically when relevant</p>
+                        </div>
+                        <div class="card">
+                            <div class="card-icon">&#128293;</div>
+                            <h3>Shareable</h3>
+                            <p>Share skills across projects and teams</p>
+                        </div>
                     </div>
-                    <div class="content-visual">
-                        <div class="code-example">
-                            <div class="code-header">
-                                <span class="file-name">my-skill/SKILL.md</span>
-                            </div>
-                            <pre><code class="language-markdown">---
+                </div>
+            </section>
+
+            <section class="section">
+                <div class="container">
+                    <nav class="section-nav">
+                        <a href="#what" class="section-nav-link">What is a Skill?</a>
+                        <a href="#use" class="section-nav-link">How to Use</a>
+                        <a href="#create" class="section-nav-link">How to Create</a>
+                        <a href="#examples" class="section-nav-link">Examples</a>
+                    </nav>
+                </div>
+            </section>
+
+            <!-- What is a Skill Section -->
+            <section id="what" class="section">
+                <div class="container">
+                    <div class="section-header">
+                        <span class="section-icon">&#128218;</span>
+                        <h2>What is a Skill?</h2>
+                    </div>
+                    <div class="content-grid">
+                        <div class="content-text">
+                            <p class="lead">A <strong>Skill</strong> is a set of custom instructions that you can add to Mistral Vibe to teach it how to better assist you with specific tasks or workflows.</p>
+                            <p>Think of Skills as "plugins" or "extensions" for Vibe's brain. Each Skill contains:</p>
+                            <ul class="feature-list">
+                                <li><span class="check-icon">&#10003;</span> <strong>Metadata</strong> - Name, description, and configuration</li>
+                                <li><span class="check-icon">&#10003;</span> <strong>Instructions</strong> - The actual guidance for the AI</li>
+                                <li><span class="check-icon">&#10003;</span> <strong>Scope</strong> - Global (all projects) or Project-specific</li>
+                                <li><span class="check-icon">&#10003;</span> <strong>Access Control</strong> - Who can invoke it (you or the AI)</li>
+                            </ul>
+                        </div>
+                        <div class="content-visual">
+                            <div class="code-example">
+                                <div class="code-header"><span class="file-name">my-skill/SKILL.md</span></div>
+                                <pre><code class="language-markdown">---
 name: code-review
 description: Load when reviewing pull requests
 user-invocable: true
 ---
 
 # Code Review Guidelines
-
 1. Check for security vulnerabilities
 2. Verify all tests pass
-3. Ensure code follows PEP 8
-4. Look for performance issues
-5. Confirm documentation is updated</code></pre>
+3. Ensure code follows PEP 8</code></pre>
+                            </div>
                         </div>
                     </div>
+                    <div class="info-box">
+                        <span class="info-icon">&#8505;</span>
+                        <p><strong>Skills are Markdown files</strong> with YAML frontmatter. The YAML defines the metadata, and the Markdown body contains the instructions.</p>
+                    </div>
                 </div>
-                
-                <div class="info-box">
-                    <span class="info-icon">&#8505;</span>
-                    <p><strong>Skills are Markdown files</strong> with YAML frontmatter. The YAML defines the metadata, and the Markdown body contains the instructions.</p>
-                </div>
-            </div>
-        </section>
+            </section>
 
-        <!-- How to Use Section -->
-        <section id="use" class="section light-bg">
-            <div class="container">
-                <div class="section-header">
-                    <span class="section-icon">&#128279;</span>
-                    <h2>How to Use Skills</h2>
-                </div>
-                
-                <div class="tabs-container">
-                    <div class="tabs">
-                        <button class="tab-btn active" data-tab="manual">Manual Invocation</button>
-                        <button class="tab-btn" data-tab="auto">Automatic Loading</button>
+            <!-- How to Use Section -->
+            <section id="use" class="section light-bg">
+                <div class="container">
+                    <div class="section-header">
+                        <span class="section-icon">&#128279;</span>
+                        <h2>How to Use Skills</h2>
                     </div>
-                    
-                    <div class="tab-content active" id="manual">
-                        <div class="content-grid">
-                            <div class="content-text">
-                                <h3>Invoke a Skill Manually</h3>
-                                <p>You can explicitly tell Vibe to use a specific Skill by typing its name with a forward slash:</p>
-                                
-                                <div class="command-example">
-                                    <div class="command">/code-review</div>
-                                    <p>Review this pull request for me</p>
-                                </div>
-                                
-                                <p>This forces Vibe to load that Skill's instructions for the current conversation.</p>
-                                
-                                <h4>List Available Skills</h4>
-                                <p>To see all available Skills, use:</p>
-                                <div class="command-example">
-                                    <div class="command">/skills</div>
-                                </div>
-                            </div>
-                            <div class="content-visual">
-                                <div class="terminal-mockup">
-                                    <div class="terminal-header">
-                                        <span class="terminal-dot red"></span>
-                                        <span class="terminal-dot yellow"></span>
-                                        <span class="terminal-dot green"></span>
-                                        <span class="terminal-title">Vibe CLI</span>
+                    <div class="tabs-container">
+                        <div class="tabs">
+                            <button class="tab-btn active" data-tab="manual">Manual Invocation</button>
+                            <button class="tab-btn" data-tab="auto">Automatic Loading</button>
+                        </div>
+                        <div class="tab-content active" id="manual">
+                            <div class="content-grid">
+                                <div class="content-text">
+                                    <h3>Invoke a Skill Manually</h3>
+                                    <p>Type <code>/skill-name</code> to explicitly use a Skill:</p>
+                                    <div class="command-example">
+                                        <div class="command">/code-review</div>
+                                        <p>Review this pull request for me</p>
                                     </div>
-                                    <div class="terminal-body">
-                                        <div class="terminal-line"><span class="prompt">></span> <span class="input">/code-review</span></div>
-                                        <div class="terminal-line"><span class="prompt">></span> <span class="output">Loaded skill: code-review</span></div>
-                                        <div class="terminal-line"><span class="prompt">></span> <span class="input">Review this PR</span></div>
-                                        <div class="terminal-line"><span class="response">Code Review mode activated...</span></div>
+                                    <h4>List Available Skills</h4>
+                                    <p>To see all available Skills:</p>
+                                    <div class="command-example"><div class="command">/skills</div></div>
+                                </div>
+                                <div class="content-visual">
+                                    <div class="terminal-mockup">
+                                        <div class="terminal-header">
+                                            <span class="terminal-dot red"></span>
+                                            <span class="terminal-dot yellow"></span>
+                                            <span class="terminal-dot green"></span>
+                                            <span class="terminal-title">Vibe CLI</span>
+                                        </div>
+                                        <div class="terminal-body">
+                                            <div class="terminal-line"><span class="prompt">></span> <span class="input">/code-review</span></div>
+                                            <div class="terminal-line"><span class="output">Loaded skill: code-review</span></div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                    
-                    <div class="tab-content" id="auto">
-                        <div class="content-grid">
-                            <div class="content-text">
-                                <h3>Automatic Skill Loading</h3>
-                                <p>Vibe can automatically load Skills based on the context of your request. The AI reads the <code>description</code> field of each Skill and decides if it's relevant.</p>
-                                
-                                <div class="example-box">
-                                    <h4>Example:</h4>
-                                    <p>If you have a Skill with:</p>
-                                    <pre><code>description: Load when working with Python Django projects</code></pre>
-                                    <p>And you ask:</p>
-                                    <blockquote>"How do I set up Django authentication?"</blockquote>
-                                    <p>Vibe will automatically load that Skill if it determines it's relevant.</p>
+                        <div class="tab-content" id="auto">
+                            <div class="content-grid">
+                                <div class="content-text">
+                                    <h3>Automatic Skill Loading</h3>
+                                    <p>Vibe can automatically load Skills based on context. The AI reads the <code>description</code> field and decides if it's relevant.</p>
+                                    <div class="example-box">
+                                        <p>If a Skill has <code>description: Load when working with Django</code>, and you ask about Django, Vibe will auto-load it.</p>
+                                    </div>
+                                    <div class="info-box">
+                                        <span class="info-icon">&#8505;</span>
+                                        <p><strong>Model-only Skills:</strong> Set <code>user-invocable: false</code> to hide from <code>/</code> menu but allow AI auto-loading.</p>
+                                    </div>
                                 </div>
-                                
-                                <div class="info-box">
-                                    <span class="info-icon">&#8505;</span>
-                                    <p><strong>Model-only Skills</strong> can be auto-loaded by the AI but are hidden from the <code>/</code> menu. Set <code>user-invocable: false</code> in the metadata.</p>
-                                </div>
-                            </div>
-                            <div class="content-visual">
-                                <div class="flowchart">
-                                    <div class="flow-node start">
-                                        <span>You ask a question</span>
-                                    </div>
-                                    <div class="flow-arrow">&#8594;</div>
-                                    <div class="flow-node process">
-                                        <span>Vibe analyzes context</span>
-                                    </div>
-                                    <div class="flow-arrow">&#8594;</div>
-                                    <div class="flow-node decision">
-                                        <span>Skill relevant?</span>
-                                    </div>
-                                    <div class="flow-branch">
-                                        <div class="flow-path yes">
-                                            <span>Yes</span>
-                                            <div class="flow-arrow">&#8594;</div>
-                                            <div class="flow-node success">
-                                                <span>Load Skill</span>
-                                            </div>
-                                        </div>
-                                        <div class="flow-path no">
-                                            <span>No</span>
-                                            <div class="flow-arrow">&#8594;</div>
-                                            <div class="flow-node normal">
-                                                <span>Proceed normally</span>
-                                            </div>
+                                <div class="content-visual">
+                                    <div class="flowchart">
+                                        <div class="flow-node start">You ask a question</div>
+                                        <div class="flow-arrow">&#8594;</div>
+                                        <div class="flow-node process">Vibe analyzes context</div>
+                                        <div class="flow-arrow">&#8594;</div>
+                                        <div class="flow-node decision">Skill relevant?</div>
+                                        <div class="flow-branch">
+                                            <div class="flow-path yes">Yes<div class="flow-arrow">&#8594;</div><div class="flow-node success">Load Skill</div></div>
+                                            <div class="flow-path no">No<div class="flow-arrow">&#8594;</div><div class="flow-node normal">Proceed normally</div></div>
                                         </div>
                                     </div>
                                 </div>
@@ -214,201 +183,437 @@ user-invocable: true
                         </div>
                     </div>
                 </div>
-            </div>
-        </section>
+            </section>
 
-        <!-- How to Create Section -->
-        <section id="create" class="section">
-            <div class="container">
-                <div class="section-header">
-                    <span class="section-icon">&#9998;</span>
-                    <h2>How to Create a Skill</h2>
-                </div>
-                
-                <div class="steps-container">
-                    <div class="step">
-                        <div class="step-number">1</div>
-                        <div class="step-content">
-                            <h3>Choose a Location</h3>
-                            <p>Decide where your Skill should live:</p>
-                            <ul class="location-list">
-                                <li>
-                                    <strong>Global:</strong> <code>~/.vibe/skills/</code>
-                                    <br><small>Available in all your projects</small>
-                                </li>
-                                <li>
-                                    <strong>Project:</strong> <code>.vibe/skills/</code>
-                                    <br><small>Only available in this project</small>
-                                </li>
-                            </ul>
-                        </div>
+            <!-- How to Create Section -->
+            <section id="create" class="section">
+                <div class="container">
+                    <div class="section-header">
+                        <span class="section-icon">&#9998;</span>
+                        <h2>How to Create a Skill</h2>
                     </div>
-                    
-                    <div class="step">
-                        <div class="step-number">2</div>
-                        <div class="step-content">
-                            <h3>Create the Folder & File</h3>
-                            <p>Create a folder with your Skill's name and add a <code>SKILL.md</code> file:</p>
-                            <div class="command-example">
-                                <div class="command">mkdir -p ~/.vibe/skills/my-skill</div>
-                                <div class="command">touch ~/.vibe/skills/my-skill/SKILL.md</div>
+                    <div class="steps-container">
+                        <div class="step">
+                            <div class="step-number">1</div>
+                            <div class="step-content">
+                                <h3>Choose Location</h3>
+                                <ul class="location-list">
+                                    <li><strong>Global:</strong> <code>~/.vibe/skills/</code><br><small>All projects</small></li>
+                                    <li><strong>Project:</strong> <code>.vibe/skills/</code><br><small>This project only</small></li>
+                                </ul>
                             </div>
                         </div>
-                    </div>
-                    
-                    <div class="step">
-                        <div class="step-number">3</div>
-                        <div class="step-content">
-                            <h3>Add Metadata (YAML Frontmatter)</h3>
-                            <p>At the top of your <code>SKILL.md</code>, add YAML metadata between <code>---</code>:</p>
-                            <div class="code-example">
-                                <pre><code class="language-yaml">---
+                        <div class="step">
+                            <div class="step-number">2</div>
+                            <div class="step-content">
+                                <h3>Create Folder & File</h3>
+                                <div class="command-example">
+                                    <div class="command">mkdir -p ~/.vibe/skills/my-skill</div>
+                                    <div class="command">touch ~/.vibe/skills/my-skill/SKILL.md</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div class="step-number">3</div>
+                            <div class="step-content">
+                                <h3>Add YAML Frontmatter</h3>
+                                <div class="code-example">
+                                    <pre><code class="language-yaml">---
 name: my-skill
-description: Load this skill when helping with data analysis
-tags: [python, analysis, pandas]
+description: Load when helping with data analysis
 user-invocable: true
 license: MIT
 ---
 
-# Your instructions go here</code></pre>
-                            </div>
-                            <div class="metadata-fields">
-                                <h4>Required Fields:</h4>
-                                <ul class="fields-list">
-                                    <li><code>name</code> - Unique identifier (lowercase, hyphens, 1-64 chars)</li>
-                                    <li><code>description</code> - When to load this Skill (1-1024 chars)</li>
-                                </ul>
-                                <h4>Optional Fields:</h4>
-                                <ul class="fields-list">
-                                    <li><code>user-invocable</code> - Can users invoke with <code>/name</code>? (default: true)</li>
-                                    <li><code>disable-model-invocation</code> - Prevent AI from auto-loading (default: false)</li>
-                                    <li><code>allowed-tools</code> - Pre-approved tools list</li>
-                                    <li><code>license</code> - License information</li>
-                                    <li><code>compatibility</code> - Environment requirements</li>
-                                    <li><code>metadata</code> - Custom key-value pairs</li>
-                                </ul>
+# Instructions go here</code></pre>
+                                </div>
+                                <h4>Fields:</h4>
+                                <p><strong>Required:</strong> <code>name</code>, <code>description</code></p>
+                                <p><strong>Optional:</strong> <code>user-invocable</code>, <code>disable-model-invocation</code>, <code>allowed-tools</code>, <code>license</code>, <code>metadata</code></p>
                             </div>
                         </div>
-                    </div>
-                    
-                    <div class="step">
-                        <div class="step-number">4</div>
-                        <div class="step-content">
-                            <h3>Write Your Instructions</h3>
-                            <p>Below the frontmatter, write clear instructions in Markdown:</p>
-                            <div class="code-example">
-                                <pre><code class="language-markdown">---
-name: python-best-practices
-description: Load when writing Python code
----
-
-# Python Best Practices
+                        <div class="step">
+                            <div class="step-number">4</div>
+                            <div class="step-content">
+                                <h3>Write Instructions</h3>
+                                <div class="code-example">
+                                    <pre><code class="language-markdown"># Python Best Practices
 
 ## Code Style
-- Always follow PEP 8 guidelines
-- Use type hints for all functions
-- Limit line length to 88 characters
-- Use descriptive variable names
-
-## Testing
-- Write unit tests for all new functions
-- Use pytest framework
-- Aim for >90% code coverage
-
-## Documentation
-- Add docstrings to all public functions
-- Use Google-style docstrings
-- Update README.md for significant changes</code></pre>
+- Follow PEP 8 guidelines
+- Use type hints
+- Limit lines to 88 chars</code></pre>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                    
-                    <div class="step">
-                        <div class="step-number">5</div>
-                        <div class="step-content">
-                            <h3>Reload and Use</h3>
-                            <p>After creating your Skill, reload Vibe to pick it up:</p>
-                            <div class="command-example">
-                                <div class="command">/reload</div>
-                            </div>
-                            <p>Then you can use it:</p>
-                            <div class="command-example">
-                                <div class="command">/my-skill</div>
-                                <p>Help me with this task</p>
-                            </div>
-                            <div class="info-box success">
-                                <span class="info-icon">&#10003;</span>
-                                <p><strong>Pro Tip:</strong> Skills are hot-reloaded! Edit your <code>SKILL.md</code> file, run <code>/reload</code>, and your changes are live immediately.</p>
+                        <div class="step">
+                            <div class="step-number">5</div>
+                            <div class="step-content">
+                                <h3>Reload & Use</h3>
+                                <div class="command-example">
+                                    <div class="command">/reload</div>
+                                    <div class="command">/my-skill Help me!</div>
+                                </div>
+                                <div class="info-box success">
+                                    <span class="info-icon">&#10003;</span>
+                                    <p><strong>Pro Tip:</strong> Skills hot-reload! Edit <code>SKILL.md</code>, run <code>/reload</code>, done.</p>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
-        </section>
+            </section>
 
-        <!-- Examples Section -->
-        <section class="section light-bg">
-            <div class="container">
-                <div class="section-header">
-                    <span class="section-icon">&#128196;</span>
-                    <h2>Example Skills</h2>
-                </div>
-                
-                <div class="examples-grid">
-                    <div class="example-card">
-                        <div class="example-header">
-                            <span class="example-icon">&#127915;</span>
-                            <h3>Code Review</h3>
-                        </div>
-                        <p>Automates code review checklist</p>
-                        <div class="example-tags">
-                            <span>security</span>
-                            <span>quality</span>
-                            <span>testing</span>
-                        </div>
+            <!-- Examples Section -->
+            <section id="examples" class="section light-bg">
+                <div class="container">
+                    <div class="section-header">
+                        <span class="section-icon">&#128196;</span>
+                        <h2>Example Skills</h2>
                     </div>
-                    
-                    <div class="example-card">
-                        <div class="example-header">
-                            <span class="example-icon">&#128640;</span>
-                            <h3>Git Workflow</h3>
+                    <div class="examples-grid">
+                        <div class="example-card">
+                            <div class="example-header"><span class="example-icon">&#127915;</span><h3>Code Review</h3></div>
+                            <p>Automates code review checklist</p>
+                            <div class="example-tags"><span>security</span><span>quality</span><span>testing</span></div>
                         </div>
-                        <p>Standardizes Git commit messages and workflows</p>
-                        <div class="example-tags">
-                            <span>git</span>
-                            <span>workflow</span>
-                            <span>conventions</span>
+                        <div class="example-card">
+                            <div class="example-header"><span class="example-icon">&#128640;</span><h3>Git Workflow</h3></div>
+                            <p>Standardizes Git commit messages</p>
+                            <div class="example-tags"><span>git</span><span>workflow</span></div>
                         </div>
-                    </div>
-                    
-                    <div class="example-card">
-                        <div class="example-header">
-                            <span class="example-icon">&#127912;</span>
-                            <h3>Django Expert</h3>
+                        <div class="example-card">
+                            <div class="example-header"><span class="example-icon">&#127912;</span><h3>Django Expert</h3></div>
+                            <p>Specialized Django knowledge</p>
+                            <div class="example-tags"><span>django</span><span>python</span></div>
                         </div>
-                        <p>Specialized knowledge for Django projects</p>
-                        <div class="example-tags">
-                            <span>django</span>
-                            <span>python</span>
-                            <span>web-dev</span>
-                        </div>
-                    </div>
-                    
-                    <div class="example-card">
-                        <div class="example-header">
-                            <span class="example-icon">&#128200;</span>
-                            <h3>Documentation</h3>
-                        </div>
-                        <p>Guides for writing clear documentation</p>
-                        <div class="example-tags">
-                            <span>docs</span>
-                            <span>writing</span>
-                            <span>markdown</span>
+                        <div class="example-card">
+                            <div class="example-header"><span class="example-icon">&#128200;</span><h3>Documentation</h3></div>
+                            <p>Writing clear documentation</p>
+                            <div class="example-tags"><span>docs</span><span>writing</span></div>
                         </div>
                     </div>
                 </div>
-            </div>
-        </section>
+            </section>
+        </div>
+
+        <!-- Architecture Tab -->
+        <div class="main-tab-content" id="architecture">
+            <section class="arch-hero">
+                <div class="container">
+                    <h2 class="hero-title">Skills Architecture Deep Dive</h2>
+                    <p class="hero-subtitle">Understanding how Skills are implemented in Vibe's core</p>
+                </div>
+            </section>
+
+            <section class="section">
+                <div class="container">
+                    <nav class="section-nav">
+                        <a href="#core-components" class="section-nav-link">Core Components</a>
+                        <a href="#discovery" class="section-nav-link">Discovery Flow</a>
+                        <a href="#invocation" class="section-nav-link">Invocation</a>
+                        <a href="#registry" class="section-nav-link">Registry</a>
+                        <a href="#config" class="section-nav-link">Configuration</a>
+                    </nav>
+                </div>
+            </section>
+
+            <!-- Core Components -->
+            <section id="core-components" class="section">
+                <div class="container">
+                    <div class="section-header">
+                        <span class="section-icon">&#128736;</span>
+                        <h2>Core Components</h2>
+                    </div>
+                    <p class="lead">The Skills subsystem in <code>vibe/core/skills/</code> consists of these key modules:</p>
+                    
+                    <div class="component-grid">
+                        <div class="component-card">
+                            <h4>&#128196; models.py</h4>
+                            <p>Data models for Skills</p>
+                            <ul class="compact-list">
+                                <li><code>SkillMetadata</code> - Frontmatter fields</li>
+                                <li><code>SkillInfo</code> - Complete skill data</li>
+                                <li><code>SkillSource</code> - BUILTIN/LOCAL/REGISTRY/PLUGIN</li>
+                                <li><code>SkillScope</code> - GLOBAL/PROJECT/BUILTIN</li>
+                            </ul>
+                        </div>
+                        <div class="component-card">
+                            <h4>&#128221; manager.py</h4>
+                            <p>Core Skill management</p>
+                            <ul class="compact-list">
+                                <li><code>SkillManager</code> class</li>
+                                <li>Discovery logic</li>
+                                <li>Filtering (enabled/disabled)</li>
+                                <li>LRUCache for parsed skills</li>
+                            </ul>
+                        </div>
+                        <div class="component-card">
+                            <h4>&#128194; parser.py</h4>
+                            <p>File parsing</p>
+                            <ul class="compact-list">
+                                <li>YAML frontmatter extraction</li>
+                                <li>Markdown body separation</li>
+                                <li>OpenAI compatibility</li>
+                                <li>Validation</li>
+                            </ul>
+                        </div>
+                        <div class="component-card">
+                            <h4>&#128737; builtins/</h4>
+                            <p>Built-in Skills</p>
+                            <ul class="compact-list">
+                                <li><code>vibe</code> - CLI awareness</li>
+                                <li><code>skill-creator</code> - Guide</li>
+                            </ul>
+                        </div>
+                        <div class="component-card">
+                            <h4>&#127758; registry/</h4>
+                            <p>Registry integration</p>
+                            <ul class="compact-list">
+                                <li>Client API</li>
+                                <li>Manifest management</li>
+                                <li>Store/caching</li>
+                                <li>Sync operations</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <div class="code-example">
+                        <div class="code-header"><span class="file-name">Folder Structure</span></div>
+                        <pre><code class="language-text">vibe/core/skills/
+├── __init__.py
+├── models.py
+├── manager.py
+├── parser.py
+├── builtins/
+│   ├── __init__.py
+│   ├── vibe.py
+│   └── skill_creator.py
+└── registry/
+    ├── __init__.py
+    ├── _client.py
+    ├── _manifest.py
+    ├── _store.py
+    ├── _service.py
+    └── models.py</code></pre>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Discovery Flow -->
+            <section id="discovery" class="section light-bg">
+                <div class="container">
+                    <div class="section-header">
+                        <span class="section-icon">&#128269;</span>
+                        <h2>Skill Discovery Flow</h2>
+                    </div>
+                    <p class="lead">Skills are discovered in this order (first match wins):</p>
+                    <div class="flow-diagram">
+                        <div class="flow-step"><div class="flow-number">1</div><div class="flow-content"><h4>Built-in Skills</h4><p>Reserved: <code>vibe</code>, <code>skill-creator</code></p></div></div>
+                        <div class="flow-arrow">&#8594;</div>
+                        <div class="flow-step"><div class="flow-number">2</div><div class="flow-content"><h4>Config Paths</h4><p>From <code>skill_paths</code> in config</p></div></div>
+                        <div class="flow-arrow">&#8594;</div>
+                        <div class="flow-step"><div class="flow-number">3</div><div class="flow-content"><h4>Project Skills</h4><p><code>.vibe/skills/</code>, <code>.agents/skills/</code></p></div></div>
+                        <div class="flow-arrow">&#8594;</div>
+                        <div class="flow-step"><div class="flow-number">4</div><div class="flow-content"><h4>User Skills</h4><p><code>~/.vibe/skills/</code>, <code>~/.agents/skills/</code></p></div></div>
+                        <div class="flow-arrow">&#8594;</div>
+                        <div class="flow-step"><div class="flow-number">5</div><div class="flow-content"><h4>Registry Skills</h4><p>From <code>skills.toml</code> manifests</p></div></div>
+                        <div class="flow-arrow">&#8594;</div>
+                        <div class="flow-step success"><div class="flow-number">&#10003;</div><div class="flow-content"><h4>Filtering</h4><p>Apply <code>enabled_skills</code> & <code>disabled_skills</code></p></div></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Invocation -->
+            <section id="invocation" class="section">
+                <div class="container">
+                    <div class="section-header">
+                        <span class="section-icon">&#9881;</span>
+                        <h2>Skill Invocation</h2>
+                    </div>
+                    <div class="tabs-container">
+                        <div class="tabs">
+                            <button class="tab-btn active" data-tab="user-invoke">User Invocation</button>
+                            <button class="tab-btn" data-tab="model-invoke">Model Invocation</button>
+                        </div>
+                        <div class="tab-content active" id="user-invoke">
+                            <div class="content-grid">
+                                <div class="content-text">
+                                    <h3>User-Triggered Skills</h3>
+                                    <p>When user types <code>/skill-name</code>:</p>
+                                    <ol class="numbered-list">
+                                        <li><code>SkillManager.parse_skill_command()</code> called</li>
+                                        <li>Lookup skill by name in <code>available_skills</code></li>
+                                        <li>Check <code>user_invocable</code> is <code>true</code></li>
+                                        <li>Return <code>ParsedSkillCommand</code> with skill content</li>
+                                        <li>Skill prompt added to model context</li>
+                                    </ol>
+                                    <div class="code-example">
+                                        <div class="code-header"><span class="file-name">manager.py</span></div>
+                                        <pre><code class="language-python">def parse_skill_command(self, text_prompt: str):
+    if not text_prompt.strip().startswith("/"):
+        return None
+    skill_name = text_prompt.strip()[1:].split(None, 1)[0].lower()
+    skill_info = self.get_skill(skill_name)
+    if skill_info is None or not skill_info.user_invocable:
+        return None
+    return ParsedSkillCommand(
+        name=skill_name,
+        content=skill_info.prompt,
+        extra_instructions=...
+    )</code></pre>
+                                    </div>
+                                </div>
+                                <div class="content-visual">
+                                    <div class="terminal-mockup">
+                                        <div class="terminal-header">
+                                            <span class="terminal-dot red"></span>
+                                            <span class="terminal-dot yellow"></span>
+                                            <span class="terminal-dot green"></span>
+                                            <span class="terminal-title">User Invocation</span>
+                                        </div>
+                                        <div class="terminal-body">
+                                            <div class="terminal-line"><span class="prompt">></span> <span class="input">/my-skill Do this</span></div>
+                                            <div class="terminal-line"><span class="output">[Skill loaded: my-skill]</span></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="tab-content" id="model-invoke">
+                            <div class="content-grid">
+                                <div class="content-text">
+                                    <h3>AI-Triggered Skills</h3>
+                                    <p>When model determines a Skill is relevant:</p>
+                                    <ol class="numbered-list">
+                                        <li>Agent processes user message</li>
+                                        <li>Model compares to <code>description</code> fields</li>
+                                        <li>Check <code>model_invocable</code> is <code>true</code></li>
+                                        <li>Skill prompt added to system message</li>
+                                        <li>Model generates response with context</li>
+                                    </ol>
+                                    <div class="info-box">
+                                        <span class="info-icon">&#8505;</span>
+                                        <p><strong>OpenAI Compatibility:</strong> Supports <code>agents/openai.yaml</code> with <code>allow_implicit_invocation</code>.</p>
+                                    </div>
+                                </div>
+                                <div class="content-visual">
+                                    <div class="diagram-box">
+                                        <h4>Model Decision</h4>
+                                        <div class="decision-tree">
+                                            <div class="decision-node">User Message</div>
+                                            <div class="decision-branches">
+                                                <div class="decision-branch"><div class="branch-label">Matches?</div><div class="branch-result yes">&#10003; Load</div></div>
+                                                <div class="decision-branch"><div class="branch-label">Matches?</div><div class="branch-result no">&#10007; Skip</div></div>
+                                            </div>
+                                            <div class="decision-result">Combined Context</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Registry -->
+            <section id="registry" class="section light-bg">
+                <div class="container">
+                    <div class="section-header">
+                        <span class="section-icon">&#127758;</span>
+                        <h2>Registry Skills</h2>
+                    </div>
+                    <div class="content-grid">
+                        <div class="content-text">
+                            <h3>Registry Integration</h3>
+                            <p>Skills can be synced from a central registry:</p>
+                            <h4>Key Files:</h4>
+                            <ul class="feature-list">
+                                <li><span class="check-icon">&#10003;</span> <code>_client.py</code> - HTTP API client</li>
+                                <li><span class="check-icon">&#10003;</span> <code>_manifest.py</code> - TOML manifest handling</li>
+                                <li><span class="check-icon">&#10003;</span> <code>_store.py</code> - Local cache at <code>$VIBE_HOME/registry/skills/store/</code></li>
+                                <li><span class="check-icon">&#10003;</span> <code>_ledger.py</code> - Cross-repo version tracking</li>
+                            </ul>
+                            <h4>Manifest Example:</h4>
+                            <div class="code-example">
+                                <div class="code-header"><span class="file-name">~/.vibe/skills.toml</span></div>
+                                <pre><code class="language-toml">[[skills]]
+name = "code-review"
+skill_id = "mistralai/code-review"
+version = "latest"
+description = "Code review assistant"
+
+[[skills]]
+name = "django-expert"  
+skill_id = "mistralai/django"
+version = 2</code></pre>
+                            </div>
+                        </div>
+                        <div class="content-visual">
+                            <div class="arch-tree">
+                                <pre><code class="language-text">Cache Structure:
+$VIBE_HOME/registry/skills/
+├── store/
+│   └── {skill_id}/
+│       └── {version}/
+│           ├── SKILL.md
+│           └── assets/
+├── ledger/
+│   └── {repo_hash}.txt
+└── seen-versions.json</code></pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Configuration -->
+            <section id="config" class="section">
+                <div class="container">
+                    <div class="section-header">
+                        <span class="section-icon">&#9881;</span>
+                        <h2>Configuration</h2>
+                    </div>
+                    <div class="content-grid">
+                        <div class="content-text">
+                            <h3>Vibe Configuration</h3>
+                            <div class="code-example">
+                                <div class="code-header"><span class="file-name">~/.vibe/config.toml</span></div>
+                                <pre><code class="language-toml"># Additional skill search paths
+skill_paths = ["/path/to/skills"]
+
+# Enable/disable skills
+enabled_skills = ["vibe", "custom-*"]
+disabled_skills = ["experimental-*"]
+
+# Registry (experimental)
+experimental_enable_registry_skills = true</code></pre>
+                            </div>
+                            <h4>Pattern Matching:</h4>
+                            <ul class="feature-list">
+                                <li><span class="check-icon">&#10003;</span> <strong>Exact:</strong> <code>"vibe"</code></li>
+                                <li><span class="check-icon">&#10003;</span> <strong>Glob:</strong> <code>"custom-*"</code></li>
+                                <li><span class="check-icon">&#10003;</span> <strong>Regex:</strong> <code>"re:^test-.*"</code></li>
+                            </ul>
+                        </div>
+                        <div class="content-visual">
+                            <div class="info-box">
+                                <span class="info-icon">&#8505;</span>
+                                <p><strong>Discovery Order:</strong></p>
+                                <ol class="compact-list">
+                                    <li>Built-in skills (reserved names)</li>
+                                    <li>Config <code>skill_paths</code></li>
+                                    <li>Project skills (<code>.vibe/skills/</code>)</li>
+                                    <li>User skills (<code>~/.vibe/skills/</code>)</li>
+                                    <li>Registry skills</li>
+                                </ol>
+                                <p><em>First match wins!</em></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
     </main>
 
     <footer class="footer">

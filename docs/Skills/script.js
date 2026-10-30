@@ -5,39 +5,70 @@
 
 // ===== DOM Ready =====
 document.addEventListener('DOMContentLoaded', function() {
-    // Initialize all interactive features
+    initMainTabs();
     initTabs();
     initScrollSpy();
     initScrollToTop();
     initSmoothScroll();
     initCodeHighlights();
+    initProgressBar();
+    initScrollAnimations();
 });
 
-// ===== Tabs =====
+// ===== Main Tabs (Overview vs Architecture) =====
+function initMainTabs() {
+    const mainTabButtons = document.querySelectorAll('.main-tab-btn');
+    const mainTabContents = document.querySelectorAll('.main-tab-content');
+
+    mainTabButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            const tabId = button.getAttribute('data-main-tab');
+            const targetContent = document.getElementById(tabId);
+
+            mainTabButtons.forEach(btn => btn.classList.remove('active'));
+            mainTabContents.forEach(content => content.classList.remove('active'));
+
+            button.classList.add('active');
+            targetContent.classList.add('active');
+
+            // Scroll to top of content
+            targetContent.scrollTo({ top: 0, behavior: 'smooth' });
+            
+            // Update URL hash
+            history.pushState(null, null, `#${tabId}`);
+        });
+    });
+
+    // Handle hash in URL on page load
+    const hash = window.location.hash.slice(1);
+    if (hash) {
+        const matchingTab = document.querySelector(`[data-main-tab="${hash}"]`);
+        if (matchingTab) {
+            matchingTab.click();
+        }
+    }
+}
+
+// ===== Section Tabs (within sections) =====
 function initTabs() {
     const tabButtons = document.querySelectorAll('.tab-btn');
     const tabContents = document.querySelectorAll('.tab-content');
 
     tabButtons.forEach(button => {
         button.addEventListener('click', () => {
-            // Get the target tab ID from data attribute
             const tabId = button.getAttribute('data-tab');
             const targetContent = document.getElementById(tabId);
 
-            // Remove active class from all buttons and contents
             tabButtons.forEach(btn => btn.classList.remove('active'));
             tabContents.forEach(content => content.classList.remove('active'));
 
-            // Add active class to clicked button and target content
             button.classList.add('active');
             targetContent.classList.add('active');
 
-            // Update URL hash for direct linking
             history.pushState(null, null, `#${tabId}`);
         });
     });
 
-    // Handle hash in URL on page load
     const hash = window.location.hash.slice(1);
     if (hash) {
         const matchingTab = document.querySelector(`[data-tab="${hash}"]`);
@@ -47,45 +78,19 @@ function initTabs() {
     }
 }
 
-// ===== Scroll Spy (for navigation) =====
+// ===== Scroll Spy for Section Navigation =====
 function initScrollSpy() {
-    const sections = document.querySelectorAll('section[id]');
-    const navLinks = document.querySelectorAll('.nav-link');
+    const navLinks = document.querySelectorAll('.section-nav-link');
 
-    // Intersection Observer for scroll spy
-    const observerOptions = {
-        root: null,
-        rootMargin: '-20% 0px -80% 0px',
-        threshold: 0
-    };
-
-    const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                const sectionId = entry.target.getAttribute('id');
-                
-                // Update active nav link
-                navLinks.forEach(link => {
-                    link.classList.remove('active');
-                    if (link.getAttribute('href') === `#${sectionId}`) {
-                        link.classList.add('active');
-                    }
-                });
-            }
-        });
-    }, observerOptions);
-
-    // Observe all sections
-    sections.forEach(section => {
-        observer.observe(section);
-    });
-
-    // Also update on scroll for sections that might not trigger intersection
     window.addEventListener('scroll', () => {
-        const scrollPosition = window.scrollY + 100;
-        
+        const activeTabContent = document.querySelector('.main-tab-content.active');
+        if (!activeTabContent) return;
+
+        const sections = activeTabContent.querySelectorAll('section[id]');
+        const scrollPosition = activeTabContent.scrollTop || window.scrollY;
+
         sections.forEach(section => {
-            const sectionTop = section.offsetTop;
+            const sectionTop = section.offsetTop - activeTabContent.offsetTop;
             const sectionHeight = section.offsetHeight;
             const sectionId = section.getAttribute('id');
 
@@ -109,7 +114,6 @@ function initScrollToTop() {
     scrollTopBtn.title = 'Scroll to top';
     document.body.appendChild(scrollTopBtn);
 
-    // Show/hide button based on scroll position
     window.addEventListener('scroll', () => {
         if (window.scrollY > 300) {
             scrollTopBtn.classList.add('visible');
@@ -118,12 +122,13 @@ function initScrollToTop() {
         }
     });
 
-    // Scroll to top on click
     scrollTopBtn.addEventListener('click', () => {
-        window.scrollTo({
-            top: 0,
-            behavior: 'smooth'
-        });
+        const activeTab = document.querySelector('.main-tab-content.active');
+        if (activeTab) {
+            activeTab.scrollTo({ top: 0, behavior: 'smooth' });
+        } else {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
     });
 }
 
@@ -136,13 +141,10 @@ function initSmoothScroll() {
             const targetElement = document.getElementById(targetId);
 
             if (targetElement) {
-                // Check if it's a tab link
-                if (this.classList.contains('tab-btn')) {
-                    // Let the tab handler take care of it
+                if (this.classList.contains('tab-btn') || this.classList.contains('main-tab-btn')) {
                     return;
                 }
 
-                // Offset for fixed header
                 const headerOffset = 80;
                 const elementPosition = targetElement.getBoundingClientRect().top;
                 const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
@@ -152,7 +154,6 @@ function initSmoothScroll() {
                     behavior: 'smooth'
                 });
 
-                // Update URL without reload
                 history.pushState(null, null, `#${targetId}`);
             }
         });
@@ -161,11 +162,9 @@ function initSmoothScroll() {
 
 // ===== Code Syntax Highlighting =====
 function initCodeHighlights() {
-    // Simple syntax highlighting for code blocks
     const codeBlocks = document.querySelectorAll('pre code');
     
     codeBlocks.forEach(block => {
-        // Add line numbers
         const lines = block.innerHTML.split('\n');
         if (lines.length > 1) {
             let lineNumbers = '<span class="line-numbers">';
@@ -174,14 +173,12 @@ function initCodeHighlights() {
             }
             lineNumbers += '</span>';
             
-            // Wrap code with line numbers
             const wrapper = document.createElement('div');
             wrapper.className = 'code-with-lines';
             wrapper.innerHTML = lineNumbers + '<div class="code-content">' + block.innerHTML + '</div>';
             block.parentNode.replaceChild(wrapper, block);
         }
         
-        // Apply syntax highlighting based on language
         const language = block.className.split('language-')[1];
         if (language) {
             highlightLanguage(block, language);
@@ -190,34 +187,32 @@ function initCodeHighlights() {
 }
 
 function highlightLanguage(block, language) {
-    // Simple keyword highlighting (expand this for better highlighting)
     const keywords = {
         markdown: ['---\n', 'name:', 'description:', 'user-invocable:', '---'],
         yaml: ['---\n', 'name:', 'description:', 'user-invocable:', 'license:', '---'],
-        python: ['def', 'class', 'import', 'from', 'if', 'else', 'for', 'while', 'return'],
-        bash: ['mkdir', 'touch', 'cd', 'ls', 'cat', 'echo', 'export', 'source']
+        toml: ['skill_paths', 'enabled_skills', 'disabled_skills', 'experimental_enable_registry_skills'],
+        python: ['def', 'class', 'import', 'from', 'if', 'else', 'for', 'while', 'return', 'self', 'SkillManager', 'SkillInfo'],
+        text: ['vibe/core/skills/', 'models.py', 'manager.py', 'parser.py', 'builtins/', 'registry/']
     };
 
     const langKeywords = keywords[language] || [];
     
-    // Escape regex special characters
     const escapedKeywords = langKeywords.map(kw => {
         return kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     });
     
-    // Create regex pattern
     if (escapedKeywords.length > 0) {
         const pattern = new RegExp(`(${escapedKeywords.join('|')})`, 'g');
         
-        // Apply highlighting
         block.innerHTML = block.innerHTML.replace(pattern, match => {
-            // Different colors for different types
             if (match.includes(':') && !match.includes('--')) {
                 return `<span class="token-property">${match}</span>`;
             } else if (match.includes('---')) {
                 return `<span class="token-comment">${match}</span>`;
             } else if (['def', 'class', 'import', 'from', 'if', 'else', 'for', 'while', 'return'].includes(match)) {
                 return `<span class="token-keyword">${match}</span>`;
+            } else if (['SkillManager', 'SkillInfo', 'SkillMetadata'].includes(match)) {
+                return `<span class="token-class">${match}</span>`;
             } else {
                 return `<span class="token-string">${match}</span>`;
             }
@@ -268,97 +263,21 @@ function addHighlightingStyles() {
                 color: #9ca3af;
                 font-style: italic;
             }
+            .token-class {
+                color: #8b5cf6;
+                font-weight: 600;
+            }
+            pre {
+                border-radius: 0 0 8px 8px;
+            }
         </style>
     `;
     document.head.insertAdjacentHTML('beforeend', styles);
 }
 
-// Call this early
 addHighlightingStyles();
 
-// ===== Keyboard Navigation =====
-document.addEventListener('keydown', (e) => {
-    // ESC to close any open modals/dialogs (future feature)
-    if (e.key === 'Escape') {
-        // Close logic here
-    }
-});
-
-// ===== Copy Code to Clipboard =====
-function initCopyCode() {
-    // Add copy buttons to code blocks
-    const codeBlocks = document.querySelectorAll('pre');
-    
-    codeBlocks.forEach(block => {
-        if (block.textContent.trim().length > 20) { // Only add for longer blocks
-            const copyBtn = document.createElement('button');
-            copyBtn.className = 'copy-btn';
-            copyBtn.innerHTML = 'Copy';
-            copyBtn.title = 'Copy to clipboard';
-            
-            // Add button to code header or create one
-            const header = block.querySelector('.code-header');
-            if (header) {
-                header.appendChild(copyBtn);
-            }
-            
-            copyBtn.addEventListener('click', () => {
-                const code = block.textContent;
-                
-                navigator.clipboard.writeText(code).then(() => {
-                    copyBtn.innerHTML = 'Copied!';
-                    copyBtn.style.background = 'var(--success)';
-                    
-                    setTimeout(() => {
-                        copyBtn.innerHTML = 'Copy';
-                        copyBtn.style.background = '';
-                    }, 2000);
-                }).catch(err => {
-                    copyBtn.innerHTML = 'Error';
-                    copyBtn.style.background = 'var(--danger)';
-                    
-                    setTimeout(() => {
-                        copyBtn.innerHTML = 'Copy';
-                        copyBtn.style.background = '';
-                    }, 2000);
-                });
-            });
-        }
-    });
-}
-
-// Call copy code initialization
-document.addEventListener('DOMContentLoaded', initCopyCode);
-
-// ===== Add Copy Button Styles =====
-const copyBtnStyles = `
-    <style>
-        .copy-btn {
-            background: var(--bg);
-            border: 1px solid var(--border);
-            color: var(--text-light);
-            padding: 0.25rem 0.75rem;
-            border-radius: 4px;
-            font-size: 0.85rem;
-            cursor: pointer;
-            transition: var(--transition);
-            margin-left: auto;
-        }
-        .copy-btn:hover {
-            background: var(--primary-bg);
-            color: var(--primary);
-            border-color: var(--primary);
-        }
-        .code-header {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
-    </style>
-`;
-document.head.insertAdjacentHTML('beforeend', copyBtnStyles);
-
-// ===== Progress Bar on Scroll =====
+// ===== Progress Bar ===== */
 function initProgressBar() {
     const progressBar = document.createElement('div');
     progressBar.className = 'progress-bar';
@@ -372,28 +291,9 @@ function initProgressBar() {
     });
 }
 
-// Add progress bar styles
-const progressStyles = `
-    <style>
-        .progress-bar {
-            position: fixed;
-            top: 0;
-            left: 0;
-            height: 3px;
-            background: linear-gradient(90deg, var(--primary), var(--secondary));
-            z-index: 1000;
-            transition: width 0.3s ease;
-        }
-    </style>
-`;
-document.head.insertAdjacentHTML('beforeend', progressStyles);
-
-// Initialize progress bar
-document.addEventListener('DOMContentLoaded', initProgressBar);
-
-// ===== Intersection Observer for Animations =====
+// ===== Scroll Animations =====
 function initScrollAnimations() {
-    const animatedElements = document.querySelectorAll('.step, .card, .example-card');
+    const animatedElements = document.querySelectorAll('.step, .card, .example-card, .component-card, .security-card');
     
     const observer = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
@@ -406,6 +306,7 @@ function initScrollAnimations() {
     });
 
     animatedElements.forEach(el => {
+        el.classList.add('animate-ready');
         observer.observe(el);
     });
 }
@@ -413,13 +314,17 @@ function initScrollAnimations() {
 // Add animation styles
 const animationStyles = `
     <style>
-        .step, .card, .example-card {
+        .step, .card, .example-card, .component-card, .security-card {
             opacity: 0;
             transform: translateY(30px);
             transition: opacity 0.6s ease, transform 0.6s ease;
         }
         
-        .step.animate-in, .card.animate-in, .example-card.animate-in {
+        .step.animate-in,
+        .card.animate-in,
+        .example-card.animate-in,
+        .component-card.animate-in,
+        .security-card.animate-in {
             opacity: 1;
             transform: translateY(0);
         }
@@ -433,12 +338,10 @@ const animationStyles = `
         .card:nth-child(1) { transition-delay: 0.1s; }
         .card:nth-child(2) { transition-delay: 0.2s; }
         .card:nth-child(3) { transition-delay: 0.3s; }
+        .card:nth-child(4) { transition-delay: 0.4s; }
     </style>
 `;
 document.head.insertAdjacentHTML('beforeend', animationStyles);
-
-// Initialize scroll animations
-document.addEventListener('DOMContentLoaded', initScrollAnimations);
 
 // ===== Console Easter Egg =====
 console.log('%c🎉 Welcome to Vibe Skills Documentation!', 'font-size: 20px; color: #6366f1; font-weight: bold;');
