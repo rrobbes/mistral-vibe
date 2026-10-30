@@ -1084,6 +1084,374 @@ def sample_skill_metadata():
         user_invocable=True
     )</code></pre>
                             </div>
+                            
+                            <h3>Test Examples by Type</h3>
+                            
+                            <div class="tabs-container">
+                                <div class="tabs">
+                                    <button class="tab-btn active" data-tab="unit-tests">Unit Tests</button>
+                                    <button class="tab-btn" data-tab="integration-tests">Integration Tests</button>
+                                    <button class="tab-btn" data-tab="e2e-tests">E2E Tests</button>
+                                </div>
+                                
+                                <div class="tab-content active" id="unit-tests">
+                                    <div class="code-example">
+                                        <div class="code-header"><span class="file-name">tests/core/skills/test_models.py</span></div>
+                                        <pre><code class="language-python">"""Unit tests for Skill Pydantic models"""
+import pytest
+from pydantic import ValidationError
+from vibe.core.skills.models import SkillMetadata, SkillScope, SkillSource
+
+
+class TestSkillMetadata:
+    def test_valid_skill_metadata(self):
+        """Test creation of valid skill metadata"""
+        metadata = SkillMetadata(
+            name="my-skill",
+            description="A test skill"
+        )
+        assert metadata.name == "my-skill"
+        assert metadata.description == "A test skill"
+        assert metadata.user_invocable is True
+
+    def test_invalid_name_too_long(self):
+        """Test that names longer than 64 chars are rejected"""
+        with pytest.raises(ValidationError) as exc_info:
+            SkillMetadata(
+                name="a" * 65,  # 65 chars - too long
+                description="Test"
+            )
+        assert "max_length" in str(exc_info.value)
+
+    def test_invalid_name_pattern(self):
+        """Test that names with invalid chars are rejected"""
+        with pytest.raises(ValidationError) as exc_info:
+            SkillMetadata(
+                name="My-Skill",  # Uppercase - invalid
+                description="Test"
+            )
+        assert "pattern" in str(exc_info.value)
+
+    def test_valid_name_with_hyphens(self):
+        """Test that names with hyphens are valid"""
+        metadata = SkillMetadata(
+            name="my-test-skill",
+            description="Test"
+        )
+        assert metadata.name == "my-test-skill"
+
+
+class TestSkillEnums:
+    def test_skill_scope_values(self):
+        """Test SkillScope enum values"""
+        assert SkillScope.BUILTIN.value == "builtin"
+        assert SkillScope.GLOBAL.value == "global"
+        assert SkillScope.PROJECT.value == "project"
+
+    def test_skill_source_values(self):
+        """Test SkillSource enum values"""
+        assert SkillSource.BUILTIN.value == "builtin"
+        assert SkillSource.LOCAL.value == "local"
+        assert SkillSource.REGISTRY.value == "registry"
+        assert SkillSource.PLUGIN.value == "plugin"</code></pre>
+                                    </div>
+                                </div>
+                                
+                                <div class="tab-content" id="integration-tests">
+                                    <div class="code-example">
+                                        <div class="code-header"><span class="file-name">tests/core/skills/test_manager.py</span></div>
+                                        <pre><code class="language-python">"""Integration tests for SkillManager"""
+import pytest
+from pathlib import Path
+from vibe.core.skills.manager import SkillManager
+from vibe.core.skills.models import SkillSource, SkillScope
+
+
+class TestSkillDiscovery:
+    def test_discovery_order_builtin_wins(self, skill_manager, tmp_path):
+        """Test that built-in skills take precedence over local ones"""
+        # Create a local skill with same name as built-in
+        skill_dir = tmp_path / "skills" / "vibe"
+        skill_dir.mkdir(parents=True)
+        (skill_dir / "SKILL.md").write_text("""
+---
+name: vibe
+description: Local vibe skill
+user-invocable: true
+---
+# Local Vibe Skill
+""")
+        
+        # Add to skill paths
+        skill_manager._config.skill_paths = [tmp_path / "skills"]
+        
+        skills = skill_manager._discover_skills()
+        
+        # Built-in should win, not the local one
+        assert "vibe" in skills
+        assert skills["vibe"].source == SkillSource.BUILTIN
+
+    def test_discovery_multiple_sources(self, skill_manager, tmp_path):
+        """Test discovery from multiple sources"""
+        # Create project and user skills
+        project_dir = tmp_path / "project" / ".vibe" / "skills"
+        user_dir = tmp_path / "user" / ".vibe" / "skills"
+        
+        project_dir.mkdir(parents=True)
+        user_dir.mkdir(parents=True)
+        
+        # Create a skill in both locations
+        (project_dir / "test-skill" / "SKILL.md").write_text("""
+---
+name: test-skill
+description: Project skill
+---
+""")
+        (user_dir / "test-skill" / "SKILL.md").write_text("""
+---
+name: test-skill
+description: User skill
+---
+""")
+        
+        # Project should take precedence over user
+        skills = skill_manager._discover_skills()
+        assert "test-skill" in skills
+        assert skills["test-skill"].scope == SkillScope.PROJECT
+
+    def test_discovery_with_filters(self, skill_manager, tmp_path):
+        """Test that disabled skills are filtered out"""
+        # Create a skill
+        skill_dir = tmp_path / "skills" / "disabled-skill"
+        skill_dir.mkdir(parents=True)
+        (skill_dir / "SKILL.md").write_text("""
+---
+name: disabled-skill
+description: Should be filtered
+---
+""")
+        
+        # Configure to disable this skill
+        skill_manager._config.disabled_skills = ["disabled-skill"]
+        
+        skills = skill_manager._discover_skills()
+        
+        # Should not appear in available skills
+        assert "disabled-skill" not in skill_manager.available_skills
+
+
+class TestSkillLoading:
+    def test_load_from_cache(self, skill_manager, tmp_path):
+        """Test that skills are cached after first load"""
+        # Create a skill
+        skill_dir = tmp_path / "skills" / "cached-skill"
+        skill_dir.mkdir(parents=True)
+        skill_file = skill_dir / "SKILL.md"
+        skill_file.write_text("""
+---
+name: cached-skill
+description: Test caching
+---
+# Content
+""")
+        
+        # First load
+        skill_manager._config.skill_paths = [tmp_path / "skills"]
+        skill_manager._load_skills()
+        
+        # Modify the file
+        skill_file.write_text("""
+---
+name: cached-skill
+description: Modified
+---
+# Modified Content
+""")
+        
+        # Should still return cached version
+        skills = skill_manager._discover_skills()
+        assert "cached-skill" in skills
+        assert "Test caching" in skills["cached-skill"].description</code></pre>
+                                    </div>
+                                </div>
+                                
+                                <div class="tab-content" id="e2e-tests">
+                                    <div class="code-example">
+                                        <div class="code-header"><span class="file-name">tests/core/skills/test_integration.py</span></div>
+                                        <pre><code class="language-python">"""End-to-end tests for Skills workflow"""
+import pytest
+from unittest.mock import MagicMock, patch
+from vibe.core.skills.manager import SkillManager
+from vibe.core.agent.loop import AgentLoop
+
+
+class TestSkillInvocationFlow:
+    def test_user_invocation_full_flow(self, skill_manager, tmp_path):
+        """Test complete user invocation flow"""
+        # Setup: Create a test skill
+        skill_dir = tmp_path / "skills" / "my-skill"
+        skill_dir.mkdir(parents=True)
+        (skill_dir / "SKILL.md").write_text("""
+---
+name: my-skill
+description: Test skill for E2E
+user-invocable: true
+---
+# You are an expert in testing
+You should always verify tests pass before committing.
+""")
+        
+        skill_manager._config.skill_paths = [tmp_path / "skills"]
+        skill_manager._load_skills()
+        
+        # User types /my-skill
+        command = "/my-skill Check this code"
+        parsed = skill_manager.parse_skill_command(command)
+        
+        # Verify command was parsed correctly
+        assert parsed is not None
+        assert parsed.name == "my-skill"
+        assert parsed.extra_instructions == "Check this code"
+        assert "You should always verify tests pass" in parsed.content
+
+    def test_auto_invocation_by_model(self, skill_manager, tmp_path):
+        """Test that model can auto-invoke skills"""
+        # Setup: Create a skill that should be auto-invoked
+        skill_dir = tmp_path / "skills" / "python-expert"
+        skill_dir.mkdir(parents=True)
+        (skill_dir / "SKILL.md").write_text("""
+---
+name: python-expert
+description: Load when working with Python code
+model-invocable: true
+---
+# Python Best Practices
+Always use type hints.
+Follow PEP 8 guidelines.
+""")
+        
+        skill_manager._config.skill_paths = [tmp_path / "skills"]
+        skill_manager._load_skills()
+        
+        # User asks a Python-related question
+        user_message = "How do I write a Python function?"
+        
+        # Model should be able to find relevant skills
+        relevant_skills = [
+            s for s in skill_manager.available_skills.values()
+            if s.model_invocable
+        ]
+        
+        # Should have at least our python-expert skill
+        assert len(relevant_skills) >= 1
+        skill_names = [s.name for s in relevant_skills]
+        assert "python-expert" in skill_names
+
+    def test_skill_context_injection(self, skill_manager, tmp_path):
+        """Test that skill content is properly injected into context"""
+        # Setup skill
+        skill_dir = tmp_path / "skills" / "test-skill"
+        skill_dir.mkdir(parents=True)
+        (skill_dir / "SKILL.md").write_text("""
+---
+name: test-skill
+description: Context test
+user-invocable: true
+---
+# Skill Context
+This skill adds specific instructions to the context.
+""")
+        
+        skill_manager._config.skill_paths = [tmp_path / "skills"]
+        skill_manager._load_skills()
+        
+        # Simulate context building
+        parsed = skill_manager.parse_skill_command("/test-skill")
+        
+        # Verify skill content is available
+        assert parsed is not None
+        assert "Skill Context" in parsed.content
+        assert "This skill adds specific instructions" in parsed.content
+
+
+class TestSkillLifecycle:
+    def test_skill_reload(self, skill_manager, tmp_path):
+        """Test that skills can be reloaded"""
+        # Create initial skill
+        skill_dir = tmp_path / "skills" / "reload-test"
+        skill_dir.mkdir(parents=True)
+        skill_file = skill_dir / "SKILL.md"
+        skill_file.write_text("""
+---
+name: reload-test
+description: Initial version
+---
+# Version 1
+""")
+        
+        skill_manager._config.skill_paths = [tmp_path / "skills"]
+        skill_manager._load_skills()
+        
+        # Get initial content
+        initial = skill_manager.get_skill("reload-test")
+        assert "Initial version" in initial.description
+        assert "Version 1" in initial.prompt
+        
+        # Modify the file
+        skill_file.write_text("""
+---
+name: reload-test
+description: Updated version
+---
+# Version 2
+""")
+        
+        # Reload skills
+        skill_manager._load_skills()
+        
+        # Get updated content
+        updated = skill_manager.get_skill("reload-test")
+        assert "Updated version" in updated.description
+        assert "Version 2" in updated.prompt
+
+
+class TestMultipleSkills:
+    def test_multiple_skills_in_context(self, skill_manager, tmp_path):
+        """Test that multiple relevant skills are added to context"""
+        # Create multiple skills
+        skills_data = [
+            ("python-expert", "Load when working with Python", True, False),
+            ("testing-expert", "Load when working with tests", True, False),
+        ]
+        
+        for name, desc, user_inv, model_inv in skills_data:
+            skill_dir = tmp_path / "skills" / name
+            skill_dir.mkdir(parents=True)
+            (skill_dir / "SKILL.md").write_text(f"""
+---
+name: {name}
+description: {desc}
+model-invocable: {str(model_inv).lower()}
+---
+# {name.title()} Skill
+""")
+        
+        skill_manager._config.skill_paths = [tmp_path / "skills"]
+        skill_manager._load_skills()
+        
+        # Check all skills are available
+        assert skill_manager.get_skill("python-expert") is not None
+        assert skill_manager.get_skill("testing-expert") is not None
+        
+        # Check both are model-invocable
+        model_skills = [
+            s for s in skill_manager.available_skills.values()
+            if s.model_invocable
+        ]
+        assert len(model_skills) >= 2</code></pre>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                         <div class="content-visual">
                             <div class="diagram-box">

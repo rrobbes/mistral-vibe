@@ -38,7 +38,7 @@
     --font-mono: 'Fira Code', 'Monaco', 'Consolas', monospace;
     
     /* Spacing */
-    --container-width: 1600px;
+    --container-width: 1400px;
     --section-padding: 60px 0;
     
     /* Transitions */
@@ -1690,12 +1690,12 @@ blockquote {
 
 /* Examples with code need more width */
 .component-grid.examples-with-code {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: 1fr;
 }
 
-@media (max-width: 900px) {
+@media (min-width: 1200px) {
     .component-grid.examples-with-code {
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 }
 
