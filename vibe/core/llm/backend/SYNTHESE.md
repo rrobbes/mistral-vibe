@@ -1,569 +1,149 @@
-# 📚 **Synthèse du Module Backend LLM - Mistral Vibe**
+# Synthèse du module Backend LLM
 
-> **Module** : `vibe/core/llm/backend/`  
-> **Fork** : `rrobbes/mistral-vibe`  
-> **Type** : Documentation Synthétique
-
----
-
-## 🎯 **En Bref**
-
-Le module **`vibe/core/llm/backend/`** est **le cœur de la communication** entre Mistral Vibe et les fournisseurs de modèles de langage (Mistral, OpenAI, Anthropic, Vertex AI, etc.). Il offre une **abstraction unifiée** qui masque la complexité des différentes API et permet à Vibe d'interagir avec n'importe quel provider LLM de manière transparente.
-
-**💡 En une phrase** : *Une seule interface pour tous les modèles LLM.*
+Module : `vibe/core/llm/backend/`
+Fork : `rrobbes/mistral-vibe`
 
 ---
 
-## 🏗️ **Architecture en 1 Image**
+## Rôle du module
 
-```mermaid
-%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#ffd700'}}}%%
-flowchart TB
-    subgraph Utilisateur["📱 Utilisateur"]
-        CLI["CLI Vibe"]
-        ACP["ACP"]
-    end
-    
-    subgraph Application["🧠 Application"]
-        AL["AgentLoop"]
-        Tools["Système d'Outils"]
-    end
-    
-    subgraph Backend["🔌 Backend LLM 📍"]
-        direction TB
-        Factory["⚙️ Factory"] -->|Crée| Backends
-        Backends["🏭 Backends\nGeneric/Mistral"] -->|Utilise| Adapters
-        Adapters["🔌 Adapters\nOpenAI/Anthropic/..."]
-    end
-    
-    subgraph Externe["☁️ Fournisseurs LLM"]
-        Mistral["Mistral API"]
-        OpenAI["OpenAI API"]
-        Anthropic["Anthropic API"]
-        Vertex["Vertex AI"]
-    end
-    
-    Utilisateur --> Application
-    Application --> Backend
-    Backend --> Externe
-    
-    style Backend fill:#ffd700,stroke:#333,stroke-width:3px
+Le module `vibe/core/llm/backend/` gère la communication entre Mistral Vibe et les fournisseurs de modèles de langage (Mistral, OpenAI, Anthropic, Vertex AI). Il fournit une interface unique permettant d'interagir avec différents providers sans gérer leurs spécificités individuellement.
+
+## Architecture
+
 ```
-
----
-
-## 🧩 **Les 4 Composants Clés**
-
-### 1️⃣ **BackendLike** (Protocol)
-**Rôle** : Interface universelle que tous les backends doivent implémenter  
-**Fichier** : `vibe/core/llm/types.py`  
-
-**Méthodes obligatoires** :
-```python
-async def __aenter__(self) -> BackendLike  # Context manager
-async def __aexit__(self, ...) -> None      # Nettoyage
-async def complete(self, *, model, messages, ...) -> LLMChunk  # Requête synchrone
-complete_streaming(self, ...) -> AsyncGenerator[LLMChunk]  # Requête streaming
+AgentLoop
+    |
+    v
+Backend (complete / complete_streaming)
+    |
+    v
+APIAdapter (prepare_request / parse_response)
+    |
+    v
+Requete HTTP -> API du provider
+    |
+    v
+Reponse -> LLMChunk
 ```
-
-**Pourquoi ?** : Permet à l'AgentLoop d'utiliser n'importe quel backend **sans connaître son implémentation**.  
-
----
-
-### 2️⃣ **APIAdapter** (Classe Abstraite)
-**Rôle** : Traducteur entre les formats Vibe et les API externes  
-**Fichier** : `vibe/core/llm/backend/base.py`  
-
-**Méthodes à implémenter** :
-```python
-def prepare_request(self, *, model_name, messages, ...) -> PreparedRequest  # Vibe → API
-def parse_response(self, data, provider) -> LLMChunk                  # API → Vibe
-async def parse_stream(self, responses, provider) -> AsyncGenerator[ParsedStreamChunk]
-```
-
-**Adapters existants** : OpenAIAdapter, AnthropicAdapter, ReasoningAdapter, OpenAIResponsesAdapter, VertexAnthropicAdapter
-
-**Exemple** : L'AnthropicAdapter convertit les `LLMMessage` de Vibe vers le format `messages` d'Anthropic, et vice-versa.
-
----
-
-### 3️⃣ **Backends** (Implémentations Concrètes)
-
-| Backend | Type | SDK/Technologie | Cas d'Usage |
-|---------|------|----------------|-------------|
-| **GenericBackend** | HTTP | httpx | Providers sans SDK (OpenAI, Anthropic via adapters) |
-| **MistralBackend** | SDK | mistralai | Modèles Mistral (meilleures performances) |
-
-**Généralités** :
-- Gèrent le **transport HTTP** (ou SDK)
-- Implémentent la **logique de retry**
-- Gèrent le **pacing adaptatif** (éviter les rate limits)
-- Supportent le **streaming** (SSE)
-- Intègrent le **tracing** (OpenTelemetry)
-
----
-
-### 4️⃣ **Factory** (Création)
-**Rôle** : Créer le bon backend selon le provider  
-**Fichier** : `vibe/core/llm/backend/factory.py`  
-
-**Fonction principale** :
-```python
-def create_backend(
-    *,
-    provider: ProviderConfig,
-    timeout: float = 720.0,
-    retry_max_elapsed_time: float = 300.0,
-    connect_timeout: float = 30.0,
-    write_timeout: float = 60.0,
-    pool_timeout: float = 30.0,
-    enable_otel: bool = False,
-    on_retry: RetryObserver | None = None,
-) -> BackendLike
-```
-
-**Fonctionnalités** :
-- ✅ **Lazy loading** : Les modules lourds (comme mistralai) ne sont chargés qu'à la première utilisation
-- ✅ **Sélection automatique** : Choisit GenericBackend ou MistralBackend selon le provider
-- ✅ **Configuration unifiée** : Tous les timeouts et options en un seul endroit
-
----
-
-## 🔄 **Flux de Données**
 
 ```mermaid
 flowchart LR
-    subgraph Entrée["Entrée (Vibe)"]
-        A[ModelConfig] --> B[LLMMessage]
-        C[AvailableTool]
-    end
-    
-    subgraph Transformation["1. Préparation"]
-        B -->|APIAdapter| D[PreparedRequest\nendpoint, headers, body]
-        C -->|APIAdapter| D
-    end
-    
-    subgraph Transport["2. Transport"]
-        D -->|Backend| E[Requête HTTP\nPOST /chat/completions]
-        E -->|Backend| F[Réponse HTTP\nJSON/SSE]
-    end
-    
-    subgraph Parsing["3. Parsing"]
-        F -->|APIAdapter| G[LLMChunk\nmessage, usage, stop]
-    end
-    
-    subgraph Sortie["Sortie (Vibe)"]
-        G --> H[AgentLoop]
-    end
-    
-    style Transformation fill:#e6f3ff
-    style Transport fill:#e6ffe6
-    style Parsing fill:#e6f3ff
+    A["AgentLoop"] --> B["Backend.complete()"]
+    B --> C["APIAdapter.prepare_request()"]
+    C --> D["PreparedRequest"]
+    D --> E["Requete HTTP"]
+    E --> F["API du provider"]
+    F --> G["Reponse JSON/SSE"]
+    G --> H["APIAdapter.parse_response()"]
+    H --> I["LLMChunk"]
+    I --> A
 ```
 
----
+## Composants
 
-## 🔧 **Configuration**
+### BackendLike
 
-### ProviderConfig (Définition d'un Provider)
+Protocol defini dans `vibe/core/llm/types.py`. Definit l'interface que tout backend doit implementer :
+
+- `__aenter__` / `__aexit__` : context manager asynchrone
+- `complete()` : requete synchrone, retourne un `LLMChunk`
+- `complete_streaming()` : requete en streaming, retourne un generateur de `LLMChunk`
+
+### APIAdapter
+
+Classe abstraite dans `vibe/core/llm/backend/base.py`. Responsable de la traduction entre le format interne de Vibe et le format de l'API externe :
+
+- `prepare_request()` : convertit les `LLMMessage` au format de l'API
+- `parse_response()` : convertit la reponse de l'API en `LLMChunk`
+- `parse_stream()` : parsing des reponses streamées
+
+Cinq adapters existent : OpenAIAdapter, AnthropicAdapter, ReasoningAdapter, OpenAIResponsesAdapter, VertexAnthropicAdapter.
+
+### Backends
+
+Deux implementations concretes :
+
+| Backend | Fichier | Technologie |
+|---------|---------|-------------|
+| GenericBackend | `generic.py` | httpx (HTTP direct) |
+| MistralBackend | `mistral.py` | SDK mistralai |
+
+GenericBackend est utilise pour les providers sans SDK officiel. MistralBackend utilise le SDK Mistral pour les modeles Mistral.
+
+### Factory
+
+`factory.py` fournit `create_backend()` qui selectionne le backend approprie selon le `ProviderConfig`. Les imports sont differes (lazy loading) pour ne pas ralentir le demarrage.
+
+## Utilisation
 
 ```python
+from vibe.core.llm.backend.factory import create_backend
 from vibe.core.config import ProviderConfig
 from vibe.core.types import Backend
 
 provider = ProviderConfig(
-    name="mistral",              # Nom unique du provider
-    backend=Backend.MISTRAL,     # Type de backend : MISTRAL ou GENERIC
-    api_base="https://api.mistral.ai/v1",  # URL de base de l'API
-    api_key_env_var="MISTRAL_API_KEY",     # Variable d'env pour la clé API
-    api_style="mistral",        # Style d'API pour l'adapter
-    reasoning_field_name="reasoning_content",  # Champ pour le reasoning
-)
-```
-
-**Providers supportés** :
-- Mistral (backend: MISTRAL, api_style: mistral)
-- OpenAI (backend: GENERIC, api_style: openai)
-- Anthropic (backend: GENERIC, api_style: anthropic)
-- Vertex AI (backend: GENERIC, api_style: vertex-anthropic)
-- OpenRouter (backend: GENERIC, api_style: openai)
-
----
-
-### Création d'un Backend
-
-```python
-from vibe.core.llm.backend.factory import create_backend
-
-# Création via la Factory (méthode recommandée)
-backend = create_backend(
-    provider=provider,
-    timeout=300.0,                    # Timeout global (secondes)
-    retry_max_elapsed_time=180.0,   # Budget pour les retries (secondes)
-    enable_otel=False,               # Désactiver OpenTelemetry
+    name="mistral",
+    backend=Backend.MISTRAL,
+    api_base="https://api.mistral.ai/v1",
+    api_key_env_var="MISTRAL_API_KEY",
 )
 
-# Utilisation avec context manager
+backend = create_backend(provider=provider)
+
 async with backend:
     chunk = await backend.complete(
         model=model,
         messages=messages,
         temperature=0.2,
     )
-    print(chunk.message.content)
 ```
 
----
-
-## 📥 **Utilisation de Base**
-
-### 1. Requête Synchrone (Non-Streaming)
-
-```python
-import asyncio
-from vibe.core.config import ProviderConfig, ModelConfig
-from vibe.core.types import LLMMessage, Role
-from vibe.core.llm.backend.factory import create_backend
-
-async def simple_query():
-    provider = ProviderConfig(
-        name="mistral",
-        backend=Backend.MISTRAL,
-        api_base="https://api.mistral.ai/v1",
-        api_key_env_var="MISTRAL_API_KEY",
-    )
-    
-    model = ModelConfig(name="mistral-large-latest", thinking="off")
-    messages = [
-        LLMMessage(role=Role.user, content="Quelle est la capitale de la France ?"),
-    ]
-    
-    backend = create_backend(provider=provider)
-    
-    async with backend:
-        chunk = await backend.complete(
-            model=model,
-            messages=messages,
-            temperature=0.2,
-        )
-        
-        print(f"Réponse: {chunk.message.content}")
-        print(f"Usage: {chunk.usage.prompt_tokens} prompt tokens, {chunk.usage.completion_tokens} completion tokens")
-
-asyncio.run(simple_query())
-```
-
-### 2. Requête Streaming
-
-```python
-async def streaming_query():
-    # ... configuration identique ...
-    
-    async with backend:
-        async for chunk in backend.complete_streaming(
-            model=model,
-            messages=messages,
-            temperature=0.7,
-        ):
-            if chunk.message.content:
-                print(chunk.message.content, end="", flush=True)
-
-asyncio.run(streaming_query())
-```
-
----
-
-## ⚙️ **Fonctionnalités Avancées**
-
-### Gestion des Messages
-
-**Types de messages supportés** :
-- `system` : Instructions du système
-- `user` : Questions de l'utilisateur
-- `assistant` : Réponses de l'assistant
-- `tool` : Résultats d'outils
-
-**Exemple avec images** :
-```python
-from vibe.core.types import ImageAttachment, ImageType
-
-image = ImageAttachment(
-    type=ImageType.PATH,
-    path="/path/to/image.jpg",
-)
-
-message = LLMMessage(
-    role=Role.user,
-    content="Décris cette image",
-    images=[image],  # Images converties automatiquement en Data URI
-)
-```
-
-### Gestion des Outils (Tool Calls)
-
-```python
-from vibe.core.types import AvailableTool, FunctionDefinition
-
-tools = [
-    AvailableTool(
-        function=FunctionDefinition(
-            name="get_weather",
-            description="Récupère la météo pour une ville",
-            parameters={
-                "type": "object",
-                "properties": {
-                    "city": {"type": "string", "description": "Nom de la ville"}
-                },
-                "required": ["city"],
-            },
-        ),
-    ),
-]
-
-chunk = await backend.complete(
-    model=model,
-    messages=messages,
-    tools=tools,
-    tool_choice="auto",  # auto, none, ou nom d'un outil
-)
-
-# Si l'assistant appelle un outil
-if chunk.message.tool_calls:
-    for tool_call in chunk.message.tool_calls:
-        print(f"Appel de {tool_call.function.name} avec {tool_call.function.arguments}")
-```
-
----
-
-## 🛡️ **Résilience et Optimisation**
-
-### Stratégie de Retry
-
-- **Erreurs récupérables** : 429 (Rate Limit), 500/502/503/504, NetworkErrors, Timeout
-- **Backoff exponentiel** : `initial_interval=500ms`, `max_interval=30s`, `exponent=1.5`
-- **Budget temporel** : Arrête après `retry_max_elapsed_time` secondes
-- **Adaptive Pacing** : Ajuste automatiquement le rythme après un rate limit
-
-**Exemple de configuration** :
-```python
-backend = create_backend(
-    provider=provider,
-    retry_max_elapsed_time=300.0,  # 5 minutes de budget pour les retries
-)
-```
-
-### Observabilité
-
-```python
-from vibe.core.utils import RetryObserver, RetryReason
-
-class MyObserver:
-    async def __call__(self, reason: RetryReason):
-        print(f"Retry: {reason.category.name} - {reason.detail}")
-
-backend = create_backend(
-    provider=provider,
-    on_retry=MyObserver(),
-    enable_otel=True,  # Active OpenTelemetry
-)
-```
-
----
-
-## 📊 **Diagrammes des Flux Principaux**
-
-### 1. Flux d'une Requête Non-Streaming
-
-```mermaid
-sequenceDiagram
-    AgentLoop->>Backend: complete(model, messages, ...)
-    Backend->>Adapter: prepare_request()
-    Adapter-->>Backend: PreparedRequest
-    Backend->>HTTP: POST /chat/completions
-    HTTP->>API: Request
-    API->>HTTP: Response (JSON)
-    HTTP-->>Backend: HTTP Response
-    Backend->>Adapter: parse_response()
-    Adapter-->>Backend: LLMChunk
-    Backend-->>AgentLoop: LLMChunk
-```
-
-### 2. Flux d'une Requête Streaming
-
-```mermaid
-sequenceDiagram
-    AgentLoop->>Backend: complete_streaming(...)
-    Backend->>Adapter: prepare_request(stream=True)
-    Adapter-->>Backend: PreparedRequest
-    Backend->>HTTP: POST (stream=True)
-    HTTP->>API: Request
-    API->>HTTP: SSE Stream
-    
-    loop Pour chaque chunk
-        HTTP->>Backend: SSE Line (data: {...})
-        Backend->>Adapter: parse_stream()
-        Adapter-->>Backend: ParsedStreamChunk
-        Backend->>AgentLoop: yield LLMChunk
-    end
-```
-
-### 3. Architecture en Couches
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│  📱 COUCHE INTERFACE UTILISATEUR                            │
-│  vibe/cli/ (Textual) - vibe/cli-rust/ (Ratatui)            │
-│  vibe/acp/ (Agent Client Protocol)                         │
-└─────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│  🧠 COUCHE APPLICATION                                      │
-│  vibe/core/llm/loop.py (AgentLoop)                         │
-│  vibe/core/agent/ - vibe/core/tools/                        │
-└─────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│  🔌 COUCHE BACKEND LLM 📍 (CE MODULE)                      │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────┐      │
-│  │  Backends    │  │   Adapters   │  │    Factory      │      │
-│  │  • Generic   │  │  • OpenAI    │  │  create_backend │      │
-│  │  • Mistral   │  │  • Anthropic │  │                 │      │
-│  └─────────────┘  │  • ...       │  └─────────────────┘      │
-│                   └─────────────┘                         │
-└─────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│  ☁️ COUCHE EXTERNE                                           │
-│  Mistral API - OpenAI API - Anthropic API - Vertex AI      │
-└─────────────────────────────────────────────────────────────┘
-```
-
----
-
-## 🎯 **Points Clés à Retenir**
-
-### ✅ **Pourquoi ce module est-il important ?**
-
-| Problème (Sans Backend) | Solution (Avec Backend) |
-|--------------------------|-------------------------|
-| 🔴 Code dupliqué pour chaque provider | ✅ Une seule interface unifiée |
-| 🔴 Difficile à maintenir | ✅ Maintenance centralisée |
-| 🔴 Peu extensible | ✅ Ajout facile de nouveaux providers |
-| 🔴 Peu testable | ✅ Composants isolés et testables |
-| 🔴 Gestion des erreurs incohérente | ✅ Stratégies de résilience standardisées |
-
-### 🏆 **Les 5 Atouts du Module**
-
-1. **🔄 Abstraction** : Masque la complexité des API externes
-2. **⚡ Performance** : Lazy loading, pooling, pacing adaptatif
-3. **🛡️ Résilience** : Retry intelligent, backoff exponentiel
-4. **🔌 Extensibilité** : Ajout facile de nouveaux providers
-5. **📊 Observabilité** : Tracing, logging, métriques
-
-### 📈 **Chiffres Clés**
-
-- **2 Backends** : Generic (HTTP), Mistral (SDK)
-- **5 Adapters** : OpenAI, Anthropic, OpenAIResponses, Reasoning, Vertex
-- **~2000 lignes** de code Python
-- **~11 000 lignes** de documentation
-- **10+ diagrammes** pour visualiser les concepts
-
----
-
-## 🚀 **Exemple Complet : Chatbot Simple**
-
-```python
-import asyncio
-from vibe.core.llm.backend.factory import create_backend
-from vibe.core.config import ProviderConfig, ModelConfig
-from vibe.core.types import Backend, LLMMessage, Role
-
-
-class SimpleChatbot:
-    def __init__(self, provider_config: ProviderConfig, model_name: str):
-        self.provider = provider_config
-        self.model = ModelConfig(name=model_name, thinking="off")
-        self.conversation = []
-    
-    async def __aenter__(self):
-        self.backend = create_backend(provider=self.provider)
-        await self.backend.__aenter__()
-        # Message système initial
-        self.conversation.append(
-            LLMMessage(role=Role.system, content="Tu es un assistant utile.")
-        )
-        return self
-    
-    async def __aexit__(self, *args):
-        await self.backend.__aexit__(*args)
-    
-    async def ask(self, question: str) -> str:
-        self.conversation.append(LLMMessage(role=Role.user, content=question))
-        
-        async with self.backend:
-            chunk = await self.backend.complete(
-                model=self.model,
-                messages=self.conversation,
-                temperature=0.7,
-            )
-        
-        self.conversation.append(chunk.message)
-        return chunk.message.content
-
-
-async def main():
-    provider = ProviderConfig(
-        name="mistral",
-        backend=Backend.MISTRAL,
-        api_base="https://api.mistral.ai/v1",
-        api_key_env_var="MISTRAL_API_KEY",
-    )
-    
-    chatbot = SimpleChatbot(provider, "mistral-large-latest")
-    
-    async with chatbot:
-        response = await chatbot.ask("Bonjour !")
-        print(f"Assistant: {response}")
-        
-        response = await chatbot.ask("Quelle est la capitale de la France ?")
-        print(f"Assistant: {response}")
-
-
-if __name__ == "__main__":
-    asyncio.run(main())
-```
-
----
-
-## 📚 **Pour Aller Plus Loin**
-
-### Documentation Complète
-- **[01-OVERVIEW.md](./docs/01-OVERVIEW.md)** - Vue d'ensemble détaillée
-- **[02-ARCHITECTURE.md](./docs/02-ARCHITECTURE.md)** - Principes de conception
-- **[03-FOUNDATIONS.md](./docs/03-FOUNDATIONS.md)** - BackendLike et APIAdapter
-- **[11-DIAGRAMS.md](./docs/11-DIAGRAMS.md)** - Tous les diagrammes
-- **[12-USAGE.md](./docs/12-USAGE.md)** - Guide pratique complet
-- **[13-ADVANCED.md](./docs/13-ADVANCED.md)** - Extensions et contributions
-
-### Ressources Externes
-- [Repository GitHub (rrobbes/mistral-vibe)](https://github.com/rrobbes/mistral-vibe)
-- [Documentation Mistral SDK](https://github.com/mistralai/mistral-src)
-- [OpenAI API Reference](https://platform.openai.com/docs/api-reference)
-- [Anthropic API Documentation](https://docs.anthropic.com/en/api)
-
----
-
-## 🎓 **Résumé en 3 Points**
-
-1. **Le module backend est une couche d'abstraction** qui permet à Vibe de communiquer avec n'importe quel provider LLM via une interface unique.
-
-2. **Il repose sur 4 composants** : BackendLike (interface), APIAdapter (traducteur), Backends (implémentations), Factory (création).
-
-3. **Il offre** : unification des API, résilience, performance, extensibilité et observabilité.
-
----
-
-*Cette synthèse couvre l'essentiel du module `vibe/core/llm/backend/`. Pour plus de détails, consultez les fichiers de documentation complets dans le dossier `docs/`.*
+## Paramètres de configuration
+
+| Paramètre | Valeur par defaut | Description |
+|-----------|-------------------|-------------|
+| timeout | 720.0 s | Timeout global d'une requete |
+| retry_max_elapsed_time | 300.0 s | Budget total pour les retries |
+| connect_timeout | 10.0 s | Timeout de connexion TCP |
+| write_timeout | 30.0 s | Timeout d'ecriture |
+| pool_timeout | 10.0 s | Timeout d'obtention d'une connexion du pool |
+
+Source : `vibe/core/config/_defaults.py`
+
+## Resilience
+
+Le module gere les erreurs recuperables :
+
+- Codes HTTP 429, 500, 502, 503, 504
+- Erreurs reseau (httpx.NetworkError, httpx.TimeoutException)
+
+La strategie de retry utilise un backoff exponentiel avec un budget temporel defini par `retry_max_elapsed_time`. Un `AdaptivePacer` ajuste le rythme des requetes apres un rate limit.
+
+## Statistiques factuelles
+
+- 9 fichiers Python
+- 3203 lignes de code
+- 34 classes
+- 2 backends (GenericBackend, MistralBackend)
+- 5 adapters
+- 1 protocol (BackendLike)
+- 1 classe abstraite (APIAdapter)
+
+## Documentation detaillee
+
+Les fichiers de documentation complets se trouvent dans le repertoire `docs/` :
+
+- `01-OVERVIEW.md` : vue d'ensemble
+- `02-ARCHITECTURE.md` : principes de conception
+- `03-FOUNDATIONS.md` : BackendLike et APIAdapter
+- `04-FACTORY.md` : pattern factory
+- `05-GENERIC_BACKEND.md` : GenericBackend
+- `06-MISTRAL_BACKEND.md` : MistralBackend
+- `07-ADAPTERS.md` : les adapters
+- `08-IMAGES.md` : gestion des images
+- `09-FLOWS.md` : flux de donnees
+- `10-RESILIENCE.md` : strategies de resilience
+- `11-DIAGRAMS.md` : diagrammes
+- `12-USAGE.md` : guide d'utilisation
+- `13-ADVANCED.md` : sujets avances

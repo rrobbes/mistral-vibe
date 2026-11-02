@@ -1,27 +1,18 @@
-# 🖼️ Module Image : Gestion Centralisée des Images LLM
+# ️ Module Image : gestion des Images LLM
 
-> **Module** : `vibe/core/llm/backend/`  
-> **Fork** : `rrobbes/mistral-vibe`  
+> **Module** : `vibe/core/llm/backend/` 
+> **Fork** : `rrobbes/mistral-vibe` 
 > **Partie** : 8/13 - Encodage et Optimisation des Images
 
 ---
 
-## 🎯 Introduction
+## Introduction
 
-Le module `_image.py` fournit une **gestion centralisée** pour l'encodage et l'optimisation des images dans les requêtes LLM. C'est un **composant critique** car les images peuvent représenter une part importante de la taille des requêtes.
+Le module `_image.py` fournit une **gestion** pour l'encodage et l'optimisation des images dans les requêtes LLM. C'est un **composant** car les images peuvent représenter une part importante de la taille des requêtes.
 
-### 📍 Localisation
+### Localisation
 
-```
-vibe/core/llm/backend/
-├── _image.py          # ⭐ CE FICHIER (42 lignes)
-├── base.py
-├── generic.py
-├── mistral.py
-└── ...
-```
-
-### 🎭 Le Problème Résolu
+### Le Problème Résolu
 
 Les images dans les requêtes LLM posent plusieurs défis :
 
@@ -33,13 +24,13 @@ Les images dans les requêtes LLM posent plusieurs défis :
 **Solution** : Un module centralisé avec :
 - Encodage unifié (data URI et base64)
 - Cache des images fréquemment utilisées
-- Gestion des erreurs robuste
+- gestion des erreurs
 
 ---
 
-## 📖 Structure du Code
+## Structure du Code
 
-Le fichier `_image.py` est **court mais puissant** (42 lignes) :
+Le fichier `_image.py` est **concis** (42 lignes) :
 
 ```python
 from __future__ import annotations
@@ -50,69 +41,62 @@ from pathlib import Path
 
 from vibe.core.types import FileImageSource, ImageAttachment, InlineImageSource
 
-
 class ImageReadError(Exception):
-    pass
-
+ pass
 
 _CACHE_MAX = 32
 
-
 @lru_cache(maxsize=_CACHE_MAX)
 def _encode_cached(path_str: str, mtime_ns: int, size: int) -> str:
-    try:
-        return base64.b64encode(Path(path_str).read_bytes()).decode("ascii")
-    except OSError as e:
-        raise ImageReadError(f"Failed to read image {path_str}: {e}") from e
-
+ try:
+ return base64.b64encode(Path(path_str).read_bytes()).decode("ascii")
+ except OSError as e:
+ raise ImageReadError(f"Failed to read image {path_str}: {e}") from e
 
 def _encode(att: ImageAttachment) -> str:
-    match att.source:
-        case InlineImageSource(data=data):
-            return data
-        case FileImageSource(path=path):
-            try:
-                stat = path.stat()
-            except OSError as e:
-                raise ImageReadError(f"Failed to stat image {path}: {e}") from e
-            return _encode_cached(str(path), stat.st_mtime_ns, stat.st_size)
-
+ match att.source:
+ case InlineImageSource(data=data):
+ return data
+ case FileImageSource(path=path):
+ try:
+ stat = path.stat()
+ except OSError as e:
+ raise ImageReadError(f"Failed to stat image {path}: {e}") from e
+ return _encode_cached(str(path), stat.st_mtime_ns, stat.st_size)
 
 def to_data_uri(att: ImageAttachment) -> str:
-    return f"data:{att.mime_type};base64,{_encode(att)}"
-
+ return f"data:{att.mime_type};base64,{_encode(att)}"
 
 def to_base64(att: ImageAttachment) -> str:
-    return _encode(att)
+ return _encode(att)
 ```
 
 ---
 
-## 🏗️ Types Utilisés
+## ️ Types Utilisés
 
 ### ImageAttachment
 
-Définie dans `vibe/core/types.py` :
+Définie dans `vibe/core/llm/types.py` :
 
 ```python
 class ImageAttachment:
-    """An image that can be sent to a model."""
-    source: InlineImageSource | FileImageSource
-    mime_type: str
-    # Exemple: "image/jpeg", "image/png", "image/webp"
+ """An image that can be sent to a model."""
+ source: InlineImageSource | FileImageSource
+ mime_type: str
+ # Exemple: "image/jpeg", "image/png", "image/webp"
 ```
 
 ### Sources d'Images
 
 ```python
 class InlineImageSource:
-    """Image data already in memory."""
-    data: str  # Données base64 ou data URI
-
+ """Image data already in memory."""
+ data: str # Données base64 ou data URI
 
 class FileImageSource:
-    """Reference to an image file on disk."""
-    path: Path
+ """Reference to an image file on disk."""
+ path: Path
 ```
 
 ### Exemple d'Utilisation
@@ -123,21 +107,21 @@ from pathlib import Path
 
 # Depuis un fichier
 file_image = ImageAttachment(
-    source=FileImageSource(path=Path("/path/to/image.jpg")),
-    mime_type="image/jpeg",
+ source=FileImageSource(path=Path("/path/to/image.jpg")),
+ mime_type="image/jpeg",
 )
 
 # Depuis des données en mémoire
 data_uri = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA..."
 inline_image = ImageAttachment(
-    source=InlineImageSource(data=data_uri),
-    mime_type="image/png",
+ source=InlineImageSource(data=data_uri),
+ mime_type="image/png",
 )
 ```
 
 ---
 
-## 🔧 Fonctionnalités Clés
+## Fonctionnalités Clés
 
 ### 1. Encodage Base64 avec Cache
 
@@ -146,10 +130,10 @@ inline_image = ImageAttachment(
 ```python
 @lru_cache(maxsize=_CACHE_MAX)
 def _encode_cached(path_str: str, mtime_ns: int, size: int) -> str:
-    try:
-        return base64.b64encode(Path(path_str).read_bytes()).decode("ascii")
-    except OSError as e:
-        raise ImageReadError(f"Failed to read image {path_str}: {e}") from e
+ try:
+ return base64.b64encode(Path(path_str).read_bytes()).decode("ascii")
+ except OSError as e:
+ raise ImageReadError(f"Failed to read image {path_str}: {e}") from e
 ```
 
 **Fonctionnement** :
@@ -167,15 +151,15 @@ def _encode_cached(path_str: str, mtime_ns: int, size: int) -> str:
 
 ```python
 def _encode(att: ImageAttachment) -> str:
-    match att.source:
-        case InlineImageSource(data=data):
-            return data
-        case FileImageSource(path=path):
-            try:
-                stat = path.stat()
-            except OSError as e:
-                raise ImageReadError(f"Failed to stat image {path}: {e}") from e
-            return _encode_cached(str(path), stat.st_mtime_ns, stat.st_size)
+ match att.source:
+ case InlineImageSource(data=data):
+ return data
+ case FileImageSource(path=path):
+ try:
+ stat = path.stat()
+ except OSError as e:
+ raise ImageReadError(f"Failed to stat image {path}: {e}") from e
+ return _encode_cached(str(path), stat.st_mtime_ns, stat.st_size)
 ```
 
 **Fonctionnement** :
@@ -188,7 +172,7 @@ def _encode(att: ImageAttachment) -> str:
 
 ```python
 def to_data_uri(att: ImageAttachment) -> str:
-    return f"data:{att.mime_type};base64,{_encode(att)}"
+ return f"data:{att.mime_type};base64,{_encode(att)}"
 ```
 
 **Format** : `data:<mime-type>;base64,<data>`
@@ -206,7 +190,7 @@ data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKC
 
 ```python
 def to_base64(att: ImageAttachment) -> str:
-    return _encode(att)
+ return _encode(att)
 ```
 
 **Retourne** : Les données base64 **sans préfixe**
@@ -215,104 +199,104 @@ def to_base64(att: ImageAttachment) -> str:
 
 ---
 
-## 📊 Diagrammes
+## Diagrammes
 
 ### Diagramme de Séquence : Encodage d'une Image
 
 ```mermaid
 sequenceDiagram
-    participant U as Utilisateur
-    participant A as Adapter
-    participant IM as _image.py
-    participant F as Fichier
+ participant U as Utilisateur
+ participant A as Adapter
+ participant IM as _image.py
+ participant F as Fichier
 
-    U->>A: prepare_request(messages avec image)
-    A->>IM: to_data_uri(image_attachment)
-    IM->>IM: _encode(image_attachment)
-    alt InlineImageSource
-        IM-->>IM: Retourne data directement
-    else FileImageSource
-        IM->>F: stat()
-        F-->>IM: stat_result
-        IM->>IM: _encode_cached(path, mtime, size)
-        IM->>F: read_bytes()
-        F-->>IM: bytes
-        IM-->>IM: base64.b64encode()
-    end
-    IM-->>A: data URI
-    A->>A: Intègre dans le payload
-    A-->>U: PreparedRequest
+ U->>A: prepare_request(messages avec image)
+ A->>IM: to_data_uri(image_attachment)
+ IM->>IM: _encode(image_attachment)
+ alt InlineImageSource
+ IM-->>IM: Retourne data directement
+ else FileImageSource
+ IM->>F: stat()
+ F-->>IM: stat_result
+ IM->>IM: _encode_cached(path, mtime, size)
+ IM->>F: read_bytes()
+ F-->>IM: bytes
+ IM-->>IM: base64.b64encode()
+ end
+ IM-->>A: data URI
+ A->>A: Intègre dans le payload
+ A-->>U: PreparedRequest
 ```
 
 ### Diagramme de Classes
 
 ```mermaid
 classDiagram
-    direction TB
+ direction TB
 
-    class ImageAttachment {
-        +source: InlineImageSource | FileImageSource
-        +mime_type: str
-    }
+ class ImageAttachment {
+ +source: InlineImageSource | FileImageSource
+ +mime_type: str
+ }
 
-    class InlineImageSource {
-        +data: str
-    }
+ class InlineImageSource {
+ +data: str
+ }
 
-    class FileImageSource {
-        +path: Path
-    }
+ class FileImageSource {
+ +path: Path
+ }
 
-    class ImageReadError {
-        +Exception
-    }
+ class ImageReadError {
+ +Exception
+ }
 
-    class _image_module {
-        +_CACHE_MAX: int = 32
-        +_encode_cached(path, mtime, size) str
-        +_encode(att) str
-        +to_data_uri(att) str
-        +to_base64(att) str
-    }
+ class _image_module {
+ +_CACHE_MAX: int = 32
+ +_encode_cached(path, mtime, size) str
+ +_encode(att) str
+ +to_data_uri(att) str
+ +to_base64(att) str
+ }
 
-    ImageAttachment o-- InlineImageSource
-    ImageAttachment o-- FileImageSource
-    _image_module --> ImageAttachment : utilise
-    _image_module --> ImageReadError : lève
+ ImageAttachment o-- InlineImageSource
+ ImageAttachment o-- FileImageSource
+ _image_module --> ImageAttachment : utilise
+ _image_module --> ImageReadError : lève
 ```
 
 ---
 
-## 🎯 Utilisation par les Adapters
+## Utilisation par les Adapters
 
 ### 1. OpenAIAdapter (dans generic.py)
 
 ```python
 def _user_with_images_to_parts(
-    self, msg_dict: dict[str, Any], source: LLMMessage
+ self, msg_dict: dict[str, Any], source: LLMMessage
 ) -> dict[str, Any]:
-    if source.role != Role.user or not source.images:
-        return msg_dict
-    parts: list[dict[str, Any]] = []
-    text = msg_dict.get("content")
-    if isinstance(text, str) and text:
-        parts.append({"type": "text", "text": text})
-    parts.extend(
-        {"type": "image_url", "image_url": {"url": _to_data_uri(att)}}
-        for att in source.images
-    )
-    msg_dict["content"] = parts
-    return msg_dict
+ if source.role != Role.user or not source.images:
+ return msg_dict
+ parts: list[dict[str, Any]] = []
+ text = msg_dict.get("content")
+ if isinstance(text, str) and text:
+ parts.append({"type": "text", "text": text})
+ parts.extend(
+ {"type": "image_url", "image_url": {"url": _to_data_uri(att)}}
+ for att in source.images
+ )
+ msg_dict["content"] = parts
+ return msg_dict
 ```
 
 **Format OpenAI** :
 ```json
 {
-  "role": "user",
-  "content": [
-    {"type": "text", "text": "What's in this image?"},
-    {"type": "image_url", "image_url": {"url": "data:image/jpeg;base64,..."}}
-  ]
+ "role": "user",
+ "content": [
+ {"type": "text", "text": "What's in this image?"},
+ {"type": "image_url", "image_url": {"url": "data:image/jpeg;base64,..."}}
+ ]
 }
 ```
 
@@ -320,38 +304,38 @@ def _user_with_images_to_parts(
 
 ```python
 if msg.images:
-    user_content: list[dict[str, Any]] = []
-    if msg.content:
-        user_content.append({"type": "text", "text": msg.content})
-    user_content.extend(
-        {
-            "type": "image",
-            "source": {
-                "type": "base64",
-                "media_type": att.mime_type,
-                "data": _to_base64(att),  # ⭐ Utilise to_base64, pas to_data_uri
-            },
-        }
-        for att in msg.images
-    )
-    converted.append({"role": "user", "content": user_content or ""})
+ user_content: list[dict[str, Any]] = []
+ if msg.content:
+ user_content.append({"type": "text", "text": msg.content})
+ user_content.extend(
+ {
+ "type": "image",
+ "source": {
+ "type": "base64",
+ "media_type": att.mime_type,
+ "data": _to_base64(att), # ⭐ Utilise to_base64, pas to_data_uri
+ },
+ }
+ for att in msg.images
+ )
+ converted.append({"role": "user", "content": user_content or ""})
 ```
 
 **Format Anthropic** :
 ```json
 {
-  "role": "user",
-  "content": [
-    {"type": "text", "text": "What's in this image?"},
-    {
-      "type": "image",
-      "source": {
-        "type": "base64",
-        "media_type": "image/jpeg",
-        "data": "..."  // Base64 pur, sans préfixe
-      }
-    }
-  ]
+ "role": "user",
+ "content": [
+ {"type": "text", "text": "What's in this image?"},
+ {
+ "type": "image",
+ "source": {
+ "type": "base64",
+ "media_type": "image/jpeg",
+ "data": "..." // Base64 pur, sans préfixe
+ }
+ }
+ ]
 }
 ```
 
@@ -359,17 +343,17 @@ if msg.images:
 
 ```python
 def _convert_message(self, msg: LLMMessage) -> dict[str, Any]:
-    match msg.role:
-        case Role.user:
-            if msg.images:
-                parts: list[dict[str, Any]] = []
-                if msg.content:
-                    parts.append({"type": "text", "text": msg.content})
-                parts.extend(
-                    {"type": "image_url", "image_url": {"url": _to_data_uri(att)}}
-                    for att in msg.images
-                )
-                return {"role": "user", "content": parts}
+ match msg.role:
+ case Role.user:
+ if msg.images:
+ parts: list[dict[str, Any]] = []
+ if msg.content:
+ parts.append({"type": "text", "text": msg.content})
+ parts.extend(
+ {"type": "image_url", "image_url": {"url": _to_data_uri(att)}}
+ for att in msg.images
+ )
+ return {"role": "user", "content": parts}
 ```
 
 **Format** : Identique à OpenAI
@@ -378,20 +362,20 @@ def _convert_message(self, msg: LLMMessage) -> dict[str, Any]:
 
 ```python
 def prepare_message(self, msg: LLMMessage, *, include_reasoning_content: bool = True) -> ChatCompletionRequestMessage:
-    match msg.role:
-        case Role.user:
-            if msg.images:
-                user_parts: list[ContentChunk] = []
-                if msg.content:
-                    user_parts.append(TextChunk(type="text", text=msg.content))
-                user_parts.extend(
-                    ImageURLChunk(
-                        type="image_url", 
-                        image_url=ImageURL(url=_to_data_uri(att))
-                    )
-                    for att in msg.images
-                )
-                return UserMessage(role="user", content=user_parts)
+ match msg.role:
+ case Role.user:
+ if msg.images:
+ user_parts: list[ContentChunk] = []
+ if msg.content:
+ user_parts.append(TextChunk(type="text", text=msg.content))
+ user_parts.extend(
+ ImageURLChunk(
+ type="image_url", 
+ image_url=ImageURL(url=_to_data_uri(att))
+ )
+ for att in msg.images
+ )
+ return UserMessage(role="user", content=user_parts)
 ```
 
 **Format Mistral SDK** : Utilise les types du SDK (`ImageURLChunk`, etc.)
@@ -400,34 +384,34 @@ def prepare_message(self, msg: LLMMessage, *, include_reasoning_content: bool = 
 
 ```python
 def _convert_messages(self, messages: Sequence[LLMMessage]) -> list[dict[str, Any]]:
-    for msg in messages:
-        match msg.role:
-            case Role.user:
-                if msg.images:
-                    parts: list[dict[str, Any]] = []
-                    if msg.content:
-                        parts.append({"type": "input_text", "text": msg.content})
-                    parts.extend(
-                        {"type": "input_image", "image_url": _to_data_uri(att)}
-                        for att in msg.images
-                    )
-                    input_items.append({"role": "user", "content": parts})
+ for msg in messages:
+ match msg.role:
+ case Role.user:
+ if msg.images:
+ parts: list[dict[str, Any]] = []
+ if msg.content:
+ parts.append({"type": "input_text", "text": msg.content})
+ parts.extend(
+ {"type": "input_image", "image_url": _to_data_uri(att)}
+ for att in msg.images
+ )
+ input_items.append({"role": "user", "content": parts})
 ```
 
 **Format OpenAI Responses** :
 ```json
 {
-  "role": "user",
-  "content": [
-    {"type": "input_text", "text": "What's in this image?"},
-    {"type": "input_image", "image_url": "data:image/jpeg;base64,..."}
-  ]
+ "role": "user",
+ "content": [
+ {"type": "input_text", "text": "What's in this image?"},
+ {"type": "input_image", "image_url": "data:image/jpeg;base64,..."}
+ ]
 }
 ```
 
 ---
 
-## 📊 Performances et Optimisations
+## Performances et Optimisations
 
 ### Benchmark du Cache
 
@@ -439,24 +423,24 @@ import time
 
 # Créer une image de test
 image_path = Path("test_image.jpg")
-image_path.write_bytes(b"X" * 1024 * 1024)  # 1Mo
+image_path.write_bytes(b"X" * 1024 * 1024) # 1Mo
 
 att = ImageAttachment(
-    source=FileImageSource(path=image_path),
-    mime_type="image/jpeg",
+ source=FileImageSource(path=image_path),
+ mime_type="image/jpeg",
 )
 
 # Sans cache
 start = time.time()
 for _ in range(10):
-    to_base64(att)
+ to_base64(att)
 end = time.time()
 print(f"Sans cache (10 appels): {end - start:.3f}s")
 
 # Avec cache (2ème appel et suivants)
 start = time.time()
 for _ in range(10):
-    to_base64(att)
+ to_base64(att)
 end = time.time()
 print(f"Avec cache (10 appels): {end - start:.3f}s")
 ```
@@ -490,7 +474,7 @@ _CACHE_MAX = 32
 
 ---
 
-## ⚠️ Gestion des Erreurs
+## ️ Gestion des Erreurs
 
 ### ImageReadError
 
@@ -498,39 +482,39 @@ Toutes les erreurs de lecture d'image lèvent `ImageReadError` :
 
 ```python
 class ImageReadError(Exception):
-    pass
+ pass
 ```
 
 ### Cas d'Erreur
 
 1. **Fichier introuvable** :
-   ```python
-   att = ImageAttachment(
-       source=FileImageSource(path=Path("/non/existent.jpg")),
-       mime_type="image/jpeg",
-   )
-   to_base64(att)  # Lève ImageReadError
-   ```
+ ```python
+ att = ImageAttachment(
+ source=FileImageSource(path=Path("/non/existent.jpg")),
+ mime_type="image/jpeg",
+ )
+ to_base64(att) # Lève ImageReadError
+ ```
 
 2. **Permission refusée** :
-   ```python
-   att = ImageAttachment(
-       source=FileImageSource(path=Path("/root/private.jpg")),
-       mime_type="image/jpeg",
-   )
-   to_base64(att)  # Lève ImageReadError
-   ```
+ ```python
+ att = ImageAttachment(
+ source=FileImageSource(path=Path("/root/private.jpg")),
+ mime_type="image/jpeg",
+ )
+ to_base64(att) # Lève ImageReadError
+ ```
 
 3. **Fichier corrompu** :
-   ```python
-   # Fichier qui ne peut pas être lu comme image
-   Path("corrupted.jpg").write_bytes(b"not an image")
-   att = ImageAttachment(
-       source=FileImageSource(path=Path("corrupted.jpg")),
-       mime_type="image/jpeg",
-   )
-   to_base64(att)  # Peut lever ImageReadError ou retourner des données invalides
-   ```
+ ```python
+ # Fichier qui ne peut pas être lu comme image
+ Path("corrupted.jpg").write_bytes(b"not an image")
+ att = ImageAttachment(
+ source=FileImageSource(path=Path("corrupted.jpg")),
+ mime_type="image/jpeg",
+ )
+ to_base64(att) # Peut lever ImageReadError ou retourner des données invalides
+ ```
 
 ### Bonnes Pratiques
 
@@ -538,22 +522,22 @@ class ImageReadError(Exception):
 from vibe.core.llm.backend._image import ImageReadError
 
 try:
-    data_uri = to_data_uri(image_attachment)
+ data_uri = to_data_uri(image_attachment)
 except ImageReadError as e:
-    logger.error(f"Failed to encode image: {e}")
-    # Gérer l'erreur : ignorer l'image, utiliser une image par défaut, etc.
+ logger.error(f"Failed to encode image: {e}")
+ # Gérer l'erreur : ignorer l'image, utiliser une image par défaut, etc.
 ```
 
 ---
 
-## 🔧 Configuration et Personnalisation
+## Configuration et Personnalisation
 
 ### 1. Changer la Taille du Cache
 
 Le cache est défini comme une constante au niveau du module :
 
 ```python
-_CACHE_MAX = 32  # Valeur par défaut
+_CACHE_MAX = 32 # Valeur par défaut
 ```
 
 **Pour changer la taille** :
@@ -566,11 +550,11 @@ from functools import lru_cache
 from pathlib import Path
 import base64
 
-CUSTOM_CACHE_MAX = 100  # Cache plus grand
+CUSTOM_CACHE_MAX = 100 # Cache plus grand
 
 @lru_cache(maxsize=CUSTOM_CACHE_MAX)
 def custom_encode_cached(path_str: str, mtime_ns: int, size: int) -> str:
-    return base64.b64encode(Path(path_str).read_bytes()).decode("ascii")
+ return base64.b64encode(Path(path_str).read_bytes()).decode("ascii")
 ```
 
 ### 2. Ajouter unNouveau Format d'Image
@@ -582,29 +566,29 @@ Le module supporte actuellement :
 **Pour ajouter un nouveau type** :
 
 ```python
-# Dans vibe/core/types.py
+# Dans vibe/core/llm/types.py
 class HttpImageSource:
-    url: str
+ url: str
 
 # Dans _image.py
 from vibe.core.types import HttpImageSource
 import httpx
 
 def _encode(att: ImageAttachment) -> str:
-    match att.source:
-        case InlineImageSource(data=data):
-            return data
-        case FileImageSource(path=path):
-            try:
-                stat = path.stat()
-            except OSError as e:
-                raise ImageReadError(f"Failed to stat image {path}: {e}") from e
-            return _encode_cached(str(path), stat.st_mtime_ns, stat.st_size)
-        case HttpImageSource(url=url):
-            # Télécharger l'image depuis l'URL
-            response = httpx.get(url)
-            response.raise_for_status()
-            return base64.b64encode(response.content).decode("ascii")
+ match att.source:
+ case InlineImageSource(data=data):
+ return data
+ case FileImageSource(path=path):
+ try:
+ stat = path.stat()
+ except OSError as e:
+ raise ImageReadError(f"Failed to stat image {path}: {e}") from e
+ return _encode_cached(str(path), stat.st_mtime_ns, stat.st_size)
+ case HttpImageSource(url=url):
+ # Télécharger l'image depuis l'URL
+ response = httpx.get(url)
+ response.raise_for_status()
+ return base64.b64encode(response.content).decode("ascii")
 ```
 
 ### 3. Changer le Format de Sortie
@@ -618,16 +602,16 @@ Actuellement, le module offre deux formats :
 ```python
 # Dans _image.py
 def to_base64_urlsafe(att: ImageAttachment) -> str:
-    """Retourne l'encodage base64 URL-safe (sans padding)."""
-    import base64
-    data = _encode(att)
-    # Convertir base64 standard en URL-safe
-    return base64.urlsafe_b64encode(base64.b64decode(data)).decode("ascii").rstrip("=")
+ """Retourne l'encodage base64 URL-safe (sans padding)."""
+ import base64
+ data = _encode(att)
+ # Convertir base64 standard en URL-safe
+ return base64.urlsafe_b64encode(base64.b64decode(data)).decode("ascii").rstrip("=")
 ```
 
 ---
 
-## 📈 Benchmarks et Métriques
+## Benchmarks et Métriques
 
 ### Temps d'Encodage
 
@@ -657,7 +641,7 @@ def to_base64_urlsafe(att: ImageAttachment) -> str:
 
 ---
 
-## 🔍 Débogage
+## Débogage
 
 ### 1. Vérifier le Cache
 
@@ -678,12 +662,12 @@ from pathlib import Path
 
 # Tester avec un fichier
 att = ImageAttachment(
-    source=FileImageSource(path=Path("test.jpg")),
-    mime_type="image/jpeg",
+ source=FileImageSource(path=Path("test.jpg")),
+ mime_type="image/jpeg",
 )
 
-print(f"Data URI: {to_data_uri(att)[:100]}...")  # Premier 100 caractères
-print(f"Base64: {to_base64(att)[:100]}...")  # Premier 100 caractères
+print(f"Data URI: {to_data_uri(att)[:100]}...") # Premier 100 caractères
+print(f"Base64: {to_base64(att)[:100]}...") # Premier 100 caractères
 ```
 
 ### 3. Tester les Performances
@@ -696,32 +680,32 @@ from vibe.core.types import ImageAttachment, FileImageSource
 
 # Créer une image de test
 image_path = Path("benchmark_image.jpg")
-image_sizes = [1024, 10 * 1024, 100 * 1024, 1024 * 1024]  # 1Ko, 10Ko, 100Ko, 1Mo
+image_sizes = [1024, 10 * 1024, 100 * 1024, 1024 * 1024] # 1Ko, 10Ko, 100Ko, 1Mo
 
 for size in image_sizes:
-    image_path.write_bytes(b"X" * size)
-    
-    att = ImageAttachment(
-        source=FileImageSource(path=image_path),
-        mime_type="image/jpeg",
-    )
-    
-    # Premier appel (sans cache)
-    start = time.time()
-    to_base64(att)
-    first_time = time.time() - start
-    
-    # Deuxième appel (avec cache)
-    start = time.time()
-    to_base64(att)
-    cached_time = time.time() - start
-    
-    print(f"{size/1024:.0f}Ko: sans cache={first_time*1000:.2f}ms, avec cache={cached_time*1000:.2f}ms")
+ image_path.write_bytes(b"X" * size)
+ 
+ att = ImageAttachment(
+ source=FileImageSource(path=image_path),
+ mime_type="image/jpeg",
+ )
+ 
+ # Premier appel (sans cache)
+ start = time.time()
+ to_base64(att)
+ first_time = time.time() - start
+ 
+ # Deuxième appel (avec cache)
+ start = time.time()
+ to_base64(att)
+ cached_time = time.time() - start
+ 
+ print(f"{size/1024:.0f}Ko: sans cache={first_time*1000:.2f}ms, avec cache={cached_time*1000:.2f}ms")
 ```
 
 ---
 
-## ✅ Résumé
+## Résumé
 
 | Aspect | Description |
 |--------|-------------|
@@ -736,7 +720,7 @@ for size in image_sizes:
 
 ---
 
-## 📚 Références
+## Références
 
 - [Base64 Encoding - Wikipedia](https://en.wikipedia.org/wiki/Base64)
 - [Data URI Scheme - MDN](https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/Data_URIs)
@@ -746,7 +730,7 @@ for size in image_sizes:
 
 ---
 
-## 🔗 Voir aussi
+## Voir aussi
 
 - **[07-ADAPTERS.md](./07-ADAPTERS.md)** - Comment les adapters utilisent le module image
 - **[05-GENERIC_BACKEND.md](./05-GENERIC_BACKEND.md)** - Backend qui gère les images via les adapters

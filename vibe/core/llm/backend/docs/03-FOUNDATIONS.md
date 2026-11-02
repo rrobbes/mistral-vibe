@@ -1,12 +1,12 @@
-# 🎯 BackendLike et APIAdapter : Les Fondations du Module Backend
+# BackendLike et APIAdapter : Les Fondations du Module Backend
 
-> **Module** : `vibe/core/llm/backend/`  
-> **Fork** : `rrobbes/mistral-vibe`  
+> **Module** : `vibe/core/llm/backend/` 
+> **Fork** : `rrobbes/mistral-vibe` 
 > **Partie** : 3/13 - Les Classes de Base
 
 ---
 
-## 📐 Introduction
+## Introduction
 
 Ce document explique **les deux classes fondamentales** sur lesquelles repose tout le module `backend/` :
 
@@ -17,9 +17,9 @@ Ces deux composants forment **l'ossature** du module et permettent son **extensi
 
 ---
 
-## 🏷️ BackendLike : L'Interface Universelle
+## ️ BackendLike : L'Interface Universelle
 
-### 🎭 Qu'est-ce qu'un Protocol ?
+### Qu'est-ce qu'un Protocol ?
 
 En Python, un **Protocol** (introduit dans Python 3.8 via PEP 544) est une manière de définir une **interface** sans utiliser l'héritage. C'est le **duck typing structuré** : si une classe implémente toutes les méthodes d'un Protocol, elle est considérée comme compatible, même sans héritage explicite.
 
@@ -28,17 +28,17 @@ from typing import Protocol, runtime_checkable
 
 @runtime_checkable
 class MonProtocol(Protocol):
-    def methode_obligatoire(self) -> str: ...
+ def methode_obligatoire(self) -> str: ...
 
 class MaClasse:
-    def methode_obligatoire(self) -> str:
-        return "Hello"
+ def methode_obligatoire(self) -> str:
+ return "Hello"
 
 # MaClasse est compatible avec MonProtocol même sans héritage
 assert isinstance(MaClasse(), MonProtocol)
 ```
 
-### 📜 Définition de BackendLike
+### Définition de BackendLike
 
 `BackendLike` est défini dans `vibe/core/llm/types.py` :
 
@@ -51,48 +51,48 @@ from vibe.core.types import LLMChunk, LLMMessage, ModelConfig, AvailableTool, St
 
 @runtime_checkable
 class BackendLike(Protocol):
-    """Port protocol for dependency-injectable LLM backends.
-    
-    Any backend used by AgentLoop should implement this async context manager
-    interface with `complete` and `complete_streaming` methods.
-    """
+ """Port protocol for dependency-injectable LLM backends.
+ 
+ Any backend used by AgentLoop should implement this async context manager
+ interface with `complete` and `complete_streaming` methods.
+ """
 
-    async def __aenter__(self) -> "BackendLike": ...
-    async def __aexit__(
-        self,
-        exc_type: type[BaseException] | None,
-        exc_val: BaseException | None,
-        exc_tb: types.TracebackType | None,
-    ) -> None: ...
+ async def __aenter__(self) -> "BackendLike": ...
+ async def __aexit__(
+ self,
+ exc_type: type[BaseException] | None,
+ exc_val: BaseException | None,
+ exc_tb: types.TracebackType | None,
+ ) -> None: ...
 
-    async def complete(
-        self,
-        *,
-        model: ModelConfig,
-        messages: Sequence[LLMMessage],
-        temperature: float,
-        tools: list[AvailableTool] | None,
-        max_tokens: int | None,
-        tool_choice: StrToolChoice | AvailableTool | None,
-        extra_headers: dict[str, str] | None,
-        metadata: dict[str, str] | None = None,
-    ) -> LLMChunk: ...
+ async def complete(
+ self,
+ *,
+ model: ModelConfig,
+ messages: Sequence[LLMMessage],
+ temperature: float,
+ tools: list[AvailableTool] | None,
+ max_tokens: int | None,
+ tool_choice: StrToolChoice | AvailableTool | None,
+ extra_headers: dict[str, str] | None,
+ metadata: dict[str, str] | None = None,
+ ) -> LLMChunk: ...
 
-    def complete_streaming(
-        self,
-        *,
-        model: ModelConfig,
-        messages: Sequence[LLMMessage],
-        temperature: float,
-        tools: list[AvailableTool] | None,
-        max_tokens: int | None,
-        tool_choice: StrToolChoice | AvailableTool | None,
-        extra_headers: dict[str, str] | None,
-        metadata: dict[str, str] | None = None,
-    ) -> AsyncGenerator[LLMChunk, None]: ...
+ def complete_streaming(
+ self,
+ *,
+ model: ModelConfig,
+ messages: Sequence[LLMMessage],
+ temperature: float,
+ tools: list[AvailableTool] | None,
+ max_tokens: int | None,
+ tool_choice: StrToolChoice | AvailableTool | None,
+ extra_headers: dict[str, str] | None,
+ metadata: dict[str, str] | None = None,
+ ) -> AsyncGenerator[LLMChunk, None]: ...
 ```
 
-### 🔍 Analyse des Méthodes
+### Analyse des Méthodes
 
 #### 1. Context Manager Async
 
@@ -107,8 +107,8 @@ Elles permettent d'utiliser le backend avec le **pattern context manager async**
 
 ```python
 async with backend:
-    # Le backend est initialisé et prêt à l'emploi
-    chunk = await backend.complete(...)
+ # Le backend est initialisé et prêt à l'emploi
+ chunk = await backend.complete(...)
 # Le backend est proprement fermé, les ressources sont libérées
 ```
 
@@ -123,24 +123,24 @@ async with backend:
 - Effectue le cleanup même en cas d'erreur
 
 **Avantages** :
-- ✅ **Gestion automatique des ressources** : Pas besoin de se souvenir de fermer le backend
-- ✅ **Sécurité** : Les ressources sont libérées même en cas d'exception
-- ✅ **Lisibilité** : Le code est plus propre et plus clair
+- **Gestion automatique des ressources** : Pas besoin de se souvenir de fermer le backend
+- **Sécurité** : Les ressources sont libérées même en cas d'exception
+- **Lisibilité** : Le code est plus propre et plus clair
 
 #### 2. `complete()` - Requête Synchrone
 
 ```python
 async def complete(
-    self,
-    *,
-    model: ModelConfig,
-    messages: Sequence[LLMMessage],
-    temperature: float,
-    tools: list[AvailableTool] | None,
-    max_tokens: int | None,
-    tool_choice: StrToolChoice | AvailableTool | None,
-    extra_headers: dict[str, str] | None,
-    metadata: dict[str, str] | None = None,
+ self,
+ *,
+ model: ModelConfig,
+ messages: Sequence[LLMMessage],
+ temperature: float,
+ tools: list[AvailableTool] | None,
+ max_tokens: int | None,
+ tool_choice: StrToolChoice | AvailableTool | None,
+ extra_headers: dict[str, str] | None,
+ metadata: dict[str, str] | None = None,
 ) -> LLMChunk:
 ```
 
@@ -148,14 +148,14 @@ async def complete(
 
 | Paramètre | Type | Description | Obligatoire |
 |-----------|------|-------------|-------------|
-| `model` | `ModelConfig` | Configuration du modèle à utiliser | ✅ Oui |
-| `messages` | `Sequence[LLMMessage]` | Historique de la conversation | ✅ Oui |
-| `temperature` | `float` | Niveau de créativité (0.0 à 1.0) | ✅ Oui |
-| `tools` | `list[AvailableTool] \| None` | Outils disponibles pour le modèle | ❌ Non |
-| `max_tokens` | `int \| None` | Nombre maximum de tokens à générer | ❌ Non |
-| `tool_choice` | `StrToolChoice \| AvailableTool \| None` | Comment choisir les outils | ❌ Non |
-| `extra_headers` | `dict[str, str] \| None` | Headers HTTP supplémentaires | ❌ Non |
-| `metadata` | `dict[str, str] \| None` | Métadonnées pour le tracing | ❌ Non |
+| `model` | `ModelConfig` | Configuration du modèle à utiliser | Oui |
+| `messages` | `Sequence[LLMMessage]` | Historique de la conversation | Oui |
+| `temperature` | `float` | Niveau de créativité (0.0 à 1.0) | Oui |
+| `tools` | `list[AvailableTool] \| None` | Outils disponibles pour le modèle | Non |
+| `max_tokens` | `int \| None` | Nombre maximum de tokens à générer | Non |
+| `tool_choice` | `StrToolChoice \| AvailableTool \| None` | Comment choisir les outils | Non |
+| `extra_headers` | `dict[str, str] \| None` | Headers HTTP supplémentaires | Non |
+| `metadata` | `dict[str, str] \| None` | Métadonnées pour le tracing | Non |
 
 **Retour** : `LLMChunk` - Un chunk contenant la réponse complète
 
@@ -167,28 +167,28 @@ async def complete(
 **Exemple** :
 ```python
 async with backend:
-    chunk = await backend.complete(
-        model=model,
-        messages=messages,
-        temperature=0.2
-    )
-    print(chunk.message.content)
+ chunk = await backend.complete(
+ model=model,
+ messages=messages,
+ temperature=0.2
+ )
+ print(chunk.message.content)
 ```
 
 #### 3. `complete_streaming()` - Requête Asynchrone
 
 ```python
 def complete_streaming(
-    self,
-    *,
-    model: ModelConfig,
-    messages: Sequence[LLMMessage],
-    temperature: float,
-    tools: list[AvailableTool] | None,
-    max_tokens: int | None,
-    tool_choice: StrToolChoice | AvailableTool | None,
-    extra_headers: dict[str, str] | None,
-    metadata: dict[str, str] | None = None,
+ self,
+ *,
+ model: ModelConfig,
+ messages: Sequence[LLMMessage],
+ temperature: float,
+ tools: list[AvailableTool] | None,
+ max_tokens: int | None,
+ tool_choice: StrToolChoice | AvailableTool | None,
+ extra_headers: dict[str, str] | None,
+ metadata: dict[str, str] | None = None,
 ) -> AsyncGenerator[LLMChunk, None]:
 ```
 
@@ -204,16 +204,16 @@ def complete_streaming(
 **Exemple** :
 ```python
 async with backend:
-    async for chunk in backend.complete_streaming(
-        model=model,
-        messages=messages,
-        temperature=0.7
-    ):
-        # Affiche chaque morceau de réponse au fur et à mesure
-        print(chunk.message.content, end="", flush=True)
+ async for chunk in backend.complete_streaming(
+ model=model,
+ messages=messages,
+ temperature=0.7
+ ):
+ # Affiche chaque morceau de réponse au fur et à mesure
+ print(chunk.message.content, end="", flush=True)
 ```
 
-### 💡 Pourquoi BackendLike est-il Important ?
+### Pourquoi BackendLike est-il Important ?
 
 1. **Abstraction** : Le code utilisateur (AgentLoop) ne voit que l'interface, pas l'implémentation
 2. **Polymorphisme** : On peut passer n'importe quel backend tant qu'il implémente le protocol
@@ -221,7 +221,7 @@ async with backend:
 4. **Testabilité** : Facile de créer des mocks (FakeBackend)
 5. **Découplage** : AgentLoop n'a pas besoin de connaître les détails des backends
 
-### 📌 Implémentations de BackendLike
+### Implémentations de BackendLike
 
 Actuellement, ces classes implémentent BackendLike :
 
@@ -235,9 +235,9 @@ Actuellement, ces classes implémentent BackendLike :
 
 ---
 
-## 🔄 APIAdapter : Le Traducteur Universel
+## APIAdapter : Le Traducteur Universel
 
-### 🎭 Qu'est-ce qu'une Classe Abstraite (ABC) ?
+### Qu'est-ce qu'une Classe Abstraite (ABC) ?
 
 En Python, une **Abstract Base Class** (ABC) est une classe qui :
 - Ne peut pas être instanciée directement
@@ -248,18 +248,18 @@ En Python, une **Abstract Base Class** (ABC) est une classe qui :
 from abc import ABC, abstractmethod
 
 class MaClasseAbstraite(ABC):
-    @abstractmethod
-    def methode_obligatoire(self): ...  # Doit être implémentée
-    
-    def methode_facultative(self):  # Peut être héritée
-        print("Implémentation par défaut")
+ @abstractmethod
+ def methode_obligatoire(self): ... # Doit être implémentée
+ 
+ def methode_facultative(self): # Peut être héritée
+ print("Implémentation par défaut")
 
 class MaSousClasse(MaClasseAbstraite):
-    def methode_obligatoire(self):
-        print("Implémentation requise")
+ def methode_obligatoire(self):
+ print("Implémentation requise")
 ```
 
-### 📜 Définition de APIAdapter
+### Définition de APIAdapter
 
 `APIAdapter` est défini dans `vibe/core/llm/backend/base.py` :
 
@@ -272,54 +272,54 @@ from vibe.core.types import LLMChunk, LLMMessage, AvailableTool, StrToolChoice
 from vibe.core.config import ProviderConfig
 
 class APIAdapter(ABC):
-    """Abstract base class for API-specific adapters.
-    
-    Adapters handle the conversion between Vibe's internal types and
-    the specific API formats of different LLM providers.
-    """
+ """Abstract base class for API-specific adapters.
+ 
+ Adapters handle the conversion between Vibe's internal types and
+ the specific API formats of different LLM providers.
+ """
 
-    endpoint: ClassVar[str]
-    """The API endpoint for this adapter (e.g., "/chat/completions")."""
+ endpoint: ClassVar[str]
+ """The API endpoint for this adapter (e.g., "/chat/completions")."""
 
-    @abstractmethod
-    def prepare_request(
-        self,
-        *,
-        model_name: str,
-        messages: Sequence[LLMMessage],
-        temperature: float,
-        tools: list[AvailableTool] | None,
-        max_tokens: int | None,
-        tool_choice: StrToolChoice | AvailableTool | None,
-        enable_streaming: bool,
-        provider: ProviderConfig,
-        api_key: str | None = None,
-        thinking: str = "off",
-    ) -> PreparedRequest:
-        """Prepare a request for the specific API."""
-        ...
+ @abstractmethod
+ def prepare_request(
+ self,
+ *,
+ model_name: str,
+ messages: Sequence[LLMMessage],
+ temperature: float,
+ tools: list[AvailableTool] | None,
+ max_tokens: int | None,
+ tool_choice: StrToolChoice | AvailableTool | None,
+ enable_streaming: bool,
+ provider: ProviderConfig,
+ api_key: str | None = None,
+ thinking: str = "off",
+ ) -> PreparedRequest:
+ """Prepare a request for the specific API."""
+ ...
 
-    @abstractmethod
-    def parse_response(
-        self,
-        data: dict[str, Any],
-        provider: ProviderConfig,
-    ) -> LLMChunk:
-        """Parse a response from the specific API into a LLMChunk."""
-        ...
+ @abstractmethod
+ def parse_response(
+ self,
+ data: dict[str, Any],
+ provider: ProviderConfig,
+ ) -> LLMChunk:
+ """Parse a response from the specific API into a LLMChunk."""
+ ...
 
-    async def parse_stream(
-        self,
-        responses: AsyncGenerator[dict[str, Any]],
-        provider: ProviderConfig,
-    ) -> AsyncGenerator[ParsedStreamChunk]:
-        """Parse a stream of responses from the specific API."""
-        async with aclosing(responses):
-            async for data in responses:
-                yield ParsedStreamChunk(data, self.parse_response(data, provider))
+ async def parse_stream(
+ self,
+ responses: AsyncGenerator[dict[str, Any]],
+ provider: ProviderConfig,
+ ) -> AsyncGenerator[ParsedStreamChunk]:
+ """Parse a stream of responses from the specific API."""
+ async with aclosing(responses):
+ async for data in responses:
+ yield ParsedStreamChunk(data, self.parse_response(data, provider))
 ```
 
-### 🔍 Analyse des Composants
+### Analyse des Composants
 
 #### 1. ClassVar : endpoint
 
@@ -332,13 +332,13 @@ endpoint: ClassVar[str]
 **Exemples** :
 ```python
 class OpenAIAdapter(APIAdapter):
-    endpoint = "/chat/completions"
+ endpoint = "/chat/completions"
 
 class AnthropicAdapter(APIAdapter):
-    endpoint = "/v1/messages"
+ endpoint = "/v1/messages"
 
 class OpenAIResponsesAdapter(APIAdapter):
-    endpoint = "/responses"
+ endpoint = "/responses"
 ```
 
 **Utilité** : Permet de connaître le point d'entrée de l'API pour chaque adapter.
@@ -348,18 +348,18 @@ class OpenAIResponsesAdapter(APIAdapter):
 ```python
 @abstractmethod
 def prepare_request(
-    self,
-    *,
-    model_name: str,
-    messages: Sequence[LLMMessage],
-    temperature: float,
-    tools: list[AvailableTool] | None,
-    max_tokens: int | None,
-    tool_choice: StrToolChoice | AvailableTool | None,
-    enable_streaming: bool,
-    provider: ProviderConfig,
-    api_key: str | None = None,
-    thinking: str = "off",
+ self,
+ *,
+ model_name: str,
+ messages: Sequence[LLMMessage],
+ temperature: float,
+ tools: list[AvailableTool] | None,
+ max_tokens: int | None,
+ tool_choice: StrToolChoice | AvailableTool | None,
+ enable_streaming: bool,
+ provider: ProviderConfig,
+ api_key: str | None = None,
+ thinking: str = "off",
 ) -> PreparedRequest:
 ```
 
@@ -394,39 +394,39 @@ def prepare_request(
 **Exemple d'implémentation (simplifié)** :
 ```python
 class OpenAIAdapter(APIAdapter):
-    endpoint = "/chat/completions"
-    
-    def prepare_request(self, *, model_name, messages, temperature, ...):
-        # 1. Convertir les messages
-        converted_messages = [
-            {"role": msg.role.value, "content": msg.content}
-            for msg in messages
-        ]
-        
-        # 2. Construire la payload
-        payload = {
-            "model": model_name,
-            "messages": converted_messages,
-            "temperature": temperature,
-        }
-        
-        # 3. Ajouter le streaming si nécessaire
-        if enable_streaming:
-            payload["stream"] = True
-            payload["stream_options"] = {"include_usage": True}
-        
-        # 4. Construire les headers
-        headers = {"Content-Type": "application/json"}
-        if api_key:
-            headers["Authorization"] = f"Bearer {api_key}"
-        
-        # 5. Retourner la requête préparée
-        body = json.dumps(payload).encode("utf-8")
-        return PreparedRequest(
-            endpoint=self.endpoint,
-            headers=headers,
-            body=body
-        )
+ endpoint = "/chat/completions"
+ 
+ def prepare_request(self, *, model_name, messages, temperature, ...):
+ # 1. Convertir les messages
+ converted_messages = [
+ {"role": msg.role.value, "content": msg.content}
+ for msg in messages
+ ]
+ 
+ # 2. Construire la payload
+ payload = {
+ "model": model_name,
+ "messages": converted_messages,
+ "temperature": temperature,
+ }
+ 
+ # 3. Ajouter le streaming si nécessaire
+ if enable_streaming:
+ payload["stream"] = True
+ payload["stream_options"] = {"include_usage": True}
+ 
+ # 4. Construire les headers
+ headers = {"Content-Type": "application/json"}
+ if api_key:
+ headers["Authorization"] = f"Bearer {api_key}"
+ 
+ # 5. Retourner la requête préparée
+ body = json.dumps(payload).encode("utf-8")
+ return PreparedRequest(
+ endpoint=self.endpoint,
+ headers=headers,
+ body=body
+ )
 ```
 
 #### 3. `parse_response()` - Parsing de la Réponse
@@ -434,9 +434,9 @@ class OpenAIAdapter(APIAdapter):
 ```python
 @abstractmethod
 def parse_response(
-    self,
-    data: dict[str, Any],
-    provider: ProviderConfig,
+ self,
+ data: dict[str, Any],
+ provider: ProviderConfig,
 ) -> LLMChunk:
 ```
 
@@ -455,88 +455,88 @@ def parse_response(
 **Exemple de données d'entrée (OpenAI)** :
 ```json
 {
-  "id": "chatcmpl-abc123",
-  "object": "chat.completion",
-  "created": 1234567890,
-  "model": "gpt-4",
-  "choices": [
-    {
-      "index": 0,
-      "message": {
-        "role": "assistant",
-        "content": "Bonjour !",
-        "tool_calls": null
-      },
-      "finish_reason": "stop"
-    }
-  ],
-  "usage": {
-    "prompt_tokens": 10,
-    "completion_tokens": 5,
-    "total_tokens": 15
-  }
+ "id": "chatcmpl-abc123",
+ "object": "chat.completion",
+ "created": 1234567890,
+ "model": "gpt-4",
+ "choices": [
+ {
+ "index": 0,
+ "message": {
+ "role": "assistant",
+ "content": "Bonjour !",
+ "tool_calls": null
+ },
+ "finish_reason": "stop"
+ }
+ ],
+ "usage": {
+ "prompt_tokens": 10,
+ "completion_tokens": 5,
+ "total_tokens": 15
+ }
 }
 ```
 
 **Exemple de données d'entrée (Anthropic)** :
 ```json
 {
-  "id": "msg_abc123",
-  "type": "message",
-  "role": "assistant",
-  "content": [
-    {"type": "text", "text": "Bonjour !"}
-  ],
-  "model": "claude-3-sonnet",
-  "stop_reason": "end_turn",
-  "stop_sequence": null,
-  "usage": {
-    "input_tokens": 10,
-    "output_tokens": 5
-  }
+ "id": "msg_abc123",
+ "type": "message",
+ "role": "assistant",
+ "content": [
+ {"type": "text", "text": "Bonjour !"}
+ ],
+ "model": "claude-3-sonnet",
+ "stop_reason": "end_turn",
+ "stop_sequence": null,
+ "usage": {
+ "input_tokens": 10,
+ "output_tokens": 5
+ }
 }
 ```
 
 **Exemple d'implémentation (simplifié)** :
 ```python
 class OpenAIAdapter(APIAdapter):
-    def parse_response(self, data, provider):
-        # 1. Extraire le message
-        choice = data["choices"][0]
-        message_dict = choice["message"]
-        
-        # 2. Créer LLMMessage
-        message = LLMMessage(
-            role=Role(message_dict["role"]),
-            content=message_dict.get("content"),
-            tool_calls=self._parse_tool_calls(message_dict.get("tool_calls"))
-        )
-        
-        # 3. Extraire l'usage
-        usage_data = data.get("usage", {})
-        usage = LLMUsage(
-            prompt_tokens=usage_data.get("prompt_tokens", 0),
-            completion_tokens=usage_data.get("completion_tokens", 0)
-        )
-        
-        # 4. Extraire la raison d'arrêt
-        stop = StopInfo(reason=choice.get("finish_reason"))
-        
-        # 5. Retourner le chunk
-        return LLMChunk(
-            message=message,
-            usage=usage,
-            stop=stop
-        )
+ def parse_response(self, data, provider):
+ # 1. Extraire le message
+ choice = data["choices"][0]
+ message_dict = choice["message"]
+ 
+ # 2. Créer LLMMessage
+ message = LLMMessage(
+ role=Role(message_dict["role"]),
+ content=message_dict.get("content"),
+ tool_calls=self._parse_tool_calls(message_dict.get("tool_calls"))
+ )
+ 
+ # 3. Extraire l'usage
+ usage_data = data.get("usage", {})
+ usage = LLMUsage(
+ prompt_tokens=usage_data.get("prompt_tokens", 0),
+ completion_tokens=usage_data.get("completion_tokens", 0)
+ )
+ 
+ # 4. Extraire la raison d'arrêt
+ stop = StopInfo(reason=choice.get("finish_reason"))
+ 
+ # 5. Retourner le chunk
+ return LLMChunk(
+ message=message,
+ usage=usage,
+ stop=stop
+ )
 ```
 
 #### 4. `parse_stream()` - Parsing du Stream
 
 ```python
 async def parse_stream(
-    self,
-    responses: AsyncGenerator[dict[str, Any]],
-    provider: ProviderConfig,
+ self,
+ responses: AsyncGenerator[dict[str, Any]],
+ provider: ProviderConfig,
 ) -> AsyncGenerator[ParsedStreamChunk]:
 ```
 
@@ -554,16 +554,16 @@ async def parse_stream(
 **Implémentation par défaut** :
 ```python
 async def parse_stream(
-    self, responses: AsyncGenerator[dict[str, Any]], provider: ProviderConfig
+ self, responses: AsyncGenerator[dict[str, Any]], provider: ProviderConfig
 ) -> AsyncGenerator[ParsedStreamChunk]:
-    async with aclosing(responses):
-        async for data in responses:
-            yield ParsedStreamChunk(data, self.parse_response(data, provider))
+ async with aclosing(responses):
+ async for data in responses:
+ yield ParsedStreamChunk(data, self.parse_response(data, provider))
 ```
 
 **Note** : Certains adapters (comme `AnthropicAdapter` ou `OpenAIResponsesAdapter`) **surchargent** cette méthode pour gérer des streams plus complexes avec état.
 
-### 💡 Pourquoi APIAdapter est-il Important ?
+### Pourquoi APIAdapter est-il Important ?
 
 1. **Isolation des formats** : Chaque provider a son propre format, l'adapter le gère
 2. **Centralisation** : La logique de conversion est au même endroit
@@ -571,7 +571,7 @@ async def parse_stream(
 4. **Extensibilité** : Ajouter un provider = créer un nouvel adapter
 5. **Testabilité** : Facile de tester chaque adapter indépendamment
 
-### 📌 Implémentations de APIAdapter
+### Implémentations de APIAdapter
 
 Actuellement, ces classes implémentent APIAdapter :
 
@@ -585,42 +585,11 @@ Actuellement, ces classes implémentent APIAdapter :
 
 ---
 
-## 🔄 Interaction entre BackendLike et APIAdapter
+## Interaction entre BackendLike et APIAdapter
 
-### 🎯 Comment Ils Travailent Ensemble
+### Comment Ils Travailent Ensemble
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│  INTERACTION : BackendLike + APIAdapter                         │
-└─────────────────────────────────────────────────────────────────┘
-
-┌─────────────────┐         ┌─────────────────┐         ┌─────────────┐
-│    Backend       │         │    Adapter       │         │    API      │
-│   (BackendLike)   │         │   (APIAdapter)   │         │  (Provider) │
-├─────────────────┤         ├─────────────────┤         ├─────────────┤
-│  complete()      │──────▶ │  prepare_request│──────▶ │  Requête    │
-│  streaming()     │         │                 │         │  HTTP       │
-└─────────────────┘         └────────┬────────┘         └──────┬──────┘
-                              │                          │
-                              │   ┌──────────────────────┐   │
-                              │   │      Response        │   │
-                              │   │      (JSON)          │   │
-                              │   └──────────┬─────────┘   │
-                              │              │              │
-                              │              ▼              │
-                              │   ┌──────────────────────┐   │
-                              │   │  parse_response()    │ ◀──┘
-                              │   │  parse_stream()      │
-                              │   └──────────┬─────────┘
-                              │              │
-                              ▼              ▼
-                         ┌─────────────────┐
-                         │    LLMChunk      │
-                         │    (Vibe)       │
-                         └─────────────────┘
-```
-
-### 📋 Exemple Complet : Requête avec GenericBackend
+### Exemple Complet : Requête avec GenericBackend
 
 ```python
 # 1. Création du backend
@@ -628,11 +597,11 @@ backend = create_backend(provider=provider_config)
 
 # 2. Appel à complete()
 async with backend:
-    chunk = await backend.complete(
-        model=model,
-        messages=messages,
-        temperature=0.2
-    )
+ chunk = await backend.complete(
+ model=model,
+ messages=messages,
+ temperature=0.2
+ )
 ```
 
 **Ce qui se passe sous le capot** :
@@ -644,20 +613,20 @@ async with backend:
 api_key, api_key_origin = self._resolve_credential(api_style)
 
 # Étape 2 : Sélectionner l'adapter
-adapter = _get_adapter(api_style)  # Retourne OpenAIAdapter() par exemple
+adapter = _get_adapter(api_style) # Retourne OpenAIAdapter() par exemple
 
 # Étape 3 : Préparer la requête
 req = adapter.prepare_request(
-    model_name=model.name,
-    messages=messages,
-    temperature=temperature,
-    tools=None,
-    max_tokens=None,
-    tool_choice=None,
-    enable_streaming=False,
-    provider=self._provider,
-    api_key=api_key,
-    thinking=model.thinking,
+ model_name=model.name,
+ messages=messages,
+ temperature=temperature,
+ tools=None,
+ max_tokens=None,
+ tool_choice=None,
+ enable_streaming=False,
+ provider=self._provider,
+ api_key=api_key,
+ thinking=model.thinking,
 )
 
 # Étape 4 : Envoyer la requête HTTP
@@ -671,24 +640,24 @@ chunk = adapter.parse_response(response.data, self._provider)
 return chunk
 ```
 
-### 💡 Comprendre la Séparation
+### Comprendre la Séparation
 
 | Responsabilité | BackendLike | APIAdapter |
 |----------------|-------------|-------------|
-| Transport HTTP | ✅ Oui | ❌ Non |
-| Gestion du streaming | ✅ Oui | ⚠️ Partiel |
-| Retry et Pacing | ✅ Oui | ❌ Non |
-| Tracing | ✅ Oui | ❌ Non |
-| Conversion des formats | ❌ Non | ✅ Oui |
-| Parsing des réponses | ❌ Non | ✅ Oui |
-| Gestion des spécificités API | ❌ Non | ✅ Oui |
+| Transport HTTP | Oui | Non |
+| Gestion du streaming | Oui | ️ Partiel |
+| Retry et Pacing | Oui | Non |
+| Tracing | Oui | Non |
+| Conversion des formats | Non | Oui |
+| Parsing des réponses | Non | Oui |
+| Gestion des spécificités API | Non | Oui |
 
-**BackendLike** = **Transport et Logique Métier**  
+**BackendLike** = **Transport et Logique Métier** 
 **APIAdapter** = **Traduction et Parsing**
 
 ---
 
-## 📚 Fonctions Utilitaires dans base.py
+## Fonctions Utilitaires dans base.py
 
 Le fichier `base.py` contient également des **fonctions utilitaires** partagées par tous les adapters :
 
@@ -696,8 +665,8 @@ Le fichier `base.py` contient également des **fonctions utilitaires** partagée
 
 ```python
 def apply_reasoning_effort(payload: dict[str, Any], thinking: str) -> None:
-    if thinking != "off":
-        payload["reasoning_effort"] = thinking
+ if thinking != "off":
+ payload["reasoning_effort"] = thinking
 ```
 
 **Rôle** : Ajoute le champ `reasoning_effort` à la payload si le reasoning est activé.
@@ -713,30 +682,30 @@ apply_reasoning_effort(payload, "high")
 
 ```python
 def build_chat_payload(
-    *,
-    model_name: str,
-    messages: list[dict[str, Any]],
-    temperature: float,
-    tools: list[AvailableTool] | None,
-    max_tokens: int | None,
-    tool_choice: StrToolChoice | AvailableTool | None,
-    thinking: str,
+ *,
+ model_name: str,
+ messages: list[dict[str, Any]],
+ temperature: float,
+ tools: list[AvailableTool] | None,
+ max_tokens: int | None,
+ tool_choice: StrToolChoice | AvailableTool | None,
+ thinking: str,
 ) -> dict[str, Any]:
-    payload: dict[str, Any] = {
-        "model": model_name,
-        "messages": messages,
-        "temperature": temperature,
-    }
-    apply_reasoning_effort(payload, thinking)
-    if tools:
-        payload["tools"] = [tool.model_dump(exclude_none=True) for tool in tools]
-    if tool_choice:
-        payload["tool_choice"] = (
-            tool_choice if isinstance(tool_choice, str) else tool_choice.model_dump()
-        )
-    if max_tokens is not None:
-        payload["max_tokens"] = max_tokens
-    return payload
+ payload: dict[str, Any] = {
+ "model": model_name,
+ "messages": messages,
+ "temperature": temperature,
+ }
+ apply_reasoning_effort(payload, thinking)
+ if tools:
+ payload["tools"] = [tool.model_dump(exclude_none=True) for tool in tools]
+ if tool_choice:
+ payload["tool_choice"] = (
+ tool_choice if isinstance(tool_choice, str) else tool_choice.model_dump()
+ )
+ if max_tokens is not None:
+ payload["max_tokens"] = max_tokens
+ return payload
 ```
 
 **Rôle** : Construit une **payload de chat standardisée** avec tous les paramètres courants.
@@ -744,13 +713,13 @@ def build_chat_payload(
 **Utilisation** :
 ```python
 payload = build_chat_payload(
-    model_name="gpt-4",
-    messages=converted_messages,
-    temperature=0.2,
-    tools=tools,
-    max_tokens=100,
-    tool_choice="auto",
-    thinking="medium"
+ model_name="gpt-4",
+ messages=converted_messages,
+ temperature=0.2,
+ tools=tools,
+ max_tokens=100,
+ tool_choice="auto",
+ thinking="medium"
 )
 ```
 
@@ -758,10 +727,10 @@ payload = build_chat_payload(
 
 ```python
 def build_auth_headers(api_key: str | None) -> dict[str, str]:
-    headers: dict[str, str] = {"Content-Type": "application/json"}
-    if api_key:
-        headers["Authorization"] = f"Bearer {api_key}"
-    return headers
+ headers: dict[str, str] = {"Content-Type": "application/json"}
+ if api_key:
+ headers["Authorization"] = f"Bearer {api_key}"
+ return headers
 ```
 
 **Rôle** : Construit les **headers d'authentification** pour une requête API.
@@ -776,19 +745,19 @@ headers = build_auth_headers("sk-1234567890")
 
 ```python
 def finalize_chat_request(
-    *,
-    payload: dict[str, Any],
-    enable_streaming: bool,
-    stream_options: dict[str, Any],
-    api_key: str | None,
-    endpoint: str,
+ *,
+ payload: dict[str, Any],
+ enable_streaming: bool,
+ stream_options: dict[str, Any],
+ api_key: str | None,
+ endpoint: str,
 ) -> PreparedRequest:
-    if enable_streaming:
-        payload["stream"] = True
-        payload["stream_options"] = stream_options
-    headers = build_auth_headers(api_key)
-    body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
-    return PreparedRequest(endpoint, headers, body)
+ if enable_streaming:
+ payload["stream"] = True
+ payload["stream_options"] = stream_options
+ headers = build_auth_headers(api_key)
+ body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+ return PreparedRequest(endpoint, headers, body)
 ```
 
 **Rôle** : Finalise une requête en ajoutant le streaming, les headers et en encodant le body.
@@ -797,11 +766,11 @@ def finalize_chat_request(
 ```python
 payload = build_chat_payload(...)
 req = finalize_chat_request(
-    payload=payload,
-    enable_streaming=True,
-    stream_options={"include_usage": True},
-    api_key="sk-1234567890",
-    endpoint="/chat/completions"
+ payload=payload,
+ enable_streaming=True,
+ stream_options={"include_usage": True},
+ api_key="sk-1234567890",
+ endpoint="/chat/completions"
 )
 ```
 
@@ -810,22 +779,22 @@ req = finalize_chat_request(
 **`PreparedRequest`** : Structure immutable pour une requête préparée
 ```python
 class PreparedRequest(NamedTuple):
-    endpoint: str
-    headers: dict[str, str]
-    body: bytes
-    base_url: str = ""
+ endpoint: str
+ headers: dict[str, str]
+ body: bytes
+ base_url: str = ""
 ```
 
 **`ParsedStreamChunk`** : Structure pour un chunk de stream parsé
 ```python
 class ParsedStreamChunk(NamedTuple):
-    data: dict[str, Any]  # Données brutes
-    chunk: LLMChunk         # Chunk parsé
+ data: dict[str, Any] # Données brutes
+ chunk: LLMChunk # Chunk parsé
 ```
 
 ---
 
-## 🎓 À Retenir
+## À Retenir
 
 ### Points Clés sur BackendLike
 
@@ -849,10 +818,10 @@ class ParsedStreamChunk(NamedTuple):
 BackendLike (Transport) + APIAdapter (Traduction) = Backend Complet
 ```
 
-**BackendLike** = **Comment** envoyer/recevoir les données  
+**BackendLike** = **Comment** envoyer/recevoir les données 
 **APIAdapter** = **Que** envoyer/recevoir et **comment** les traduire
 
-### 📚 Prochaine Étape
+### Prochaine Étape
 
 Pour comprendre **comment les backends sont créés**, lisez :
 → **[Factory : Création Intelligente des Backends](./04-FACTORY.md)**
