@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Permissions - Mistral Vibe</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <style>
+        :root {
+            --bg-primary: #ffffff;
+            --bg-secondary: #f8f9fa;
+            --bg-tertiary: #e9ecef;
+            --text-primary: #212529;
+            --text-secondary: #6c757d;
+            --accent: #0d6efd;
+            --success: #28a745;
+            --warning: #ffc107;
+            --danger: #dc3545;
+            --border: #dee2e6;
+            --shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+            --radius: 8px;
+            --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            --font-size: 16px;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg-primary: #1a1d21;
+                --bg-secondary: #212529;
+                --bg-tertiary: #2b3035;
+                --text-primary: #e1e5eb;
+                --text-secondary: #9ca3af;
+                --accent: #3f8ef7;
+                --border: #495057;
+                --shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            }
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        html { font-size: var(--font-size); }
+        
+        body {
+            font-family: var(--font);
+            line-height: 1.6;
+            color: var(--text-primary);
+            background: var(--bg-primary);
+        }
+
+        /* BARRE DE NAVIGATION EN HAUT */
+        .navbar {
+            position: sticky;
+            top: 0;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            padding: 12px 20px;
+            z-index: 100;
+            overflow-x: auto;
+        }
+
+        .navbar ul {
+            list-style: none;
+            display: flex;
+            gap: 20px;
+            white-space: nowrap;
+            margin: 0;
+            padding: 0;
+        }
+
+        .navbar a {
+            text-decoration: none;
+            color: var(--text-primary);
+            padding: 8px 12px;
+            border-radius: var(--radius);
+            transition: background 0.2s;
+        }
+
+        .navbar a:hover {
+            background: var(--bg-tertiary);
+        }
+
+        .navbar a.active {
+            background: var(--accent);
+            color: white;
+        }
+
+        /* Conteneur principal */
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Titres avec scroll-margin-top */
+        h1, h2, h3 { 
+            color: var(--text-primary); 
+            scroll-margin-top: 80px; 
+        }
+        
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 20px;
+            border-bottom: 3px solid var(--accent);
+            padding-bottom: 10px;
+        }
+        
+        h2 {
+            font-size: 1.8em;
+            margin: 40px 0 20px;
+            color: var(--accent);
+            border-bottom: 2px solid var(--accent);
+            padding-bottom: 10px;
+        }
+        
+        h3 {
+            font-size: 1.3em;
+            margin: 25px 0 15px;
+        }
+
+        p {
+            margin: 10px 0;
+            font-size: var(--font-size);
+        }
+
+        /* Message principal */
+        .message-principal {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 25px;
+            margin: 20px 0;
+            font-size: 1.1em;
+        }
+
+        /* Grille de cartes */
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px;
+            transition: transform 0.2s;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow);
+        }
+
+        .card h4 {
+            margin-top: 0;
+            color: var(--accent);
+            border-bottom: 2px solid var(--accent);
+            padding-bottom: 10px;
+            font-size: 1.1em;
+        }
+
+        .card p {
+            margin: 8px 0;
+            font-size: var(--font-size);
+        }
+
+        /* Diagramme Mermaid - PLEINE LARGEUR */
+        .mermaid-full {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 30px;
+            margin: 20px 0;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        .mermaid-full pre.mermaid {
+            max-width: 100%;
+            font-size: 16px;
+        }
+
+        .mermaid { 
+            max-width: 100%;
+            font-size: 16px;
+        }
+
+        /* Scénarios */
+        .scenario {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px;
+            margin: 15px 0;
+        }
+
+        .scenario h4 {
+            color: var(--accent);
+            margin-top: 0;
+        }
+
+        /* Boîte mise en évidence */
+        .highlight-box {
+            background: var(--bg-secondary);
+            border: 2px solid var(--accent);
+            border-radius: var(--radius);
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .highlight-box h3 {
+            color: var(--accent);
+            margin-top: 0;
+        }
+
+        /* Grille de définitions */
+        .definition-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .definition-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 18px;
+        }
+
+        .definition-card dt {
+            font-weight: bold;
+            color: var(--accent);
+            margin-bottom: 8px;
+            font-size: 1.1em;
+        }
+
+        .definition-card dd {
+            margin: 0 0 8px 0;
+            font-size: var(--font-size);
+        }
+
+        /* Grille de résumés */
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .summary-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px;
+        }
+
+        .summary-card h4 {
+            color: var(--accent);
+            margin-top: 0;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 10px;
+            font-size: 1.1em;
+        }
+
+        .summary-card > p {
+            margin: 8px 0;
+            font-size: var(--font-size);
+        }
+
+        .summary-card .a-retenir {
+            font-weight: bold;
+            color: var(--accent);
+            margin-top: 10px;
+        }
+
+        .summary-card .read-more {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid var(--border);
+        }
+
+        .summary-card .read-more a {
+            color: var(--accent);
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        /* Points importants - UN PAR LIGNE */
+        .points-list {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .point-item {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 15px 20px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .point-item .numero {
+            font-size: 1.8em;
+            font-weight: bold;
+            color: var(--accent);
+            min-width: 40px;
+            text-align: center;
+        }
+
+        .point-item p {
+            font-size: 1.1em;
+            margin: 0;
+            flex: 1;
+        }
+
+        .nav-bottom {
+            margin: 40px 0 20px;
+            padding: 20px 0;
+            border-top: 1px solid var(--border);
+            font-size: var(--font-size);
+        }
+
+        /* Code */
+        code {
+            font-family: 'SF Mono', monospace;
+            font-size: 0.9em;
+            background: var(--bg-tertiary);
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+
+        .code-ref {
+            font-family: 'SF Mono', monospace;
+            font-size: 0.85em;
+            color: var(--text-secondary);
+            background: var(--bg-tertiary);
+            padding: 5px 8px;
+            border-radius: 3px;
+            display: inline-block;
+            margin-top: 5px;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .navbar ul {
+                flex-wrap: nowrap;
+                overflow-x: auto;
+                padding-bottom: 5px;
+            }
+            
+            .cards-grid,
+            .definition-grid,
+            .summary-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            h1 { font-size: 2em; }
+            h2 { font-size: 1.4em; }
+            
+            .mermaid-full {
+                padding: 15px;
+            }
+            .mermaid-full pre.mermaid {
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- BARRE DE NAVIGATION EN HAUT -->
+    <nav class="navbar">
+        <ul>
+            <li><a href="#permissions">Permissions</a></li>
+            <li><a href="#scenarios">Scénarios</a></li>
+            <li><a href="#mots-nouveaux">Mots nouveaux</a></li>
+            <li><a href="#resume-pages">Résumé des pages du rapport</a></li>
+            <li><a href="#points-importants">Points importants</a></li>
+        </ul>
+    </nav>
+
+    <div class="container">
+        <main>
+            <h1>Système de permissions de Mistral Vibe</h1>
+
+            <!-- MESSAGE PRINCIPAL -->
+            <section>
+                <div class="message-principal">
+                    <p>
+                        Le système demande la permission avant toute action à risque.
+                    </p>
+                    <p>
+                        C'est comme un vigile qui vérifie avant d'ouvrir une porte.
+                    </p>
+                </div>
+            </section>
+
+            <!-- PERMISSIONS -->
+            <section id="permissions">
+                <h2>Permissions</h2>
+                <div class="cards-grid">
+                    <div class="card">
+                        <h4>ALWAYS</h4>
+                        <p><strong>Explication :</strong> L'outil s'exécute sans demander.</p>
+                        <p><em>Exemple :</em> Lire un fichier dans son dossier de projet.</p>
+                        <p><span class="code-ref">vibe/core/tools/models.py:L12-20</span></p>
+                    </div>
+                    <div class="card">
+                        <h4>NEVER</h4>
+                        <p><strong>Explication :</strong> L'outil est toujours bloqué.</p>
+                        <p><em>Exemple :</em> Désactiver complètement les commandes bash.</p>
+                        <p><span class="code-ref">vibe/core/agent_loop/_loop.py:L3047-3051</span></p>
+                    </div>
+                    <div class="card">
+                        <h4>ASK</h4>
+                        <p><strong>Explication :</strong> L'outil demande avant de s'exécuter.</p>
+                        <p><em>Exemple :</em> Écrire un fichier ou lancer une commande.</p>
+                        <p><span class="code-ref">vibe/core/agent_loop/_loop.py:L3053-3065</span></p>
+                    </div>
+                    <div class="card">
+                        <h4>allowlist</h4>
+                        <p><strong>Explication :</strong> Liste des actions toujours autorisées.</p>
+                        <p><em>Exemple :</em> <code>git status</code> ou <code>ls</code> peuvent être autorisés.</p>
+                        <p><span class="code-ref">vibe/core/tools/builtins/bash.py:L80-95</span></p>
+                    </div>
+                    <div class="card">
+                        <h4>denylist</h4>
+                        <p><strong>Explication :</strong> Liste des actions toujours bloquées.</p>
+                        <p><em>Exemple :</em> <code>sudo</code> ou <code>rm -rf /</code> sont bloqués.</p>
+                        <p><span class="code-ref">vibe/core/tools/builtins/bash.py:L98-110</span></p>
+                    </div>
+                    <div class="card">
+                        <h4>Fichiers sensibles</h4>
+                        <p><strong>Explication :</strong> Fichiers avec des secrets. Toujours une demande.</p>
+                        <p><em>Exemple :</em> <code>.env</code> ou <code>.ssh/</code>.</p>
+                        <p><span class="code-ref">vibe/core/tools/utils.py:L210-218</span></p>
+                    </div>
+                    <div class="card">
+                        <h4>Règles temporaires/permanentes</h4>
+                        <p><strong>Explication :</strong> Autoriser une fois, pour la session, ou toujours.</p>
+                        <p><em>Exemple :</em> Cliquer sur « Always allow » dans la fenêtre.</p>
+                        <p><span class="code-ref">vibe/cli/textual_ui/widgets/approval_app.py:L42-47</span></p>
+                    </div>
+                    <div class="card">
+                        <h4>Workspace</h4>
+                        <p><strong>Explication :</strong> Dossier du projet. Hors workspace = demande.</p>
+                        <p><em>Exemple :</em> Lire <code>/etc/passwd</code> demande confirmation.</p>
+                        <p><span class="code-ref">vibe/core/tools/utils.py:L225-238</span></p>
+                    </div>
+                    <div class="card">
+                        <h4>Permissions vs isolation</h4>
+                        <p><strong>Explication :</strong> Demander la permission vs bloquer techniquement.</p>
+                        <p><em>Exemple :</em> Pas de cage technique. Juste un vigile.</p>
+                        <p><span class="code-ref">non vérifié hors tests</span></p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SCENARIOS -->
+            <section id="scenarios">
+                <h2>Scénarios</h2>
+                
+                <!-- DIAGRAMME PLEINE LARGEUR -->
+                <div class="mermaid-full">
+                    <pre class="mermaid">flowchart TB
+    A[Outil appelé] --> B{Permission globale?}
+    B -->|NEVER| C[Bloqué]
+    B -->|ALWAYS| D{Fichier sensible?}
+    B -->|ASK| E[Demander]
+    D -->|Oui| E
+    D -->|Non| F[OK]
+    E --> G[Utilisateur]
+    G -->|Allow| F
+    G -->|Deny| C
+    
+    style C fill:#ff6b6b,stroke:#c91818,color:#fff
+    style E fill:#ffd166,stroke:#c98400,color:#333
+    style F fill:#06d6a0,stroke:#048f68,color:#333</pre>
+                </div>
+                <p style="text-align: center; margin-top: -15px; margin-bottom: 20px;"><em>Rouge = bloqué, Orange = demande, Vert = autorisé</em></p>
+
+                <div class="scenario">
+                    <h4>Lecture dans le workspace</h4>
+                    <p><strong>Comment ça se passe :</strong> L'agent veut lire un fichier dans son dossier. Il peut le faire sans demander.</p>
+                </div>
+
+                <div class="scenario">
+                    <h4>Écriture dans le workspace</h4>
+                    <p><strong>Comment ça se passe :</strong> L'agent veut écrire un fichier. Il doit demander la permission.</p>
+                </div>
+
+                <div class="scenario">
+                    <h4>Accès hors workspace</h4>
+                    <p><strong>Comment ça se passe :</strong> L'agent veut lire un fichier hors de son dossier. Il doit demander la permission.</p>
+                </div>
+
+                <div class="scenario">
+                    <h4>Fichier .env</h4>
+                    <p><strong>Comment ça se passe :</strong> L'agent veut lire un fichier avec des secrets. Il doit demander, même si tout est autorisé.</p>
+                </div>
+
+                <div class="scenario">
+                    <h4>Commande allowlistée</h4>
+                    <p><strong>Comment ça se passe :</strong> L'agent veut lancer <code>git status</code>. Il peut le faire sans demander.</p>
+                </div>
+
+                <div class="scenario">
+                    <h4>Commande denylistée</h4>
+                    <p><strong>Comment ça se passe :</strong> L'agent veut lancer <code>sudo</code>. Il doit demander la permission.</p>
+                </div>
+
+                <div class="scenario">
+                    <h4>Commande avec sudo</h4>
+                    <p><strong>Comment ça se passe :</strong> L'agent veut utiliser sudo. Il doit demander la permission.</p>
+                </div>
+
+                <div class="scenario">
+                    <h4>Permission déjà accordée</h4>
+                    <p><strong>Comment ça se passe :</strong> L'utilisateur a déjà autorisé cette action. L'agent peut l'exécuter.</p>
+                </div>
+
+                <div class="scenario">
+                    <h4>Refus (Deny ou Esc)</h4>
+                    <p><strong>Comment ça se passe :</strong> L'utilisateur dit non ou appuie sur Échap. L'action est annulée. L'agent continue son travail.</p>
+                </div>
+
+                <div class="highlight-box">
+                    <h3>En cas de refus ?</h3>
+                    <p><strong>L'agent reçoit :</strong> Un message d'erreur indiquant que l'action est refusée.</p>
+                    <p><strong>L'agent continue :</strong> Oui, il passe à l'étape suivante. <strong>Journalisé :</strong> Oui, dans les logs (<code>_loop.py:L2863-2868</code>)</p>
+                </div>
+            </section>
+
+            <!-- MOTS NOUVEAUX -->
+            <section id="mots-nouveaux">
+                <h2>Mots nouveaux</h2>
+                <div class="definition-grid">
+                    <div class="definition-card">
+                        <dt>permission</dt>
+                        <dd>Autoriser ou refuser une action.</dd>
+                        <dd><em>Exemple :</em> Comme un vigile qui contrôle l'entrée.</dd>
+                    </div>
+                    <div class="definition-card">
+                        <dt>workspace</dt>
+                        <dd>Dossier du projet où l'agent travaille.</dd>
+                        <dd><em>Exemple :</em> Comme un bureau où tout est autorisé.</dd>
+                    </div>
+                    <div class="definition-card">
+                        <dt>allowlist</dt>
+                        <dd>Liste des actions toujours autorisées.</dd>
+                        <dd><em>Exemple :</em> Comme une liste de clients VIP.</dd>
+                    </div>
+                    <div class="definition-card">
+                        <dt>denylist</dt>
+                        <dd>Liste des actions toujours interdites.</dd>
+                        <dd><em>Exemple :</em> Comme une liste noire.</dd>
+                    </div>
+                    <div class="definition-card">
+                        <dt>motif sensible</dt>
+                        <dd>Fichier contenant des secrets. Toujours une demande.</dd>
+                        <dd><em>Exemple :</em> <code>.env</code> avec des mots de passe.</dd>
+                    </div>
+                    <div class="definition-card">
+                        <dt>session</dt>
+                        <dd>Période où l'utilisateur utilise l'agent.</dd>
+                        <dd><em>Exemple :</em> Comme une conversation qui dure 1 heure.</dd>
+                    </div>
+                    <div class="definition-card">
+                        <dt>scope</dt>
+                        <dd>Type de permission : fichier, commande, URL.</dd>
+                        <dd><em>Exemple :</em> Permission pour un fichier ou une commande.</dd>
+                    </div>
+                    <div class="definition-card">
+                        <dt>sandbox</dt>
+                        <dd>Cage technique qui limite les actions. Vibe n'en utilise pas.</dd>
+                        <dd><em>Exemple :</em> Comme une prison pour un programme.</dd>
+                    </div>
+                    <div class="definition-card">
+                        <dt>ADR</dt>
+                        <dd>Document qui explique une décision technique.</dd>
+                        <dd><em>Exemple :</em> ADR 0004 explique le contrat des outils.</dd>
+                    </div>
+                    <div class="definition-card">
+                        <dt>tool contract</dt>
+                        <dd>Règles que chaque outil doit respecter.</dd>
+                        <dd><em>Exemple :</em> Comme un contrat de travail.</dd>
+                    </div>
+                    <div class="definition-card">
+                        <dt>edge case</dt>
+                        <dd>Cas rare ou compliqué.</dd>
+                        <dd><em>Exemple :</em> Comme un chemin avec <code>..</code>.</dd>
+                    </div>
+                </div>
+            </section>
+
+            <!-- RESUME DES PAGES -->
+            <section id="resume-pages">
+                <h2>Résumé des pages du rapport</h2>
+                <div class="summary-grid">
+                    <div class="summary-card">
+                        <h4>Niveaux et modes</h4>
+                        <p>Présente les trois niveaux de permission : TOUJOURS autoriser, JAMAIS autoriser, DEMANDER.</p>
+                        <p>Explique aussi les listes d'autorisation et de refus, et les fichiers sensibles.</p>
+                        <p class="a-retenir">À retenir : Les fichiers sensibles demandent toujours confirmation.</p>
+                        <div class="read-more"><a href="../configuration/permissions/01-niveaux-et-modes.md">Lire la page</a></div>
+                    </div>
+                    <div class="summary-card">
+                        <h4>Déroulement et scénarios</h4>
+                        <p>Montre comment le système décide d'autoriser ou non une action.</p>
+                        <p>Détaille tous les cas possibles : lecture, écriture, fichiers sensibles, commandes dangereuses.</p>
+                        <p class="a-retenir">À retenir : En cas de refus, l'agent continue son travail.</p>
+                        <div class="read-more"><a href="../configuration/permissions/02-deroulement-et-scenarios.md">Lire la page</a></div>
+                    </div>
+                    <div class="summary-card">
+                        <h4>Fichiers utilisateur</h4>
+                        <p>Explique comment configurer les permissions dans le fichier <code>config.toml</code>.</p>
+                        <p>Décrit les 4 options de la fenêtre d'approbation : une fois, pour la session, toujours, refuser.</p>
+                        <p class="a-retenir">À retenir : « Toujours autoriser » écrit la règle dans config.toml.</p>
+                        <div class="read-more"><a href="../configuration/permissions/03-fichiers-utilisateur.md">Lire la page</a></div>
+                    </div>
+                    <div class="summary-card">
+                        <h4>Fichiers et modules</h4>
+                        <p>Montre tous les fichiers du code qui gèrent les permissions.</p>
+                        <p>Organisés en couches : interface, application, outils, stockage, configuration.</p>
+                        <p class="a-retenir">À retenir : Tous les outils (plugins, MCP) passent par le même système.</p>
+                        <div class="read-more"><a href="../configuration/permissions/04-fichiers-et-modules.md">Lire la page</a></div>
+                    </div>
+                    <div class="summary-card">
+                        <h4>Sécurité et isolation</h4>
+                        <p>Liste les 7 protections intégrées : fichiers sensibles, limites du workspace, analyse des commandes.</p>
+                        <p>Confirme qu'il n'y a pas d'isolation technique (sandbox) au niveau du système.</p>
+                        <p class="a-retenir">À retenir : Vibe protège en demandant, pas en enfermant.</p>
+                        <div class="read-more"><a href="../configuration/permissions/05-securite-et-sandbox.md">Lire la page</a></div>
+                    </div>
+                    <div class="summary-card">
+                        <h4>Cas limites</h4>
+                        <p>Analyse 9 cas compliqués : chemins avec <code>..</code>, liens symboliques, commandes enchaînées.</p>
+                        <p>Pour chaque cas, explique ce qui se passe vraiment dans le code.</p>
+                        <p class="a-retenir">À retenir : La liste de refus prime toujours sur la liste d'autorisation.</p>
+                        <div class="read-more"><a href="../configuration/permissions/06-edge-cases.md">Lire la page</a></div>
+                    </div>
+                    <div class="summary-card">
+                        <h4>ADR et contrat des outils</h4>
+                        <p>Liste tous les documents ADR liés aux permissions.</p>
+                        <p>Explique en détail le contrat des outils (ADR 0004) que tous doivent respecter.</p>
+                        <p class="a-retenir">À retenir : ADR 0004 est le document central pour comprendre les permissions.</p>
+                        <div class="read-more"><a href="../configuration/permissions/07-adr-et-contrat-des-outils.md">Lire la page</a></div>
+                    </div>
+                    <div class="summary-card">
+                        <h4>Tests et qualité</h4>
+                        <p>Présente les tests qui vérifient que les permissions fonctionnent.</p>
+                        <p>Identifie les cas qui ne sont pas encore testés.</p>
+                        <p class="a-retenir">À retenir : La couverture de tests est bonne mais peut être améliorée.</p>
+                        <div class="read-more"><a href="../configuration/permissions/08-tests-et-qualite.md">Lire la page</a></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- POINTS IMPORTANTS - UN PAR LIGNE -->
+            <section id="points-importants">
+                <h2>Points importants à retenir</h2>
+                <div class="points-list">
+                    <div class="point-item">
+                        <span class="numero">1</span>
+                        <p>Le serveur vérifie tout. Les clients ne décident pas.</p>
+                    </div>
+                    <div class="point-item">
+                        <span class="numero">2</span>
+                        <p>Chaque outil doit déclarer ses besoins en permissions.</p>
+                    </div>
+                    <div class="point-item">
+                        <span class="numero">3</span>
+                        <p>La liste de refus prime sur la liste d'autorisation.</p>
+                    </div>
+                    <div class="point-item">
+                        <span class="numero">4</span>
+                        <p>Un refus n'arrête pas l'agent. Il continue son travail.</p>
+                    </div>
+                    <div class="point-item">
+                        <span class="numero">5</span>
+                        <p>Vibe demande la permission. Il n'isole pas techniquement.</p>
+                    </div>
+                </div>
+            </section>
+
+            <div class="nav-bottom">
+                Présentation des permissions - Mistral Vibe
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Initialiser Mermaid
+        mermaid.initialize({
+            startOnLoad: true,
+            securityLevel: 'loose',
+            theme: window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'default'
+        });
+
+        // Mettre à jour si le thème change
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
+            mermaid.initialize({
+                startOnLoad: true,
+                securityLevel: 'loose',
+                theme: e.matches ? 'dark' : 'default'
+            });
+        });
+
+        // Gestion du sommaire actif
+        document.addEventListener('DOMContentLoaded', function() {
+            const navbar = document.querySelector('.navbar');
+            const links = navbar.querySelectorAll('a');
+            const sections = document.querySelectorAll('section');
+
+            function updateActiveLink() {
+                let current = '';
+                const fromTop = window.scrollY + 80;
+
+                sections.forEach(section => {
+                    const sectionTop = section.offsetTop;
+                    const sectionHeight = section.offsetHeight;
+                    const sectionId = section.getAttribute('id');
+                    
+                    if (sectionId && fromTop >= sectionTop - 20 && fromTop < sectionTop + sectionHeight - 20) {
+                        current = sectionId;
+                    }
+                });
+
+                links.forEach(link => {
+                    link.classList.remove('active');
+                    if (link.getAttribute('href') === '#' + current) {
+                        link.classList.add('active');
+                    }
+                });
+            }
+
+            updateActiveLink();
+            window.addEventListener('scroll', updateActiveLink);
+
+            // Scroll fluide
+            links.forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const targetId = this.getAttribute('href').substring(1);
+                    const targetElement = document.getElementById(targetId);
+                    if (targetElement) {
+                        window.scrollTo({
+                            top: targetElement.offsetTop - 20,
+                            behavior: 'smooth'
+                        });
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>
