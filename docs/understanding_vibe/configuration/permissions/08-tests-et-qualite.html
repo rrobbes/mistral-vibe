@@ -5,12 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tests et qualité - Mistral Vibe</title>
     <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
 </head>
 <body>
     <nav>
         <div class="nav-container">
             <a href="index.html" class="nav-title">Permissions Vibe</a>
-            <div class="nav-links">
+            <button class="nav-toggle" onclick="toggleMobileNav()" aria-label="Menu">☰</button>
+            <div class="nav-links" id="navLinks">
                 <a href="index.html">Accueil</a>
                 <a href="01-niveaux-et-modes.html">Niveaux & Modes</a>
                 <a href="02-deroulement-et-scenarios.html">Déroulement</a>
@@ -25,7 +27,8 @@
         </div>
     </nav>
 
-    <main class="main-content">
+    <div class="page-container">
+        <main class="main-content">
         <h1>Tests et qualité</h1>
 
         <section>
@@ -468,11 +471,29 @@ uv run ruff check --fix .
                 <p><strong>Recommandation principale :</strong> Ajouter des tests pour ces edge cases et améliorer la documentation des comportements spécifiques.</p>
             </div>
         </section>
-    </main>
+        </main>
+    </div>
 
     <div class="nav-bottom">
         <a href="07-adr-et-contrat-des-outils.html">← Précédent : ADR et contrat des outils</a>
         <a href="presentation.html">Suivant : Présentation →</a>
     </div>
+
+    <script>
+        // Navigation mobile
+        function toggleMobileNav() {
+            const navLinks = document.getElementById('navLinks');
+            navLinks.classList.toggle('mobile-open');
+        }
+
+        // Initialisation
+        document.addEventListener('DOMContentLoaded', function() {
+            mermaid.initialize({
+                startOnLoad: false,
+                securityLevel: 'loose',
+                theme: window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'default'
+            });
+        });
+    </script>
 </body>
 </html>

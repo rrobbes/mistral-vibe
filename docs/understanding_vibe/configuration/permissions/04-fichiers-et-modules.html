@@ -11,7 +11,8 @@
     <nav>
         <div class="nav-container">
             <a href="index.html" class="nav-title">Permissions Vibe</a>
-            <div class="nav-links">
+            <button class="nav-toggle" onclick="toggleMobileNav()" aria-label="Menu">☰</button>
+            <div class="nav-links" id="navLinks">
                 <a href="index.html">Accueil</a>
                 <a href="01-niveaux-et-modes.html">Niveaux & Modes</a>
                 <a href="02-deroulement-et-scenarios.html">Déroulement</a>
@@ -26,7 +27,8 @@
         </div>
     </nav>
 
-    <main class="main-content">
+    <div class="page-container">
+        <main class="main-content">
         <h1>Fichiers et modules internes</h1>
 
         <section id="architecture">
@@ -35,7 +37,9 @@
                 Le système de permissions est distribué selon plusieurs couches de l'architecture de Mistral Vibe :
             </p>
 
-            <pre class="mermaid">
+            <div class="mermaid-container">
+                <div class="mermaid-wrapper">
+                    <pre class="mermaid">
 flowchart TB
     subgraph Interface["Couche Interface"]
         A1[UI Textual]
@@ -73,10 +77,13 @@ flowchart TB
     C4 -->|stocke règles| B2
     B2 -->|lit| D1
     D1 -->|charge| D2
-</pre>
-            <figcaption>
-                <strong>Comment lire ce diagramme :</strong> Les flèches montrent les dépendances entre couches. L'Interface (UI/ACP) communique avec l'App Server qui valide via l'Agent Loop. Le Core contient la logique métier, et la Configuration fournit les paramètres.
-            </figcaption>
+                    </pre>
+                </div>
+                <figcaption>
+                    <strong>Comment lire ce diagramme :</strong> Les flèches montrent les dépendances entre couches. L'Interface (UI/ACP) communique avec l'App Server qui valide via l'Agent Loop. Le Core contient la logique métier, et la Configuration fournit les paramètres.
+                </figcaption>
+                <button class="mermaid-fullscreen-btn" onclick="openFullscreenMermaid(this)">Agrandir</button>
+            </div>
         </section>
 
         <section>
@@ -904,34 +911,93 @@ flowchart TB
                 <li><strong>Persistence des permissions permanentes</strong> : Le mécanisme exact de persistance via <code>ConfigOrchestrator</code> n'a pas été vérifié en détail. La méthode <code>set_field_or_warn()</code> est appelée, mais le chemin exact de sauvegarde dans le fichier n'a pas été confirmé.</li>
             </ol>
         </section>
-    </main>
+        </main>
+    </div>
 
     <div class="nav-bottom">
         <a href="03-fichiers-utilisateur.html">← Précédent : Fichiers utilisateur</a>
         <a href="05-securite-et-sandbox.html">Suivant : Sécurité et sandbox →</a>
     </div>
 
+    <!-- Modal pour plein écran -->
+    <div class="mermaid-modal" id="mermaidModal">
+        <div class="mermaid-modal-content">
+            <button class="mermaid-modal-close" onclick="closeFullscreenMermaid()">&times;</button>
+            <div id="mermaidModalContent"></div>
+        </div>
+    </div>
+
     <script>
-        // Initialisation Mermaid
-        document.addEventListener('DOMContentLoaded', function() {
+        // Configuration Mermaid
+        mermaid.initialize({
+            startOnLoad: false,
+            securityLevel: 'loose',
+            theme: window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'default'
+        });
+
+        // Re-render sur changement de thème
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
             mermaid.initialize({
-                startOnLoad: true,
-                theme: window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'default'
+                startOnLoad: false,
+                securityLevel: 'loose',
+                theme: e.matches ? 'dark' : 'default'
             });
-            
-            // Re-render on theme change
-            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
-                mermaid.initialize({
-                    startOnLoad: false,
-                    theme: e.matches ? 'dark' : 'default'
-                });
-                const diagrams = document.querySelectorAll('.mermaid');
-                diagrams.forEach(d => {
+            renderAllMermaid();
+        });
+
+        // Rendre tous les diagrammes
+        function renderAllMermaid() {
+            const diagrams = document.querySelectorAll('.mermaid');
+            diagrams.forEach(d => {
+                try {
                     const content = d.textContent;
                     d.innerHTML = content;
-                });
-                mermaid.init(undefined, document.querySelectorAll('.mermaid'));
+                    mermaid.init(undefined, d);
+                } catch (e) {
+                    console.error('Erreur Mermaid:', e);
+                    d.innerHTML = '<p style="color: red;">Erreur d\'affichage du diagramme</p>';
+                }
             });
+        }
+
+        // Navigation mobile
+        function toggleMobileNav() {
+            const navLinks = document.getElementById('navLinks');
+            navLinks.classList.toggle('mobile-open');
+        }
+
+        // Gestion du plein écran
+        function openFullscreenMermaid(button) {
+            const container = button.closest('.mermaid-container');
+            const mermaidElement = container.querySelector('.mermaid');
+            const modal = document.getElementById('mermaidModal');
+            const modalContent = document.getElementById('mermaidModalContent');
+            
+            modalContent.innerHTML = '<div class="mermaid">' + mermaidElement.textContent + '</div>';
+            modal.classList.add('active');
+            
+            mermaid.initialize({
+                startOnLoad: false,
+                securityLevel: 'loose',
+                theme: window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'default'
+            });
+            mermaid.init(undefined, modalContent.querySelector('.mermaid'));
+        }
+
+        function closeFullscreenMermaid() {
+            document.getElementById('mermaidModal').classList.remove('active');
+        }
+
+        // Fermer avec Échap
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeFullscreenMermaid();
+            }
+        });
+
+        // Initialisation
+        document.addEventListener('DOMContentLoaded', function() {
+            renderAllMermaid();
         });
     </script>
 </body>

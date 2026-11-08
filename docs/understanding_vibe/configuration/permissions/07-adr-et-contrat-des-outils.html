@@ -5,12 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ADR et contrat des outils - Mistral Vibe</title>
     <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
 </head>
 <body>
     <nav>
         <div class="nav-container">
             <a href="index.html" class="nav-title">Permissions Vibe</a>
-            <div class="nav-links">
+            <button class="nav-toggle" onclick="toggleMobileNav()" aria-label="Menu">☰</button>
+            <div class="nav-links" id="navLinks">
                 <a href="index.html">Accueil</a>
                 <a href="01-niveaux-et-modes.html">Niveaux & Modes</a>
                 <a href="02-deroulement-et-scenarios.html">Déroulement</a>
@@ -25,7 +27,8 @@
         </div>
     </nav>
 
-    <main class="main-content">
+    <div class="page-container">
+        <main class="main-content">
         <h1>ADR et contrat des outils</h1>
 
         <section>
@@ -278,7 +281,9 @@
 
         <section>
             <h2>Relations entre les ADR</h2>
-            <pre class="mermaid">
+            <div class="mermaid-container">
+                <div class="mermaid-wrapper">
+                    <pre class="mermaid">
 graph TD
     A[ADR 0004: Typed Permissioned Tools] -->|Définition du contrat| B[Agent Loop]
     A -->|Serveur autoritaire| C[App Server]
@@ -295,25 +300,101 @@ graph TD
     F -->|Sécurité| K[ADR 0015: TLS Trust]
     F -->|Compatibilité| L[ADR 0014: Backend Contract]
     F -->|Architecture| M[ADR 0001: Architecture Principles]
-</pre>
-            <figcaption>
-                <strong>Comment lire ce diagramme :</strong> L'ADR 0004 (Typed Permissioned Tools) est au centre du système de permissions. Il définit le contrat que tous les autres composants doivent appliquer. Les flèches montrent les relations de dépendance et d'héritage entre les ADR.
-            </figcaption>
+                    </pre>
+                </div>
+                <figcaption>
+                    <strong>Comment lire ce diagramme :</strong> L'ADR 0004 (Typed Permissioned Tools) est au centre du système de permissions. Il définit le contrat que tous les autres composants doivent appliquer. Les flèches montrent les relations de dépendance et d'héritage entre les ADR.
+                </figcaption>
+                <button class="mermaid-fullscreen-btn" onclick="openFullscreenMermaid(this)">Agrandir</button>
+            </div>
         </section>
-    </main>
+        </main>
+    </div>
 
     <div class="nav-bottom">
         <a href="06-edge-cases.html">← Précédent : Cas limites</a>
         <a href="08-tests-et-qualite.html">Suivant : Tests et qualité →</a>
     </div>
 
+    <!-- Modal pour plein écran -->
+    <div class="mermaid-modal" id="mermaidModal">
+        <div class="mermaid-modal-content">
+            <button class="mermaid-modal-close" onclick="closeFullscreenMermaid()">&times;</button>
+            <div id="mermaidModalContent"></div>
+        </div>
+    </div>
+
     <script>
-        // Initialisation Mermaid
-        document.addEventListener('DOMContentLoaded', function() {
+        // Configuration Mermaid
+        mermaid.initialize({
+            startOnLoad: false,
+            securityLevel: 'loose',
+            theme: window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'default'
+        });
+
+        // Re-render sur changement de thème
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
             mermaid.initialize({
-                startOnLoad: true,
+                startOnLoad: false,
+                securityLevel: 'loose',
+                theme: e.matches ? 'dark' : 'default'
+            });
+            renderAllMermaid();
+        });
+
+        // Rendre tous les diagrammes
+        function renderAllMermaid() {
+            const diagrams = document.querySelectorAll('.mermaid');
+            diagrams.forEach(d => {
+                try {
+                    const content = d.textContent;
+                    d.innerHTML = content;
+                    mermaid.init(undefined, d);
+                } catch (e) {
+                    console.error('Erreur Mermaid:', e);
+                    d.innerHTML = '<p style="color: red;">Erreur d\'affichage du diagramme</p>';
+                }
+            });
+        }
+
+        // Navigation mobile
+        function toggleMobileNav() {
+            const navLinks = document.getElementById('navLinks');
+            navLinks.classList.toggle('mobile-open');
+        }
+
+        // Gestion du plein écran
+        function openFullscreenMermaid(button) {
+            const container = button.closest('.mermaid-container');
+            const mermaidElement = container.querySelector('.mermaid');
+            const modal = document.getElementById('mermaidModal');
+            const modalContent = document.getElementById('mermaidModalContent');
+            
+            modalContent.innerHTML = '<div class="mermaid">' + mermaidElement.textContent + '</div>';
+            modal.classList.add('active');
+            
+            mermaid.initialize({
+                startOnLoad: false,
+                securityLevel: 'loose',
                 theme: window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'default'
             });
+            mermaid.init(undefined, modalContent.querySelector('.mermaid'));
+        }
+
+        function closeFullscreenMermaid() {
+            document.getElementById('mermaidModal').classList.remove('active');
+        }
+
+        // Fermer avec Échap
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeFullscreenMermaid();
+            }
+        });
+
+        // Initialisation
+        document.addEventListener('DOMContentLoaded', function() {
+            renderAllMermaid();
         });
     </script>
 </body>

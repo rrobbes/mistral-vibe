@@ -39,10 +39,12 @@
     --table-border: #dee2e6;
     --mermaid-bg: #f8f9fa;
     --mermaid-text: #212529;
-    --shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    --radius: 6px;
+    --shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    --radius: 8px;
     --transition: 0.2s ease;
-    --max-width: 800px;
+    --max-width: 1300px;
+    --content-max-width: 900px;
+    --sidebar-width: 250px;
     --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 }
 
@@ -81,17 +83,7 @@
         --table-border: #495057;
         --mermaid-bg: #1e1e1e;
         --mermaid-text: #d4d4d4;
-        --shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-    }
-    
-    /* Override Mermaid dark theme */
-    .mermaid {
-        --mermaid-bg: #1e1e1e;
-        --mermaid-node-bg: #2d2d2d;
-        --mermaid-node-text: #d4d4d4;
-        --mermaid-edge: #666666;
-        --mermaid-cluster-bg: #1a1a1a;
-        --mermaid-cluster-border: #444444;
+        --shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
     }
 }
 
@@ -107,13 +99,22 @@ html {
     line-height: 1.6;
     color: var(--text-primary);
     background-color: var(--bg-primary);
+    scroll-behavior: smooth;
 }
 
-body {
-    max-width: var(--max-width);
+/* Layout principal */
+.page-container {
+    display: flex;
+    min-height: calc(100vh - 60px); /* 60px = hauteur nav */
+    margin-top: 60px; /* Pour éviter le chevauchement avec nav sticky */
+}
+
+.main-content {
+    flex: 1;
+    max-width: var(--content-max-width);
+    padding: 30px 40px;
     margin: 0 auto;
-    padding: 20px;
-    min-height: 100vh;
+    width: 100%;
 }
 
 /* Typography */
@@ -125,23 +126,24 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 h1 {
-    font-size: 2.2em;
-    border-bottom: 2px solid var(--accent);
+    font-size: 2.5em;
+    border-bottom: 3px solid var(--accent);
     padding-bottom: 0.3em;
 }
 
 h2 {
-    font-size: 1.8em;
-    border-bottom: 1px solid var(--border);
+    font-size: 2em;
+    border-bottom: 2px solid var(--border);
     padding-bottom: 0.2em;
+    margin-top: 2em;
 }
 
 h3 {
-    font-size: 1.4em;
+    font-size: 1.6em;
 }
 
 h4 {
-    font-size: 1.2em;
+    font-size: 1.3em;
 }
 
 p {
@@ -187,31 +189,13 @@ code {
     font-size: 0.9em;
 }
 
-/* Mermaid diagrams */
-.mermaid {
-    background-color: var(--mermaid-bg);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 20px;
-    margin: 1.5em 0;
-    text-align: center;
-    font-family: var(--font-family);
-}
-
-.mermaid figcaption {
-    margin-top: 10px;
-    font-size: 0.9em;
-    color: var(--text-secondary);
-    font-style: italic;
-    text-align: center;
-}
-
-/* Tables */
+/* Tables - full width with horizontal scroll */
 table {
     width: 100%;
     border-collapse: collapse;
     margin: 1.5em 0;
     font-size: 0.95em;
+    table-layout: auto;
 }
 
 thead {
@@ -220,13 +204,18 @@ thead {
 }
 
 th, td {
-    padding: 12px;
+    padding: 12px 15px;
     text-align: left;
     border-bottom: 1px solid var(--table-border);
 }
 
 th {
     font-weight: 600;
+    white-space: nowrap;
+}
+
+td {
+    word-wrap: break-word;
 }
 
 tbody tr:nth-child(even) {
@@ -237,10 +226,18 @@ tbody tr:nth-child(odd) {
     background-color: var(--table-row-odd);
 }
 
+/* Table container for horizontal scroll */
+.table-container {
+    width: 100%;
+    overflow-x: auto;
+    border-radius: var(--radius);
+    margin: 1.5em 0;
+}
+
 /* Blockquotes and callout boxes */
 blockquote {
     border-left: 4px solid var(--accent);
-    padding: 12px 20px;
+    padding: 16px 24px;
     margin: 1.5em 0;
     background-color: var(--bg-secondary);
     border-radius: 0 var(--radius) var(--radius) 0;
@@ -248,7 +245,7 @@ blockquote {
 
 /* Note/Info boxes */
 .callout {
-    padding: 16px;
+    padding: 16px 20px;
     border-radius: var(--radius);
     margin: 1.5em 0;
     border-left: 4px solid;
@@ -311,15 +308,19 @@ li {
     margin-bottom: 0.5em;
 }
 
-/* Navigation */
+/* ============================================
+   NAVIGATION CORRIGÉE
+   ============================================ */
 nav {
-    background-color: var(--nav-bg);
-    padding: 15px 0;
-    position: sticky;
+    position: fixed;
     top: 0;
-    z-index: 100;
-    margin-bottom: 2em;
+    left: 0;
+    right: 0;
+    background-color: var(--nav-bg);
+    padding: 12px 20px;
+    z-index: 1000;
     box-shadow: var(--shadow);
+    opacity: 0.98;
 }
 
 .nav-container {
@@ -328,14 +329,15 @@ nav {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0 20px;
+    width: 100%;
 }
 
 .nav-title {
     color: var(--nav-text);
-    font-size: 1.2em;
-    font-weight: 600;
+    font-size: 1.3em;
+    font-weight: 700;
     text-decoration: none;
+    white-space: nowrap;
 }
 
 .nav-title:hover {
@@ -345,16 +347,18 @@ nav {
 
 .nav-links {
     display: flex;
-    gap: 5px;
+    gap: 4px;
     flex-wrap: wrap;
+    justify-content: center;
 }
 
 .nav-links a {
     color: var(--nav-text);
     padding: 8px 14px;
     border-radius: var(--radius);
-    transition: background-color var(--transition);
-    font-size: 0.9em;
+    transition: all var(--transition);
+    font-size: 0.88em;
+    white-space: nowrap;
 }
 
 .nav-links a:hover {
@@ -369,7 +373,143 @@ nav {
     font-weight: 600;
 }
 
-/* Previous/Next navigation */
+/* Hamburger menu pour mobile */
+.nav-toggle {
+    display: none;
+    background: none;
+    border: none;
+    color: var(--nav-text);
+    font-size: 1.5em;
+    cursor: pointer;
+    padding: 8px;
+}
+
+/* ============================================
+   DIAGRAMMES MERMAID CORRIGÉS
+   ============================================ */
+
+/* Conteneur pour les diagrammes */
+.mermaid-container {
+    position: relative;
+    margin: 2em 0;
+    width: 100%;
+    overflow: hidden;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+}
+
+.mermaid-container .mermaid-wrapper {
+    background-color: var(--mermaid-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    overflow-x: auto;
+    overflow-y: hidden;
+}
+
+/* Style pour les diagrammes Mermaid */
+.mermaid-container .mermaid {
+    max-width: 100%;
+    height: auto;
+    min-width: 100%;
+    text-align: center;
+    font-family: var(--font-family);
+}
+
+/* Bouton Agrandir */
+.mermaid-fullscreen-btn {
+    display: block;
+    width: 100%;
+    text-align: center;
+    margin-top: 12px;
+    padding: 8px 16px;
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text-secondary);
+    font-size: 0.88em;
+    cursor: pointer;
+    transition: all var(--transition);
+}
+
+.mermaid-fullscreen-btn:hover {
+    background-color: var(--bg-tertiary);
+    color: var(--text-primary);
+    border-color: var(--accent);
+}
+
+/* Figcaption pour les légendes */
+.mermaid-container figcaption {
+    margin-top: 12px;
+    font-size: 0.88em;
+    color: var(--text-secondary);
+    font-style: italic;
+    text-align: center;
+    padding: 0 10px;
+}
+
+/* Modal plein écran pour les diagrammes */
+.mermaid-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.9);
+    z-index: 2000;
+    justify-content: center;
+    align-items: center;
+}
+
+.mermaid-modal.active {
+    display: flex;
+}
+
+.mermaid-modal-content {
+    background-color: var(--bg-primary);
+    padding: 40px;
+    border-radius: var(--radius);
+    max-width: 95vw;
+    max-height: 95vh;
+    overflow: auto;
+    position: relative;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+}
+
+.mermaid-modal-close {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background: none;
+    border: none;
+    font-size: 2em;
+    cursor: pointer;
+    color: var(--text-secondary);
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all var(--transition);
+}
+
+.mermaid-modal-close:hover {
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+}
+
+.mermaid-modal .mermaid {
+    background-color: var(--mermaid-bg);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin: 0;
+}
+
+/* ============================================
+   PREVIOUS/NEXT NAVIGATION
+   ============================================ */
 .nav-bottom {
     display: flex;
     justify-content: space-between;
@@ -377,20 +517,25 @@ nav {
     margin-top: 3em;
     padding: 20px 0;
     border-top: 1px solid var(--border);
+    max-width: var(--content-max-width);
+    margin-left: auto;
+    margin-right: auto;
 }
 
 .nav-bottom a {
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    padding: 10px 20px;
+    padding: 12px 24px;
     background-color: var(--bg-secondary);
     border-radius: var(--radius);
-    transition: background-color var(--transition);
+    transition: all var(--transition);
+    font-size: 0.95em;
 }
 
 .nav-bottom a:hover {
     background-color: var(--bg-tertiary);
+    text-decoration: none;
 }
 
 .nav-bottom .disabled {
@@ -402,76 +547,14 @@ nav {
     cursor: not-allowed;
 }
 
-/* Responsive navigation */
-@media (max-width: 768px) {
-    .nav-links {
-        display: none;
-    }
-    
-    .nav-container {
-        flex-direction: column;
-        gap: 10px;
-    }
-}
-
-/* Main content */
-.main-content {
-    padding: 0;
-}
-
-/* Section styling */
-section {
-    margin-bottom: 2em;
-}
-
-/* Responsive design */
-@media (max-width: 768px) {
-    body {
-        padding: 15px;
-    }
-    
-    h1 {
-        font-size: 1.8em;
-    }
-    
-    h2 {
-        font-size: 1.5em;
-    }
-    
-    h3 {
-        font-size: 1.2em;
-    }
-    
-    table {
-        font-size: 0.85em;
-    }
-    
-    th, td {
-        padding: 8px;
-    }
-    
-    pre {
-        padding: 12px;
-        font-size: 0.85em;
-    }
-    
-    .nav-bottom {
-        flex-direction: column;
-        gap: 15px;
-    }
-    
-    .nav-bottom a {
-        width: 100%;
-        justify-content: center;
-    }
-}
-
-/* Interactive elements */
+/* ============================================
+   INTERACTIVE ELEMENTS
+   ============================================ */
 .interactive-section {
     background-color: var(--bg-secondary);
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    padding: 20px;
+    padding: 24px;
     margin: 2em 0;
 }
 
@@ -481,7 +564,7 @@ section {
 
 .interactive-section label {
     display: block;
-    margin: 10px 0 5px;
+    margin: 12px 0 8px;
     font-weight: 500;
 }
 
@@ -489,14 +572,14 @@ section {
 .interactive-section input,
 .interactive-section button {
     width: 100%;
-    padding: 10px;
+    padding: 12px;
     border: 1px solid var(--border);
     border-radius: var(--radius);
     background-color: var(--bg-primary);
     color: var(--text-primary);
     font-family: inherit;
     font-size: 1em;
-    margin-bottom: 15px;
+    margin-bottom: 16px;
 }
 
 .interactive-section button {
@@ -505,7 +588,8 @@ section {
     border: none;
     cursor: pointer;
     font-weight: 600;
-    transition: background-color var(--transition);
+    transition: all var(--transition);
+    padding: 14px;
 }
 
 .interactive-section button:hover {
@@ -514,9 +598,10 @@ section {
 
 .interactive-section .result {
     margin-top: 20px;
-    padding: 15px;
+    padding: 16px;
     border-radius: var(--radius);
     display: none;
+    animation: fadeIn 0.3s ease;
 }
 
 .interactive-section .result.visible {
@@ -541,29 +626,34 @@ section {
     color: var(--warning-text);
 }
 
-/* Glossary toggle */
+/* ============================================
+   GLOSSARY TOGGLE
+   ============================================ */
 .glossary-item {
-    margin-bottom: 10px;
+    margin-bottom: 12px;
 }
 
 .glossary-term {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 12px;
+    padding: 14px 18px;
     background-color: var(--bg-secondary);
     border-radius: var(--radius);
     cursor: pointer;
-    transition: background-color var(--transition);
+    transition: all var(--transition);
+    border: 1px solid var(--border);
 }
 
 .glossary-term:hover {
     background-color: var(--bg-tertiary);
+    border-color: var(--accent);
 }
 
 .glossary-term::after {
     content: '+ ';
     font-weight: bold;
+    font-size: 1.1em;
 }
 
 .glossary-item.active .glossary-term::after {
@@ -571,28 +661,32 @@ section {
 }
 
 .glossary-definition {
-    padding: 12px;
+    padding: 16px 18px;
     background-color: var(--bg-tertiary);
     border-radius: 0 0 var(--radius) var(--radius);
     display: none;
     margin-top: -1px;
+    border: 1px solid var(--border);
+    border-top: none;
 }
 
 .glossary-item.active .glossary-definition {
     display: block;
 }
 
-/* Steps timeline */
+/* ============================================
+   STEPS TIMELINE
+   ============================================ */
 .steps-container {
-    margin: 1.5em 0;
+    margin: 2em 0;
 }
 
 .step {
     background-color: var(--bg-secondary);
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    padding: 15px;
-    margin-bottom: 10px;
+    padding: 18px;
+    margin-bottom: 14px;
     cursor: pointer;
     transition: all var(--transition);
 }
@@ -600,23 +694,26 @@ section {
 .step:hover {
     border-color: var(--accent);
     box-shadow: var(--shadow);
+    transform: translateY(-1px);
 }
 
 .step.active {
     background-color: var(--note-bg);
     border-color: var(--note-border);
+    box-shadow: var(--shadow);
 }
 
 .step-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 10px;
+    margin-bottom: 12px;
 }
 
 .step-time {
-    font-weight: bold;
+    font-weight: 700;
     color: var(--accent);
+    font-size: 1.05em;
 }
 
 .step-content {
@@ -625,63 +722,204 @@ section {
 
 .step.active .step-content {
     display: block;
+    animation: fadeIn 0.3s ease;
 }
 
 .step-toggle {
-    font-size: 0.8em;
+    font-size: 0.85em;
     color: var(--text-secondary);
+    font-weight: 500;
 }
 
-/* Toggle button for questions */
+/* ============================================
+   TOGGLE BUTTON FOR QUESTIONS
+   ============================================ */
 .toggle-questions {
     background-color: var(--bg-secondary);
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    padding: 12px 20px;
+    padding: 14px 24px;
     cursor: pointer;
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    margin-bottom: 20px;
+    gap: 10px;
+    margin-bottom: 24px;
     transition: all var(--transition);
+    font-weight: 500;
 }
 
 .toggle-questions:hover {
     background-color: var(--bg-tertiary);
+    border-color: var(--accent);
 }
 
 .toggle-questions::before {
     content: '▶ ';
     transition: transform 0.2s;
+    font-size: 0.9em;
 }
 
 .toggle-questions.active::before {
     transform: rotate(90deg);
 }
 
-/* Print styles */
-@media print {
+/* ============================================
+   RESPONSIVE DESIGN
+   ============================================ */
+
+@media (max-width: 1024px) {
+    .main-content {
+        padding: 25px 30px;
+    }
+    
+    .page-container {
+        margin-top: 56px;
+    }
+    
     nav {
+        padding: 10px 15px;
+    }
+}
+
+@media (max-width: 768px) {
+    html {
+        font-size: 15px;
+    }
+    
+    .main-content {
+        padding: 20px;
+    }
+    
+    .page-container {
+        margin-top: 52px;
+    }
+    
+    h1 {
+        font-size: 2em;
+    }
+    
+    h2 {
+        font-size: 1.7em;
+    }
+    
+    h3 {
+        font-size: 1.4em;
+    }
+    
+    .nav-links {
         display: none;
     }
     
-    body {
-        max-width: none;
-        padding: 0;
+    .nav-container {
+        justify-content: space-between;
+    }
+    
+    .nav-title {
+        font-size: 1.1em;
+    }
+    
+    /* Mobile navigation toggle */
+    .nav-toggle {
+        display: block;
+    }
+    
+    .nav-links.mobile-open {
+        display: flex;
+        flex-direction: column;
+        position: absolute;
+        top: 52px;
+        left: 15px;
+        right: 15px;
+        background-color: var(--nav-bg);
+        padding: 12px;
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        gap: 6px;
+    }
+    
+    .nav-links.mobile-open a {
+        padding: 10px 12px;
+        font-size: 0.9em;
+    }
+    
+    table {
+        font-size: 0.85em;
+    }
+    
+    th, td {
+        padding: 10px 12px;
+    }
+    
+    pre {
+        padding: 14px;
+        font-size: 0.85em;
     }
     
     .nav-bottom {
-        display: none;
+        flex-direction: column;
+        gap: 16px;
+    }
+    
+    .nav-bottom a {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .mermaid-container .mermaid-wrapper {
+        padding: 16px;
+    }
+    
+    /* Fullscreen button on mobile */
+    .mermaid-fullscreen-btn {
+        padding: 10px;
+        font-size: 0.85em;
+    }
+}
+
+/* ============================================
+   PRINT STYLES
+   ============================================ */
+@media print {
+    nav {
+        display: none !important;
+    }
+    
+    .page-container {
+        margin-top: 0 !important;
+    }
+    
+    body {
+        padding: 0 !important;
+    }
+    
+    .main-content {
+        padding: 0 !important;
+        max-width: none !important;
+    }
+    
+    .nav-bottom {
+        display: none !important;
+    }
+    
+    .mermaid-modal {
+        display: none !important;
     }
     
     pre {
         page-break-inside: avoid;
     }
+    
+    .mermaid-container {
+        page-break-inside: avoid;
+    }
 }
 
-/* Scrollbar styling */
+/* ============================================
+   SCROLLBAR STYLING
+   ============================================ */
 ::-webkit-scrollbar {
     width: 10px;
+    height: 10px;
 }
 
 ::-webkit-scrollbar-track {
@@ -697,7 +935,9 @@ section {
     background: var(--text-muted);
 }
 
-/* Animation for interactive elements */
+/* ============================================
+   ANIMATIONS
+   ============================================ */
 @keyframes fadeIn {
     from { opacity: 0; transform: translateY(-10px); }
     to { opacity: 1; transform: translateY(0); }
@@ -705,4 +945,21 @@ section {
 
 .fade-in {
     animation: fadeIn 0.3s ease;
+}
+
+/* ============================================
+   OVERLAY FOR MERMAID MODAL
+   ============================================ */
+@media (prefers-color-scheme: dark) {
+    .mermaid-container .mermaid-wrapper {
+        background-color: #1e1e1e;
+    }
+    
+    .mermaid-modal-content {
+        background-color: #1a1d21;
+    }
+    
+    .mermaid-modal .mermaid {
+        background-color: #1e1e1e;
+    }
 }

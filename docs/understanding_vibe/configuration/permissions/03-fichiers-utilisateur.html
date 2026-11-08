@@ -5,12 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Fichiers utilisateur - Mistral Vibe</title>
     <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
 </head>
 <body>
     <nav>
         <div class="nav-container">
             <a href="index.html" class="nav-title">Permissions Vibe</a>
-            <div class="nav-links">
+            <button class="nav-toggle" onclick="toggleMobileNav()" aria-label="Menu">☰</button>
+            <div class="nav-links" id="navLinks">
                 <a href="index.html">Accueil</a>
                 <a href="01-niveaux-et-modes.html">Niveaux & Modes</a>
                 <a href="02-deroulement-et-scenarios.html">Déroulement</a>
@@ -25,7 +27,8 @@
         </div>
     </nav>
 
-    <main class="main-content">
+    <div class="page-container">
+        <main class="main-content">
         <h1>Fichiers utilisateur</h1>
 
         <section>
@@ -313,11 +316,29 @@ allowlist = ["vibe-path:exact:/etc/hosts"]
 </code></pre>
             <p><strong>Note :</strong> Le format <code>vibe-path:exact:/etc/hosts</code> est généré par <code>path_grant_pattern()</code> (<code>vibe/permissions.py:L47-52</code>)</p>
         </section>
-    </main>
+        </main>
+    </div>
 
     <div class="nav-bottom">
         <a href="02-deroulement-et-scenarios.html">← Précédent : Déroulement et scénarios</a>
         <a href="04-fichiers-et-modules.html">Suivant : Fichiers et modules →</a>
     </div>
+
+    <script>
+        // Navigation mobile
+        function toggleMobileNav() {
+            const navLinks = document.getElementById('navLinks');
+            navLinks.classList.toggle('mobile-open');
+        }
+
+        // Initialisation
+        document.addEventListener('DOMContentLoaded', function() {
+            mermaid.initialize({
+                startOnLoad: false,
+                securityLevel: 'loose',
+                theme: window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'default'
+            });
+        });
+    </script>
 </body>
 </html>
