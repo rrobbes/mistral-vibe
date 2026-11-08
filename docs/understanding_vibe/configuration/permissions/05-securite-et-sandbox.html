@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sécurité et sandbox - Mistral Vibe</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <nav>
+        <div class="nav-container">
+            <a href="index.html" class="nav-title">Permissions Vibe</a>
+            <div class="nav-links">
+                <a href="index.html">Accueil</a>
+                <a href="01-niveaux-et-modes.html">Niveaux & Modes</a>
+                <a href="02-deroulement-et-scenarios.html">Déroulement</a>
+                <a href="03-fichiers-utilisateur.html">Fichiers</a>
+                <a href="04-fichiers-et-modules.html">Modules</a>
+                <a href="05-securite-et-sandbox.html" class="active">Sécurité</a>
+                <a href="06-edge-cases.html">Edge Cases</a>
+                <a href="07-adr-et-contrat-des-outils.html">ADR & Contrat</a>
+                <a href="08-tests-et-qualite.html">Tests</a>
+                <a href="presentation.html">Présentation</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="main-content">
+        <h1>Sécurité et sandbox</h1>
+
+        <section>
+            <h2>Protections intégrées</h2>
+
+            <h3>1. Détection des fichiers sensibles</h3>
+            <p><strong>Mécanisme :</strong> Les motifs sensibles (<code>sensitive_patterns</code>) déclenchent <strong>obligatoirement</strong> une demande de confirmation (<code>ToolPermission.ASK</code>), même si la permission globale de l'outil est <code>ALWAYS</code>.</p>
+            <p><strong>Implémentation :</strong></p>
+            <ul>
+                <li>Dans <code>vibe/core/tools/utils.py:L210-218</code> (<code>resolve_file_tool_permission</code>) :
+                    <pre><code>if matches_sensitive_pattern(file_str, sensitive_patterns):
+    required.append(RequiredPermission(
+        scope=PermissionScope.FILE_PATTERN,
+        invocation_pattern=file_str,
+        session_pattern=glob.escape(file_str),
+        label=f"accessing sensitive files ({tool_name})",
+    ))
+</code></pre>
+                </li>
+                <li>Dans <code>vibe/core/tools/builtins/bash.py</code> : Détection spécifique de <code>sudo</code></li>
+            </ul>
+            <p><strong>Exemples de motifs sensibles :</strong></p>
+            <ul>
+                <li>Fichiers : <code>**/.env</code>, <code>**/.env.*</code>, <code>**/.envrc</code>, <code>**/.ssh/*</code>, <code>**/config.json</code></li>
+                <li>Commandes : <code>sudo</code>, <code>passwd</code></li>
+            </ul>
+            <p><strong>Source :</strong> <code>vibe/core/tools/utils.py:L210-218</code></p>
+
+            <h3>2. Vérification des limites du workspace</h3>
+            <p><strong>Mécanisme :</strong> Tout accès à un fichier ou répertoire <strong>en dehors du workspace</strong> nécessite une permission explicite.</p>
+            <p><strong>Implémentation :</strong></p>
+            <ul>
+                <li><code>vibe/core/tools/utils.py:L225-238</code> (<code>resolve_file_tool_permission</code>) :
+                    <pre><code>if not is_path_within_workdir(path_str, workspace=workspace):
+    if config_permission == ToolPermission.NEVER:
+        return PermissionContext(permission=ToolPermission.NEVER)
+    resolved = str(file_path.resolve())
+    required.append(RequiredPermission(
+        scope=PermissionScope.OUTSIDE_DIRECTORY,
+        invocation_pattern=resolved,
+        session_pattern=path_grant_pattern(resolved, PathGrantScope.EXACT),
+        label=f"outside workdir ({resolved})",
+        path_scope_root=shell_path_scope_root(resolved),
+    ))
+</code></pre>
+                </li>
+                <li><code>vibe/core/workspace.py</code> : Définit les racines de confiance du workspace</li>
+            </ul>
+            <p><strong>Comportement :</strong></p>
+            <ul>
+                <li>Si <code>config_permission == NEVER</code> pour l'outil → <strong>refus immédiat</strong></li>
+                <li>Sinon → demande d'approbation avec <code>RequiredPermission(scope=OUTSIDE_DIRECTORY)</code></li>
+            </ul>
+            <p><strong>Source :</strong> <code>vibe/core/tools/utils.py:L225-238</code>, <code>vibe/core/workspace.py:L1-100</code></p>
+
+            <h3>3. Analyse syntaxique des commandes shell</h3>
+            <p><strong>Mécanisme :</strong> Analyse approfondie des commandes bash pour détecter les motifs dangereux.</p>
+            <p><strong>Implémentation :</strong></p>
+            <ul>
+                <li><strong>tree-sitter</strong> : Parser syntaxique utilisé dans <code>_shell_permission_analysis.py</code></li>
+                <li>Détection de :
+                    <ul>
+                        <li><strong>Commandes enchaînées</strong> : <code>&&</code>, <code>||</code>, <code>;</code>, <code>&</code></li>
+                        <li><strong>Substitutions</strong> : <code>$(...)</code>, <code>`...`</code></li>
+                        <li><strong>Expansions</strong> : <code>${...}</code>, <code>$VAR</code></li>
+                        <li><strong>Groupements</strong> : <code>(...)</code>, <code>{...}</code></li>
+                        <li><strong>Redirections</strong> : <code>&gt;</code>, <code>&gt;&gt;</code>, <code>&lt;</code>, <code>2&gt;</code>, <code>|</code></li>
+                        <li><strong>Nœuds dynamiques</strong> : <code>command_substitution</code>, <code>arithmetic_expansion</code>, <code>variable_assignment</code>, etc.</li>
+                    </ul>
+                </li>
+            </ul>
+            <p><strong>Source :</strong> <code>vibe/core/tools/builtins/_shell_permission_analysis.py:L1-150</code></p>
+
+            <h3>4. Listes de refus par défaut</h3>
+            <p><strong>Mécanisme :</strong> Certaines commandes sont <strong>toujours bloquées</strong> ou nécessitent une approbation explicite.</p>
+            <p><strong>Implémentation dans <code>vibe/core/tools/builtins/bash.py</code> :</strong></p>
+            <pre><code>_DEFAULT_DENYLIST = [
+    "gdb", "pdb", "passwd",
+    # POSIX
+    "nano", "vim", "vi", "emacs", "bash -i", "sh -i", "zsh -i", 
+    "fish -i", "dash -i", "screen", "tmux",
+    # Windows
+    "cmd /k", "powershell -NoExit", "pwsh -NoExit", "notepad"
+]
+
+_DEFAULT_DENYLIST_STANDALONE = [
+    "python", "python3", "ipython",
+    # Windows
+    "cmd", "powershell", "pwsh", "notepad"
+]
+
+_DEFAULT_ALLOWLIST = [
+    "cd", "echo", "git diff", "git log", "git status", "tree", "whoami",
+    # + commandes en lecture seule selon le système
+]
+</code></pre>
+            <p><strong>Source :</strong> <code>vibe/core/tools/builtins/bash.py:L80-110</code></p>
+
+            <h3>5. Guardrails (protections spécifiques)</h3>
+            <p><strong>Mécanisme :</strong> Détection de motifs nécessitant une approbation spécifique.</p>
+            <p><strong>Implémentation :</strong></p>
+            <ul>
+                <li><code>vibe/core/tools/builtins/_shell_command_policy.py</code> :
+                    <ul>
+                        <li><code>git_repository_requires_approval()</code> : Détecte les commandes git dans un repository</li>
+                        <li><code>has_option_guardrails()</code> : Vérifie les options dangereuses</li>
+                        <li><code>git_repository_identity()</code> : Identifie les repositories git</li>
+                    </ul>
+                </li>
+            </ul>
+            <p><strong>Exemple :</strong> Les commandes git dans un repository peuvent nécessiter une approbation spécifique selon la configuration.</p>
+            <p><strong>Source :</strong> <code>vibe/core/tools/builtins/_shell_command_policy.py:L1-150</code></p>
+
+            <h3>6. Normalisation des chemins</h3>
+            <p><strong>Mécanisme :</strong> Gestion des différences entre systèmes (Windows vs POSIX).</p>
+            <p><strong>Implémentation :</strong></p>
+            <ul>
+                <li><code>vibe/permissions.py:L40-90</code> :
+                    <ul>
+                        <li><code>_is_windows_path()</code> : Détecte les chemins Windows</li>
+                        <li><code>_normalized_path()</code> : Normalise les chemins selon le système</li>
+                        <li><code>path_grant_pattern()</code> : Encode une permission de chemin sans donner de sens aux caractères globaux</li>
+                        <li><code>path_pattern_matches()</code> : Match les permissions encodées et les anciens motifs globaux</li>
+                    </ul>
+                </li>
+            </ul>
+            <p><strong>Source :</strong> <code>vibe/permissions.py:L40-90</code></p>
+
+            <h3>7. Scratchpad (bac à sable temporaire)</h3>
+            <p><strong>Mécanisme :</strong> Les fichiers dans le scratchpad sont <strong>toujours autorisés</strong> sans demande de permission.</p>
+            <p><strong>Implémentation :</strong></p>
+            <ul>
+                <li><code>vibe/core/tools/utils.py:L187-190</code> :
+                    <pre><code>if is_scratchpad_path(path_str, scratchpad_dir=scratchpad_dir):
+    return PermissionContext(permission=ToolPermission.ALWAYS)
+</code></pre>
+                </li>
+                <li>Le scratchpad est un répertoire temporaire où l'agent peut écrire des fichiers sans restriction</li>
+            </ul>
+            <p><strong>Source :</strong> <code>vibe/core/tools/utils.py:L187-190</code>, <code>vibe/core/scratchpad.py:L1-50</code></p>
+        </section>
+
+        <section>
+            <h2>Limites du système</h2>
+
+            <h3>1. Dépendance à l'analyse syntaxique</h3>
+            <div class="callout warning">
+                <p><strong>Problème :</strong> Commandes complexes ou mal formées peuvent échapper à la détection.</p>
+                <p><strong>Exemples :</strong></p>
+                <ul>
+                    <li>Commandes avec des variables non résolues : <code>rm $FILE</code> (si <code>$FILE</code> pointe vers un chemin dangereux)</li>
+                    <li>Commandes avec des substitutions imbriquées : <code>eval $(echo "rm -rf /")</code></li>
+                    <li>Commandes avec des caractères spéciaux mal échappés</li>
+                </ul>
+                <p><strong>Atténuation :</strong></p>
+                <ul>
+                    <li>Analyse syntaxique avec tree-sitter (meilleure que regex)</li>
+                    <li>Détection des nœuds dynamiques (command_substitution, etc.)</li>
+                    <li>Demande d'approbation pour toute commande non analysable</li>
+                </ul>
+            </div>
+            <p><strong>Source :</strong> <code>_shell_permission_analysis.py:L80-100</code> (détection des nœuds non fidèles)</p>
+
+            <h3>2. Configuration utilisateur</h3>
+            <div class="callout danger">
+                <p><strong>Problème :</strong> L'utilisateur peut <strong>désactiver les protections</strong> en modifiant la configuration.</p>
+                <p><strong>Exemples :</strong></p>
+                <ul>
+                    <li><code>bypass_tool_permissions = true</code> → <strong>contourne toutes les vérifications</strong></li>
+                    <li><code>tools.bash.permission = "always"</code> avec <code>denylist = []</code> → <strong>autorise toutes les commandes bash</strong></li>
+                </ul>
+                <p><strong>Atténuation :</strong></p>
+                <ul>
+                    <li>Aucune protection contre la mauvaise configuration utilisateur</li>
+                    <li>Documentation claire des risques</li>
+                    <li>Messages d'avertissement dans les logs</li>
+                </ul>
+            </div>
+            <p><strong>Source :</strong> <code>vibe/core/config/vibe_schema.py:L630</code> (<code>bypass_tool_permissions</code>)</p>
+
+            <h3>3. Outils personnalisés (custom tools)</h3>
+            <div class="callout warning">
+                <p><strong>Problème :</strong> Les outils personnalisés (plugins, MCP, connectors) peuvent <strong>contourner le système de permission</strong> s'ils ne respectent pas le contrat.</p>
+                <p><strong>Atténuation :</strong></p>
+                <ul>
+                    <li>Tous les outils <strong>doivent</strong> hériter de <code>BaseTool</code> et implémenter <code>resolve_permission()</code></li>
+                    <li><code>ToolManager</code> vérifie que les outils sont valides avant de les enregistrer</li>
+                    <li>Les outils MCP et connectors sont intégrés via <code>ToolManager</code> et passent par le même système</li>
+                </ul>
+            </div>
+            <p><strong>Source :</strong> <code>vibe/core/tools/manager.py:L200-250</code>, <code>L560-600</code></p>
+
+            <h3>4. Fausses positives/négatives</h3>
+            <div class="callout warning">
+                <p><strong>Problème :</strong> Erreurs de classification possibles.</p>
+                <p><strong>Exemples :</strong></p>
+                <ul>
+                    <li><strong>Fausse positive</strong> : Une commande inoffensive est bloquée parce qu'elle correspond à un motif de denylist</li>
+                    <li><strong>Fausse négative</strong> : Une commande dangereuse n'est pas détectée par l'analyse syntaxique</li>
+                </ul>
+                <p><strong>Atténuation :</strong></p>
+                <ul>
+                    <li>Allowlist/denylist configurables par l'utilisateur</li>
+                    <li>Possibilité de contourner une décision (en modifiant la config)</li>
+                    <li>Logs détaillés des décisions de permission</li>
+                </ul>
+            </div>
+
+            <h3>5. Performances</h3>
+            <div class="callout warning">
+                <p><strong>Problème :</strong> L'analyse syntaxique des commandes complexes peut être <strong>lente</strong>.</p>
+                <p><strong>Atténuation :</strong></p>
+                <ul>
+                    <li>Utilisation de tree-sitter (parseur efficace)</li>
+                    <li>Cache des analyses déjà effectuées</li>
+                    <li>Analyse en arrière-plan pour les commandes longues</li>
+                </ul>
+                <p><strong>Note :</strong> Ce point n'a pas été vérifié dans le code. Aucune mesure de performance n'a été trouvée.</p>
+            </div>
+
+            <h3>6. Cross-platform</h3>
+            <div class="callout warning">
+                <p><strong>Problème :</strong> Différences de comportement entre Windows et POSIX.</p>
+                <p><strong>Atténuation :</strong></p>
+                <ul>
+                    <li>Normalisation des chemins (<code>_normalized_path()</code>)</li>
+                    <li>Gestion séparée des outils : <code>bash.py</code> (POSIX) vs <code>windows_shell.py</code> (Windows)</li>
+                    <li>Détection du système (<code>uses_posix_shell()</code>)</li>
+                </ul>
+            </div>
+            <p><strong>Source :</strong> <code>vibe/permissions.py:L40-90</code>, <code>vibe/core/tools/builtins/bash.py:L1-50</code></p>
+        </section>
+
+        <section>
+            <h2>Sandbox : Y en a-t-il une ?</h2>
+
+            <h3>Recherche exhaustive</h3>
+            <p><strong>Recherche effectuée :</strong></p>
+            <pre><code># Recherche dans tout le dépôt (code Python, Rust, docs, ADR)
+grep -r "sandbox\|isolation\|confinement\|chroot\|seccomp\|container\|namespace\|cgroup" \
+  /home/ben-ayed-yasmine/Desktop/Agentique/mistral-vibe/ \
+  --include="*.py" --include="*.rs" --include="*.md" --include="*.toml"
+</code></pre>
+
+            <p><strong>Résultat :</strong> <strong>Aucune occurrence</strong> trouvée dans :</p>
+            <ul>
+                <li>Le code Python (<code>vibe/</code>)</li>
+                <li>Le code Rust (<code>vibe/cli-rust/</code>, <code>harness/</code>)</li>
+                <li>La documentation (<code>docs/</code>)</li>
+                <li>Les ADR (<code>docs/adr/</code>)</li>
+            </ul>
+
+            <h3>Conclusion</h3>
+            <div class="callout danger">
+                <p><strong>❌ Mistral Vibe n'utilise PAS de sandbox technique.</strong></p>
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th><strong>Permissions</strong></th>
+                        <th><strong>Sandbox</strong></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Demander l'autorisation à l'utilisateur avant d'exécuter des actions sensibles</td>
+                        <td>Limiter techniquement ce que le processus peut faire</td>
+                    </tr>
+                    <tr>
+                        <td>Implémenté via <code>ToolPermission</code>, <code>PermissionStore</code>, <code>resolve_permission()</code></td>
+                        <td>Implémenté via seccomp, namespaces, chroot, conteneurs</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Présent</strong> dans Mistral Vibe</td>
+                        <td><strong>Absent</strong> dans Mistral Vibe</td>
+                    </tr>
+                    <tr>
+                        <td>Niveau <strong>application</strong></td>
+                        <td>Niveau <strong>système d'exploitation</strong></td>
+                    </tr>
+                    <tr>
+                        <td>Peut être contourné par une mauvaise configuration</td>
+                        <td>Ne peut pas être contourné (sauf bug du kernel)</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <p><strong>Le système de permissions de Mistral Vibe est uniquement basé sur :</strong></p>
+            <ol>
+                <li>La <strong>demande d'autorisation</strong> avant les actions sensibles</li>
+                <li>La <strong>détection de motifs dangereux</strong> (denylist, fichiers sensibles, etc.)</li>
+                <li>La <strong>validation des chemins</strong> (workspace boundaries)</li>
+                <li>L'<strong>analyse syntaxique</strong> des commandes</li>
+            </ol>
+
+            <p><strong>Il n'y a AUCUNE isolation technique au niveau du système d'exploitation.</strong></p>
+
+            <h3>Conséquences</h3>
+            <div class="callout danger">
+                <p><strong>⚠️ Les permissions ne protègent pas contre :</strong></p>
+                <ul>
+                    <li>Un bug dans le code de Vibe lui-même</li>
+                    <li>Un accès direct au système par d'autres moyens</li>
+                    <li>Une exécution de code avec des privilèges élevés (sudo, root)</li>
+                    <li>Une exploitation de vulnérabilités dans les dépendances</li>
+                </ul>
+            </div>
+
+            <div class="callout success">
+                <p><strong>✅ Les permissions protègent contre :</strong></p>
+                <ul>
+                    <li>L'exécution involontaire de commandes dangereuses par l'agent</li>
+                    <li>L'accès à des fichiers sensibles sans l'approbation de l'utilisateur</li>
+                    <li>La sortie du workspace autorisé</li>
+                    <li>Les actions non intentionnelles</li>
+                </ul>
+            </div>
+
+            <h3>Recommandations de sécurité</h3>
+            <ol>
+                <li><strong>Ne pas exécuter Vibe en tant que root</strong> : Toujours utiliser un utilisateur normal</li>
+                <li><strong>Configurer correctement les permissions</strong> : Ne pas désactiver <code>bypass_tool_permissions</code></li>
+                <li><strong>Utiliser le scratchpad</strong> : Pour les fichiers temporaires sensibles</li>
+                <li><strong>Vérifier les allowlists</strong> : Ne pas autoriser de commandes dangereuses</li>
+                <li><strong>Mettre à jour régulièrement</strong> : Pour bénéficier des dernières corrections de sécurité</li>
+                <li><strong>Auditer les configurations</strong> : Vérifier que les denylists sont correctement configurées</li>
+                <li><strong>Utiliser des worktrees Git</strong> : Pour isoler les projets entre eux</li>
+            </ol>
+        </section>
+    </main>
+
+    <div class="nav-bottom">
+        <a href="04-fichiers-et-modules.html">← Précédent : Fichiers et modules</a>
+        <a href="06-edge-cases.html">Suivant : Cas limites →</a>
+    </div>
+</body>
+</html>

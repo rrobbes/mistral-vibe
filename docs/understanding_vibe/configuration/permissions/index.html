@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Système de permissions de Mistral Vibe</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <script>mermaid.initialize({ startOnLoad: true, theme: 'default' });</script>
+</head>
+<body>
+    <nav>
+        <div class="nav-container">
+            <a href="index.html" class="nav-title">Permissions Vibe</a>
+            <div class="nav-links">
+                <a href="index.html" class="active">Accueil</a>
+                <a href="01-niveaux-et-modes.html">Niveaux & Modes</a>
+                <a href="02-deroulement-et-scenarios.html">Déroulement</a>
+                <a href="03-fichiers-utilisateur.html">Fichiers</a>
+                <a href="04-fichiers-et-modules.html">Modules</a>
+                <a href="05-securite-et-sandbox.html">Sécurité</a>
+                <a href="06-edge-cases.html">Edge Cases</a>
+                <a href="07-adr-et-contrat-des-outils.html">ADR & Contrat</a>
+                <a href="08-tests-et-qualite.html">Tests</a>
+                <a href="presentation.html">Présentation</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="main-content">
+        <h1>Système de permissions de Mistral Vibe</h1>
+
+        <section>
+            <p>
+                Cette documentation explique en détail le système de permissions de Mistral Vibe, 
+                une couche de sécurité critique qui protège contre les effets de bord dangereux.
+            </p>
+        </section>
+
+        <section id="vue-densemble">
+            <h2>Vue d'ensemble</h2>
+
+            <h3>Concept général</h3>
+            <p>
+                Le système de permissions de Mistral Vibe est un mécanisme de contrôle d'accès qui régit 
+                les <strong>effets de bord</strong> générés par les outils exécutés par l'agent. Il constitue 
+                une <strong>couche de sécurité critique</strong> intégrée à l'architecture, conçue pour limiter 
+                la surface d'attaque et prévenir les actions dangereuses ou non intentionnelles.
+            </p>
+            <p>
+                Le système repose sur le principe énoncé dans l'<a href="https://github.com/rrobbes/mistral-vibe/blob/main/docs/adr/0004-typed-permissioned-tools.md">ADR 0004</a> :
+            </p>
+
+            <blockquote>
+                « <strong>Tools are typed, permissioned ports into side effects</strong> »
+            </blockquote>
+
+            <p>
+                Cela signifie que chaque outil est un <strong>port typé</strong> vers des effets de bord, 
+                et que la politique de permission fait partie intégrante du contrat que chaque outil doit respecter.
+            </p>
+
+            <h3>Risques évités</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Catégorie de risque</th>
+                        <th>Exemple concret</th>
+                        <th>Impact potentiel</th>
+                        <th>Mécanisme de protection</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Exécution de commandes dangereuses</strong></td>
+                        <td><code>rm -rf /</code>, <code>dd if=/dev/zero of=/dev/sda</code></td>
+                        <td>Destruction complète du système</td>
+                        <td>Validation par l'utilisateur, listes de refus</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Accès à des fichiers sensibles</strong></td>
+                        <td>Lecture de <code>.env</code>, <code>.ssh/id_rsa</code></td>
+                        <td>Fuites d'informations d'identification</td>
+                        <td>Détection des motifs sensibles (<code>sensitive_patterns</code>), validation</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Modification de fichiers système</strong></td>
+                        <td>Écriture dans <code>/etc/</code>, <code>/usr/bin/</code></td>
+                        <td>Corruption du système, élévation de privilèges</td>
+                        <td>Vérification des limites du workspace</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Exécution de code arbitraire</strong></td>
+                        <td><code>python -c "malicious_code"</code>, <code>curl ... | bash</code></td>
+                        <td>Exécution de payloads malveillants</td>
+                        <td>Listes de refus par défaut, validation des commandes</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Sortie du workspace autorisé</strong></td>
+                        <td><code>cat /etc/passwd</code> depuis un projet</td>
+                        <td>Accès à des données en dehors du contexte</td>
+                        <td>Vérification des boundaries du workspace via <code>is_path_within_workdir()</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Actions non intentionnelles</strong></td>
+                        <td><code>git push --force</code></td>
+                        <td>Perte de données, perturbations</td>
+                        <td>Demande de confirmation explicite</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>Philosophie du système</h3>
+            <p>
+                Le système repose sur quatre principes fondamentaux :
+            </p>
+            <ol>
+                <li><strong>Typage fort</strong> : Chaque outil déclare explicitement ses besoins en permissions via des types Pydantic (<code>ToolPermission</code>, <code>PermissionScope</code>, etc.)</li>
+                <li><strong>Granularité fine</strong> : Les permissions sont évaluées au niveau de <strong>chaque appel d'outil</strong>, avec la possibilité de scoper au niveau de la commande, du fichier ou de l'URL</li>
+                <li><strong>Transparence</strong> : L'utilisateur est toujours informé et doit explicitement approuver les actions sensibles</li>
+                <li><strong>Centralisation</strong> : L'application des permissions est <strong>centralisée côté serveur</strong> (app-server), garantissant une politique cohérente pour tous les clients</li>
+            </ol>
+            <p>
+                Le <strong>contrat de l'outil</strong> (tool contract) défini dans l'ADR 0004 impose que tous les outils (built-in, plugins, MCP, connectors) doivent respecter ces principes.
+            </p>
+        </section>
+
+        <section id="architecture">
+            <h2>Architecture en couches</h2>
+
+            <pre class="mermaid">
+flowchart TB
+    subgraph Interface["Interface"]
+        UI[UI Textual]
+        ACP[ACP]
+    end
+
+    subgraph App["Application/Resolver"]
+        AS[App Server]
+        AL[Agent Loop]
+    end
+
+    subgraph Outils["Outils"]
+        BT[BaseTool]
+        MC[MCP/Connectors]
+    end
+
+    subgraph Stockage["Stockage"]
+        SL[Session Log]
+        PS[PermissionStore]
+    end
+
+    subgraph Config["Configuration"]
+        CF[Config]
+        TF[TrustedFolders]
+    end
+
+    UI -->|demande| AS
+    ACP -->|demande| AS
+    AS -->|valide| BT
+    AS -->|valide| MC
+    AS -->|politique| CF
+    AL -->|exécute| BT
+    AL -->|exécute| MC
+    AL -->|écrit| SL
+    AL -->|utilise| PS
+    AS -->|gère| TF
+    CF -->|charge| TF
+</pre>
+            <figcaption>
+                Diagramme en couches du système de permissions. <strong>Lire de haut en bas</strong> : 
+                L'Interface (UI/ACP) délègue tout à l'App Server qui applique les permissions. 
+                L'Agent Loop exécute les outils après validation. Le stockage et la configuration supportent l'ensemble.
+            </figcaption>
+
+            <div class="callout note">
+                <p><strong>Interface</strong> : Affiche les demandes de permission (callbacks) et transmet les réponses utilisateur. Ne décide pas des permissions, délègue tout à l'app-server via <code>AppServerSession</code>.</p>
+                <p><strong>Application/Resolver</strong> : L'app-server est l'autorité centrale qui applique les permissions via <code>UnifiedPermissionResolver</code> ; l'agent loop vérifie et bloque l'exécution si refusé. La logique est centralisée dans <code>_loop.py</code> et <code>_session_backend_port.py</code>.</p>
+                <p><strong>Outils</strong> : Tous les outils (built-in, MCP, connectors) doivent hériter de <code>BaseTool</code> et implémenter <code>resolve_permission()</code>. L'exécution est validée avant toute action via <code>_should_execute_tool()</code>.</p>
+                <p><strong>Stockage</strong> : <code>PermissionStore</code> stocke les règles de permission pour la session (règles + permissions par outil). <code>Session Log</code> enregistre les tool calls y compris les refus via <code>ToolResultEvent</code>.</p>
+                <p><strong>Configuration</strong> : <code>VibeConfigSchema</code> définit les règles par outil (<code>tools: dict</code>) et <code>bypass_tool_permissions</code>. <code>TrustedFoldersManager</code> gère la confiance des dossiers workspace, indépendamment des permissions des outils.</p>
+            </div>
+        </section>
+
+        <section>
+            <h2>Distinction permissions vs sandbox</h2>
+            <div class="callout attention">
+                <p><strong>Permissions</strong> = Demander l'autorisation à l'utilisateur avant d'exécuter des actions sensibles.</p>
+                <p><strong>Sandbox</strong> = Limiter techniquement ce que le processus peut faire (via seccomp, namespaces, chroot, conteneurs).</p>
+                <p>→ <strong>Mistral Vibe n'utilise PAS de sandbox technique</strong> (aucune occurrence de ces termes dans le code, docs ou ADR). Le système repose <strong>uniquement</strong> sur le mécanisme de permissions (demande d'autorisation).</p>
+            </div>
+        </section>
+
+        <section>
+            <h2>Sommaire</h2>
+            <ol>
+                <li><a href="01-niveaux-et-modes.html">Niveaux et modes de permission</a> : ALWAYS, NEVER, ASK, allowlist, denylist, motifs sensibles, portées</li>
+                <li><a href="02-deroulement-et-scenarios.html">Déroulement et scénarios</a> : Diagrammes de flux, tous les cas de décision, comportements de refus</li>
+                <li><a href="03-fichiers-utilisateur.html">Fichiers utilisateur</a> : config.toml, trusted_folders.toml, Always allow, priorités</li>
+                <li><a href="04-fichiers-et-modules.html">Fichiers et modules internes</a> : Architecture complète, tous les fichiers sources avec rôle et ligne</li>
+                <li><a href="05-securite-et-sandbox.html">Sécurité et sandbox</a> : Protections intégrées, limites, recherche exhaustive sandbox</li>
+                <li><a href="06-edge-cases.html">Cas limites (edge cases)</a> : 10 cas avec comportement réel, fichier:ligne, test existant</li>
+                <li><a href="07-adr-et-contrat-des-outils.html">ADR et contrat des outils</a> : 15 ADR pertinents, explication détaillée du tool contract ADR 0004</li>
+                <li><a href="08-tests-et-qualite.html">Tests et qualité</a> : Couverture, exemples, points à améliorer</li>
+                <li><a href="presentation.html">Support de présentation</a> : Pour expliquer le système en 5 minutes</li>
+            </ol>
+        </section>
+    </main>
+
+    <div class="nav-bottom">
+        <span class="disabled">Précédent</span>
+        <a href="01-niveaux-et-modes.html">Suivant : Niveaux et modes →</a>
+    </div>
+
+    <script>
+        // Initialisation Mermaid avec thème adapté
+        document.addEventListener('DOMContentLoaded', function() {
+            mermaid.initialize({
+                startOnLoad: true,
+                theme: window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'default'
+            });
+            
+            // Re-render on theme change
+            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
+                mermaid.initialize({
+                    startOnLoad: false,
+                    theme: e.matches ? 'dark' : 'default'
+                });
+                const diagrams = document.querySelectorAll('.mermaid');
+                diagrams.forEach(d => {
+                    const content = d.textContent;
+                    d.innerHTML = content;
+                });
+                mermaid.init(undefined, document.querySelectorAll('.mermaid'));
+            });
+        });
+    </script>
+</body>
+</html>

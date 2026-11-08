@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fichiers utilisateur - Mistral Vibe</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <nav>
+        <div class="nav-container">
+            <a href="index.html" class="nav-title">Permissions Vibe</a>
+            <div class="nav-links">
+                <a href="index.html">Accueil</a>
+                <a href="01-niveaux-et-modes.html">Niveaux & Modes</a>
+                <a href="02-deroulement-et-scenarios.html">Déroulement</a>
+                <a href="03-fichiers-utilisateur.html" class="active">Fichiers</a>
+                <a href="04-fichiers-et-modules.html">Modules</a>
+                <a href="05-securite-et-sandbox.html">Sécurité</a>
+                <a href="06-edge-cases.html">Edge Cases</a>
+                <a href="07-adr-et-contrat-des-outils.html">ADR & Contrat</a>
+                <a href="08-tests-et-qualite.html">Tests</a>
+                <a href="presentation.html">Présentation</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="main-content">
+        <h1>Fichiers utilisateur</h1>
+
+        <section>
+            <h2>Fichiers de configuration des permissions</h2>
+
+            <h3>1. config.toml (Configuration principale)</h3>
+
+            <h4>Chemins possibles :</h4>
+            <ul>
+                <li><code>~/.vibe/config.toml</code> (configuration globale utilisateur)</li>
+                <li><code>.vibe/config.toml</code> (configuration locale au projet)</li>
+            </ul>
+
+            <h4>Format :</h4>
+            <p>TOML</p>
+
+            <h4>Priorité :</h4>
+            <ol>
+                <li>CLI args</li>
+                <li>Variables d'environnement</li>
+                <li>Fichiers projet (<code>.vibe/config.toml</code>)</li>
+                <li>Configuration utilisateur (<code>~/.vibe/config.toml</code>)</li>
+                <li>Valeurs par défaut</li>
+            </ol>
+            <p><strong>Source :</strong> <code>vibe/core/config/vibe_schema.py:L100-150</code> (système de layers de configuration)</p>
+
+            <h4>Structure pour les permissions</h4>
+            <pre><code>[core]
+bypass_tool_permissions = false  # Si true, contourne TOUTES les vérifications de permission
+
+# Configuration par outil
+[tools.bash]
+permission = "ask"               # Niveau global : ALWAYS, NEVER, ASK
+allowlist = [
+    "cd",
+    "echo", 
+    "git diff",
+    "git log",
+    "git status",
+    "ls",
+    "tree",
+    "whoami"
+]
+denylist = [
+    "gdb",
+    "pdb", 
+    "passwd",
+    "rm -rf",
+    "sudo",
+    "bash -i",
+    "nano",
+    "vim"
+]
+sensitive_patterns = ["sudo"]
+
+[tools.write_file]
+permission = "ask"
+allowlist = []
+denylist = ["**/.env", "**/.env.*"]
+
+[tools.read_file]
+permission = "always"
+sensitive_patterns = ["**/.env", "**/.env.*", "**/.ssh/*"]
+</code></pre>
+
+            <h4>Ordre de priorité pour les outils :</h4>
+            <ol>
+                <li><code>tools.{nom_outil}.permission</code> (niveau global pour l'outil)</li>
+                <li>Règles session dans <code>PermissionStore</code> (si <code>PermissionStore.covers()</code> retourne True)</li>
+                <li><code>bypass_tool_permissions: true</code> (contourne tout)</li>
+                <li><code>Tool.resolve_permission()</code> (analyse spécifique de l'outil)</li>
+                <li>Valeur par défaut : <code>ToolPermission.ASK</code> (dans <code>BaseToolConfig</code>)</li>
+            </ol>
+            <p><strong>Source :</strong> <code>vibe/core/config/vibe_schema.py:L414-420</code>, <code>vibe/core/tools/base.py:L114-120</code></p>
+        </section>
+
+        <section>
+            <h3>2. trusted_folders.toml (Confiance workspace)</h3>
+
+            <h4>Chemin :</h4>
+            <p><code>~/.vibe/trusted_folders.toml</code></p>
+
+            <h4>Format :</h4>
+            <p>TOML</p>
+
+            <h4>Rôle :</h4>
+            <p>
+                Gère la <strong>confiance des dossiers workspace</strong>, <strong>indépendamment des permissions des outils</strong>. 
+                Un dossier de confiance permet à l'agent d'accéder aux fichiers de configuration Vibe (AGENTS.md, .vibe/) dans ce dossier.
+            </p>
+
+            <h4>Exemple :</h4>
+            <pre><code>[trusted]
+paths = [
+    "/home/user/projets/mon-projet",
+    "/home/user/projets/autre-projet"
+]
+
+[untrusted]
+paths = [
+    "/home/user/projets/secret",
+    "/etc"
+]
+</code></pre>
+
+            <h4>Comportement :</h4>
+            <ul>
+                <li>Si un dossier est dans <code>trusted</code> → Vibe peut y lire les fichiers de configuration (AGENTS.md, .vibe/)</li>
+                <li>Si un dossier est dans <code>untrusted</code> → Vibe <strong>ne lit pas</strong> les fichiers de configuration dans ce dossier</li>
+                <li>Si un dossier n'est dans aucune liste → <strong>non fiable par défaut</strong></li>
+            </ul>
+            <p><strong>Source :</strong> <code>vibe/core/trusted_folders.py:L198-345</code></p>
+        </section>
+
+        <section>
+            <h2>Comment le code lit les fichiers de configuration</h2>
+
+            <h3>Configuration principale (config.toml)</h3>
+            <p><strong>Mécanisme :</strong></p>
+            <ol>
+                <li>Au démarrage, <code>ConfigOrchestrator</code> charge les fichiers de configuration selon l'ordre de priorité</li>
+                <li>La section <code>[tools]</code> est validée via <code>BaseToolConfig</code> (dans <code>vibe/core/tools/models.py:L114-120</code>)</li>
+                <li><code>ToolManager</code> utilise <code>config_getter()</code> pour accéder à la config actuelle</li>
+                <li><code>ToolManager.get_tool_config()</code> (L750-775) merge :
+                    <ul>
+                        <li>Config par défaut de l'outil</li>
+                        <li>Overrides utilisateur depuis <code>self._config.tools.get(tool_name)</code></li>
+                        <li>Override de permission depuis <code>PermissionStore</code> si <code>permission_getter</code> est défini</li>
+                    </ul>
+                </li>
+            </ol>
+            <p><strong>Source :</strong> <code>vibe/core/tools/manager.py:L750-775</code></p>
+
+            <h3>Trusted Folders</h3>
+            <p><strong>Mécanisme :</strong></p>
+            <ol>
+                <li><code>TrustedFoldersManager</code> est un singleton initialisé dans <code>vibe/core/trusted_folders.py:L288</code></li>
+                <li>Au premier accès, <code>_load()</code> (L230-245) charge <code>~/.vibe/trusted_folders.toml</code></li>
+                <li>Si le fichier est invalide ou absent → crée un fichier vide avec mode <code>0o600</code> (owner-only)</li>
+                <li><code>for_session()</code> (L216-220) crée une copie sans les permissions session</li>
+            </ol>
+
+            <p><strong>Méthodes clés :</strong></p>
+            <ul>
+                <li><code>is_trusted(path: Path) -> bool | None</code> : Tri-state (True/False/None) pour la confiance</li>
+                <li><code>trust_status(path: Path) -> WorkspaceTrustStatus</code> : RETURN Trusted/Session/Untrusted</li>
+                <li><code>add_trusted(path: Path)</code> : Ajoute un chemin à la liste trusted (persistent)</li>
+                <li><code>add_untrusted(path: Path)</code> : Ajoute un chemin à la liste untrusted (persistent)</li>
+                <li><code>trust_for_session(path: Path)</code> : Ajoute un chemin trusted pour la session uniquement</li>
+            </ul>
+            <p><strong>Source :</strong> <code>vibe/core/trusted_folders.py:L216-345</code></p>
+        </section>
+
+        <section>
+            <h2>"Always allow" : comment ça marche ?</h2>
+
+            <h3>Dans l'interface utilisateur</h3>
+            <p>
+                Quand l'utilisateur voit une demande de permission, il a <strong>4 options</strong> 
+                (défini dans <code>vibe/cli/textual_ui/widgets/approval_app.py</code>) :
+            </p>
+            <ol>
+                <li><strong>Allow once</strong> (1 ou y) → Approuve pour <strong>cet appel uniquement</strong></li>
+                <li><strong>Allow for remainder of this session</strong> (2) → Approuve pour <strong>toute la session</strong></li>
+                <li><strong>Always allow</strong> (3) → Approuve <strong>définivement</strong> (persistent)</li>
+                <li><strong>Deny</strong> (4 ou n ou Esc) → <strong>Refuse</strong></li>
+            </ol>
+            <p><strong>Source :</strong> <code>vibe/cli/textual_ui/widgets/approval_app.py:L42-47</code> (bindings), <code>L259-270</code> (options)</p>
+
+            <h3>Où la règle est écrite</h3>
+
+            <h4>Option 1 : Allow once</h4>
+            <ul>
+                <li><strong>Ne crée aucune règle</strong></li>
+                <li>L'outil est exécuté <strong>une seule fois</strong></li>
+                <li><strong>Source :</strong> <code>approval_app.py:L292-297</code> → <code>ApprovalGranted</code> → <code>_respond_to_approval(ApprovalDecisionType.APPROVE)</code></li>
+            </ul>
+
+            <h4>Option 2 : Allow for remainder of this session</h4>
+            <ul>
+                <li><strong>Ajoute une règle dans <code>PermissionStore._rules</code></strong> (session-scoped)</li>
+                <li>La règle est de type <code>ApprovedRule(tool_name, scope, session_pattern)</code></li>
+                <li><strong>Source :</strong>
+                    <ul>
+                        <li><code>approval_app.py:L298-306</code> → <code>ApprovalGrantedAlwaysTool</code></li>
+                        <li><code>app.py:L2131-2133</code> → <code>_respond_to_approval(ApprovalDecisionType.APPROVE_FOR_SESSION, path_scope=...)</code></li>
+                        <li><code>_loop.py:L1174-1195</code> → <code>approve_always()</code> → <code>self._permission_store.add_rule(ApprovedRule(...))</code></li>
+                    </ul>
+                </li>
+            </ul>
+
+            <h4>Option 3 : Always allow (permanent)</h4>
+            <ul>
+                <li><strong>Ajoute une règle dans <code>PermissionStore._rules</code></strong> (session)</li>
+                <li><strong>Persiste dans config.toml</strong> via <code>ConfigOrchestrator</code></li>
+                <li><strong>Source :</strong>
+                    <ul>
+                        <li><code>approval_app.py:L307-315</code> → <code>ApprovalGrantedAlwaysPermanent</code></li>
+                        <li><code>app.py:L2138-2140</code> → <code>_respond_to_approval(ApprovalDecisionType.APPROVE_PERMANENTLY, path_scope=...)</code></li>
+                        <li><code>_loop.py:L1174-1195</code> → <code>approve_always(save_permanently=True)</code> → <code>config_orchestrator.set_field_or_warn(f"/tools/{tool_name}/allowlist", [...])</code></li>
+                    </ul>
+                </li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>Comment supprimer une règle "Always allow"</h2>
+
+            <h3>Règles de session (Allow for remainder of this session)</h3>
+            <ul>
+                <li><strong>Automatique</strong> : Les règles de session sont <strong>effacées</strong> quand la session se termine</li>
+                <li><code>PermissionStore.reset()</code> est appelé entre les sessions (<code>permissions.py:L25-27</code>)</li>
+                <li><strong>Manuellement</strong> : Redémarrer Vibe</li>
+            </ul>
+
+            <h3>Règles permanentes (Always allow)</h3>
+            <ul>
+                <li><strong>Modifier config.toml</strong> : Supprimer l'entrée dans <code>[tools.{nom_outil}.allowlist]</code></li>
+                <li><strong>Utiliser la commande</strong> : <code>/config unset tools.{nom_outil}.allowlist</code> (si disponible)</li>
+                <li><strong>Note</strong> : Aucune commande dédiée n'existe dans le code pour supprimer une permission permanente. Il faut éditer manuellement le fichier de configuration.</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>Que se passe-t-il si le fichier est invalide ou absent ?</h2>
+
+            <h3>config.toml</h3>
+            <ul>
+                <li><strong>Absent</strong> : Utilise les <strong>valeurs par défaut</strong> définies dans <code>BaseToolConfig</code> (<code>permission = ToolPermission.ASK</code>)</li>
+                <li><strong>Invalide</strong> : Erreur de validation Pydantic → Vibe affiche une erreur et utilise les defaults</li>
+                <li><strong>Source :</strong> <code>vibe/core/config/vibe_schema.py</code> (validation via Pydantic)</li>
+            </ul>
+
+            <h3>trusted_folders.toml</h3>
+            <ul>
+                <li><strong>Absent</strong> : <code>TrustedFoldersManager._load()</code> (L230-245) crée un fichier vide avec les sections <code>[trusted]</code> et <code>[untrusted]</code> vides</li>
+                <li><strong>Invalide</strong> (erreur TOML ou OSError) : Même comportement → efface les listes et recrée le fichier</li>
+                <li><strong>Mode</strong> : Le fichier est créé avec <code>mode=0o600</code> (owner-only) pour des raisons de sécurité</li>
+                <li><strong>Source :</strong> <code>vibe/core/trusted_folders.py:L230-245</code></li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>Exemples concrets</h2>
+
+            <h3>Exemple 1 : Configurer bash en ALWAYS pour un projet</h3>
+            <p><strong>Fichier :</strong> <code>.vibe/config.toml</code></p>
+            <pre><code>[tools.bash]
+permission = "always"
+allowlist = ["git status", "ls", "cd"]
+denylist = ["rm", "sudo"]
+</code></pre>
+            <p><strong>Comportement :</strong></p>
+            <ul>
+                <li>Les commandes <code>git status</code>, <code>ls</code>, <code>cd</code> sont <strong>automatiquement autorisées</strong></li>
+                <li>Les commandes <code>rm</code> et <code>sudo</code> (et leurs variantes) <strong>demandent confirmation</strong></li>
+                <li>Toute autre commande <strong>demande confirmation</strong></li>
+            </ul>
+
+            <h3>Exemple 2 : Désactiver complètement write_file</h3>
+            <p><strong>Fichier :</strong> <code>~/.vibe/config.toml</code></p>
+            <pre><code>[tools.write_file]
+permission = "never"
+</code></pre>
+            <p><strong>Comportement :</strong></p>
+            <ul>
+                <li>Toute tentative d'utiliser <code>write_file</code> <strong>échoue systématiquement</strong> avec le message "Tool 'write_file' is permanently disabled"</li>
+                <li>Aucun callback n'est ouvert à l'utilisateur</li>
+                <li><strong>Source :</strong> <code>_loop.py:L3047-3051</code></li>
+            </ul>
+
+            <h3>Exemple 3 : Autoriser l'accès à /etc/hosts</h3>
+            <p><strong>Via l'UI :</strong></p>
+            <ol>
+                <li>L'utilisateur tente de lire <code>/etc/hosts</code> avec <code>read_file</code></li>
+                <li>Vibe détecte que le fichier est <strong>hors workspace</strong> → demande permission</li>
+                <li>L'utilisateur sélectionne "Always allow for this session"</li>
+                <li>Vibe ajoute une règle : <code>ApprovedRule(tool_name="read_file", scope=OUTSIDE_DIRECTORY, session_pattern="/etc/hosts")</code></li>
+            </ol>
+
+            <p><strong>Via config.toml :</strong></p>
+            <pre><code>[tools.read_file]
+permission = "ask"
+allowlist = ["vibe-path:exact:/etc/hosts"]
+</code></pre>
+            <p><strong>Note :</strong> Le format <code>vibe-path:exact:/etc/hosts</code> est généré par <code>path_grant_pattern()</code> (<code>vibe/permissions.py:L47-52</code>)</p>
+        </section>
+    </main>
+
+    <div class="nav-bottom">
+        <a href="02-deroulement-et-scenarios.html">← Précédent : Déroulement et scénarios</a>
+        <a href="04-fichiers-et-modules.html">Suivant : Fichiers et modules →</a>
+    </div>
+</body>
+</html>

@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ADR et contrat des outils - Mistral Vibe</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <nav>
+        <div class="nav-container">
+            <a href="index.html" class="nav-title">Permissions Vibe</a>
+            <div class="nav-links">
+                <a href="index.html">Accueil</a>
+                <a href="01-niveaux-et-modes.html">Niveaux & Modes</a>
+                <a href="02-deroulement-et-scenarios.html">Déroulement</a>
+                <a href="03-fichiers-utilisateur.html">Fichiers</a>
+                <a href="04-fichiers-et-modules.html">Modules</a>
+                <a href="05-securite-et-sandbox.html">Sécurité</a>
+                <a href="06-edge-cases.html">Edge Cases</a>
+                <a href="07-adr-et-contrat-des-outils.html" class="active">ADR & Contrat</a>
+                <a href="08-tests-et-qualite.html">Tests</a>
+                <a href="presentation.html">Présentation</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="main-content">
+        <h1>ADR et contrat des outils</h1>
+
+        <section>
+            <h2>Liste complète des ADR liés aux permissions, outils ou sécurité</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>N°</th>
+                        <th>Titre</th>
+                        <th>Décision</th>
+                        <th>Lien avec les permissions</th>
+                        <th>Source</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>0001</strong></td>
+                        <td>Architecture Principles</td>
+                        <td>Architecture hexagonale : core ↔ edges, optimisation pour startup rapide et changements locaux</td>
+                        <td><strong>Indirect</strong> : Les permissions sont un <em>port</em> (frontière) entre le core et les effets de bord. La séparation permet d'isoler la logique de permission dans le core</td>
+                        <td><code>docs/adr/0001-architecture-principles.md</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>0002</strong></td>
+                        <td>Core Engine And Delivery Surfaces</td>
+                        <td><code>vibe/core</code> = moteur (agent loop, <strong>tools</strong>, LLM, config, sessions), <code>vibe/app_server</code> = harness, delivery surfaces (CLI, ACP, programmatic) consomment le core</td>
+                        <td><strong>Direct</strong> : Les <strong>tools</strong> font partie du core. Les permissions sont gérées dans le même espace</td>
+                        <td><code>docs/adr/0002-core-engine-and-delivery-surfaces.md:L8-12</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>0003</strong></td>
+                        <td>Event Driven Agent Loop</td>
+                        <td>Boucle d'agent basée sur des <strong>événements typés</strong> (streaming async). Les événements incluent les approvals, tool calls, tool results</td>
+                        <td><strong>Indirect</strong> : Les <em>approvals</em> (demandes de permission) sont des événements typés dans le système</td>
+                        <td><code>docs/adr/0003-event-driven-agent-loop.md:L8-10</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>0004</strong></td>
+                        <td><strong>Typed Permissioned Tools</strong></td>
+                        <td><strong>Contrat des outils</strong> : Les outils sont des ports typés vers les effets de bord. <strong>La politique de permission fait partie intégrante du contrat de l'outil</strong>. Analyse sémantique des commandes shell (récursive, normalisation des chemins). Un effet public unique représente le tool call complet</td>
+                        <td><strong>Central et direct</strong> : <strong>Définition complète du tool contract</strong> pour les permissions</td>
+                        <td><code>docs/adr/0004-typed-permissioned-tools.md</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>0005</strong></td>
+                        <td>Layered Configuration</td>
+                        <td>Configuration en couches (CLI &gt; env &gt; fichiers projet &gt; defaults). Les paramètres de <strong>permission</strong> sont des <em>server-applied settings</em></td>
+                        <td><strong>Direct</strong> : <code>tools: dict</code>, <code>bypass_tool_permissions</code> sont configurés via ce système</td>
+                        <td><code>docs/adr/0005-layered-configuration.md:L15-20</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>0007</strong></td>
+                        <td>Extension Mechanisms</td>
+                        <td><strong>Mécanismes d'extension</strong> : skills, agents, subagents, hooks, <strong>MCP servers</strong>, <strong>connectors</strong>. Les extensions fournissent des outils qui doivent respecter le même contrat</td>
+                        <td><strong>Direct</strong> : Les outils <strong>MCP</strong> et <strong>connectors</strong> doivent respecter le même contrat de permission que les outils built-in</td>
+                        <td><code>docs/adr/0007-extension-mechanisms.md:L8-12</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>0008</strong></td>
+                        <td>Feature Instrumentation</td>
+                        <td>Téléométrie pour les <em>features</em> (funnels, adoption, status flows)</td>
+                        <td><strong>Indirect</strong> : Les événements de permission (ex: <code>approval_requested</code>, <code>approval_denied</code>) peuvent être instrumentés pour la télémétrie</td>
+                        <td><code>docs/adr/0008-feature-instrumentation.md</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>0009</strong></td>
+                        <td><strong>App Server Boundary</strong></td>
+                        <td>L'app-server est la <strong>seule frontière</strong> entre les delivery surfaces et le core. <strong>Le serveur est autoritaire</strong> pour : outils, permissions, effets, résultats visibles par le modèle. <strong>Règles de sécurité</strong> : le serveur applique la politique outils/FS/réseau/MCP/connector ; les projections publiques ne peuvent pas accorder de permission</td>
+                        <td><strong>Direct et critique</strong> : <strong>Le serveur applique les permissions</strong> (pas le client). Toute mutation passe par l'app-server</td>
+                        <td><code>docs/adr/0009-app-server-boundary.md:L25-30,L150-160</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>0010</strong></td>
+                        <td>Textual Content Rendering</td>
+                        <td>Rendu du contenu dans l'UI Textual (styles, markup)</td>
+                        <td><strong>Indirect</strong> : L'UI affiche les demandes de permission mais ne décide pas</td>
+                        <td><code>docs/adr/0010-textual-content-rendering.md</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>0011</strong></td>
+                        <td>App Server Session Backends</td>
+                        <td>Backends de session (Legacy vs Unified Harness). Les opérations sur les sessions passent par des <em>ports</em> typés</td>
+                        <td><strong>Indirect</strong> : Les backends de session <strong>héritent</strong> de la politique de permission du core via l'app-server</td>
+                        <td><code>docs/adr/0011-unified-harness-backend.md:L40-45</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>0014</strong></td>
+                        <td>Backend Contract Compatibility</td>
+                        <td>Compatibilité avec les backends Mistral (self-hosted). Changements de contrat wire doivent être <em>additifs et tolérants</em></td>
+                        <td><strong>Indirect (sécurité)</strong> : La politique de permission doit rester compatible avec les versions antérieures</td>
+                        <td><code>docs/adr/0014-backend-contract-compatibility.md:L10-20</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>0015</strong></td>
+                        <td><strong>Outbound TLS Trust Policy</strong></td>
+                        <td>Politique de confiance TLS pour les connexions sortantes (<code>enable_system_trust_store</code>). Utilise Certifi ou system trust store</td>
+                        <td><strong>Direct (sécurité)</strong> : Sécurité des connexions réseau (impacte les outils comme <code>web_fetch</code>)</td>
+                        <td><code>docs/adr/0015-outbound-tls-trust-policy.md</code></td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section>
+            <h2>ADR 0004 : Typed Permissioned Tools (Détails)</h2>
+
+            <h3>Décision complète</h3>
+            <blockquote>
+                <p><strong>"Tools are typed, permissioned ports into side effects."</strong></p>
+            </blockquote>
+            <p>
+                Le document ADR 0004 (<code>docs/adr/0004-typed-permissioned-tools.md</code>) définit 
+                <strong>le contrat que chaque outil doit respecter</strong> :
+            </p>
+
+            <ol>
+                <li><strong>Typage fort</strong> : Les outils doivent déclarer des types Pydantic pour :
+                    <ul>
+                        <li><code>args</code> (arguments d'entrée)</li>
+                        <li><code>result</code> (résultat de sortie)</li>
+                        <li><code>config</code> (configuration)</li>
+                        <li><code>state</code> (état)</li>
+                        <li>Tous via la classe <code>BaseTool[ToolArgs, ToolResult, ToolConfig, ToolState]</code></li>
+                    </ul>
+                </li>
+                <li><strong>Contrat de permission</strong> : <strong>La politique de permission fait partie intégrante du contrat de l'outil</strong>
+                    <ul>
+                        <li>Les outils touchant le FS, processus, réseau ou services externes <strong>doivent déclarer et honorer les permissions de manière cohérente</strong></li>
+                        <li>Surface-specific tool behavior should adapt the same core contract rather than fork the domain semantics</li>
+                    </ul>
+                </li>
+                <li><strong>Analyse sémantique des commandes shell</strong> :
+                    <ul>
+                        <li>L'analyse des permissions pour shell doit couvrir <strong>l'exécution sémantique</strong> plutôt que seulement le texte de la commande de niveau supérieur</li>
+                        <li>Analyse <strong>récursive</strong> des commandes imbriquées</li>
+                        <li>Normalisation des chemins <strong>avant</strong> les vérifications des limites du workspace</li>
+                        <li>Inclut les chemins MSYS sur Windows</li>
+                        <li>Les lecteurs auto-allowlistés nécessitent toujours une approval lorsqu'ils accèdent à des répertoires en dehors</li>
+                    </ul>
+                </li>
+                <li><strong>Projection publique unifiée</strong> :
+                    <ul>
+                        <li>Une seule entrée d'effet public représente : l'appel de l'outil, le streaming de sortie, le blocage pour approval, le résultat, la durée, et l'état terminal</li>
+                        <li>Les kinds d'effets publics sont des catégories de présentation sémantique, pas un registre de noms d'outils</li>
+                        <li>Les outils arbitraires (MCP, connector, custom) utilisent la projection générique</li>
+                    </ul>
+                </li>
+                <li><strong>Extensions</strong> :
+                    <ul>
+                        <li>Les outils MCP/connector peuvent fournir des outils qui doivent <strong>respecter le même contrat</strong></li>
+                        <li>Un backend dont le protocole source porte intentionnellement des faits d'outils sans présentation Vibe peut traduire un ensemble fermé d'outils built-in vers ces catégories sémantiques existantes</li>
+                    </ul>
+                </li>
+            </ol>
+
+            <h3>Ce que chaque outil doit respecter (Tool Contract)</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Composant</th>
+                        <th>Obligation</th>
+                        <th>Implémentation</th>
+                        <th>Source</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Hériter de BaseTool</strong></td>
+                        <td>✅ Obligatoire</td>
+                        <td><code>class MonOutil(BaseTool[...]):</code></td>
+                        <td><code>vibe/core/tools/base.py:L100-150</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Déclarer les types</strong></td>
+                        <td>✅ Obligatoire</td>
+                        <td>Typage Pydantic pour args, result, config, state</td>
+                        <td><code>vibe/core/tools/base.py:L100-150</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Implémenter resolve_permission</strong></td>
+                        <td>✅ Obligatoire</td>
+                        <td><code>def resolve_permission(self, args) -> PermissionContext | None:</code></td>
+                        <td><code>vibe/core/tools/base.py:L448-450</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Respecter ToolPermission</strong></td>
+                        <td>✅ Obligatoire</td>
+                        <td>Vérifier et honorer la permission de la config</td>
+                        <td><code>vibe/core/tools/base.py:L448-450</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Lever ToolPermissionError</strong></td>
+                        <td>⚠️ Recommandé</td>
+                        <td><code>raise ToolPermissionError("raison")</code> pour les refus</td>
+                        <td>ADR 0004:L40-41, <code>vibe/core/tools/models.py:L10</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Ne pas exécuter si refusé</strong></td>
+                        <td>✅ Obligatoire</td>
+                        <td>Bloquer l'exécution si permission refusée</td>
+                        <td><code>vibe/core/agent_loop/_loop.py:L3027-3070</code></td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>Quels composants doivent appliquer le contrat ?</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Composant</th>
+                        <th>Rôle</th>
+                        <th>Application du contrat</th>
+                        <th>Source</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Agent Loop</strong></td>
+                        <td>Exécute les outils et gère la boucle LLM</td>
+                        <td><strong>Applique les permissions</strong> avant d'exécuter un outil via <code>_should_execute_tool()</code>. Bloque l'exécution si <code>ToolPermissionError</code> est levée ou si la décision est <code>SKIP</code></td>
+                        <td><code>vibe/core/agent_loop/_loop.py:L3027-3070</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>UI (Textual/ACP)</strong></td>
+                        <td>Affiche les demandes de permission (callbacks)</td>
+                        <td><strong>Ne décide pas</strong> : transmet les réponses utilisateur à l'app-server. N'applique aucune logique de permission</td>
+                        <td><code>vibe/cli/textual_ui/widgets/approval_app.py:L1-320</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Session Log</strong></td>
+                        <td>Journalise les appels d'outils</td>
+                        <td><strong>Enregistre</strong> les tool calls y compris les refus via <code>ToolResultEvent</code></td>
+                        <td><code>vibe/core/agent_loop/_loop.py:L2855-2900</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>App Server</strong></td>
+                        <td><strong>Serveur autoritaire</strong> pour les permissions</td>
+                        <td><strong>Applique et fait respecter</strong> le contrat : valide les outils, résout les permissions, projette les effets publics, gère les callbacks. Centralise la logique pour tous les clients</td>
+                        <td><code>docs/adr/0009-app-server-boundary.md:L150-160</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>ACP</strong></td>
+                        <td>Protocole client</td>
+                        <td><strong>Transmet</strong> les callbacks de permission sans contournement. Ne modifie pas la logique de permission</td>
+                        <td><code>vibe/app_server/session.py:L829-930</code></td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section>
+            <h2>Relations entre les ADR</h2>
+            <pre class="mermaid">
+graph TD
+    A[ADR 0004: Typed Permissioned Tools] -->|Définition du contrat| B[Agent Loop]
+    A -->|Serveur autoritaire| C[App Server]
+    A -->|Callbacks| D[UI Textual/ACP]
+    A -->|Logging| E[Session Log]
+
+    C -->|Héritage| F[ADR 0009: App Server Boundary]
+    C -->|Configuration| G[ADR 0005: Layered Config]
+    C -->|Backends| H[ADR 0011: Session Backends]
+
+    A -->|Extensions| I[ADR 0007: MCP/Connectors]
+    A -->|Core Engine| J[ADR 0002: Core Engine]
+
+    F -->|Sécurité| K[ADR 0015: TLS Trust]
+    F -->|Compatibilité| L[ADR 0014: Backend Contract]
+    F -->|Architecture| M[ADR 0001: Architecture Principles]
+</pre>
+            <figcaption>
+                <strong>Comment lire ce diagramme :</strong> L'ADR 0004 (Typed Permissioned Tools) est au centre du système de permissions. Il définit le contrat que tous les autres composants doivent appliquer. Les flèches montrent les relations de dépendance et d'héritage entre les ADR.
+            </figcaption>
+        </section>
+    </main>
+
+    <div class="nav-bottom">
+        <a href="06-edge-cases.html">← Précédent : Cas limites</a>
+        <a href="08-tests-et-qualite.html">Suivant : Tests et qualité →</a>
+    </div>
+
+    <script>
+        // Initialisation Mermaid
+        document.addEventListener('DOMContentLoaded', function() {
+            mermaid.initialize({
+                startOnLoad: true,
+                theme: window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'default'
+            });
+        });
+    </script>
+</body>
+</html>
