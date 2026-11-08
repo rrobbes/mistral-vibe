@@ -13,6 +13,7 @@ document.addEventListener('DOMContentLoaded', function() {
     initCodeHighlights();
     initProgressBar();
     initScrollAnimations();
+    initInteractiveDemo();
 });
 
 // ===== Main Tabs (Overview vs Architecture) =====
@@ -459,3 +460,70 @@ document.head.insertAdjacentHTML('beforeend', animationStyles);
 // ===== Console Easter Egg =====
 console.log('%c🎉 Welcome to Vibe Skills Documentation!', 'font-size: 20px; color: #6366f1; font-weight: bold;');
 console.log('%cLearn how to supercharge your Vibe experience with custom Skills', 'color: #8b5cf6; font-size: 14px;');
+
+// ===== Interactive Demo =====
+function initInteractiveDemo() {
+    const demoContainer = document.querySelector('.demo-container');
+    if (!demoContainer) return;
+
+    const slides = document.querySelectorAll('.demo-slide');
+    const indicators = document.querySelectorAll('.demo-indicators .indicator');
+    const prevBtn = document.querySelector('.demo-btn.previous');
+    const nextBtn = document.querySelector('.demo-btn.next');
+
+    let currentSlide = 0;
+    const totalSlides = slides.length;
+
+    function showSlide(index) {
+        // Hide all slides
+        slides.forEach((slide, i) => {
+            slide.classList.toggle('active', i === index);
+        });
+
+        // Update indicators
+        indicators.forEach((indicator, i) => {
+            indicator.classList.toggle('active', i === index);
+        });
+
+        // Update buttons
+        prevBtn.disabled = index === 0;
+        nextBtn.disabled = index === totalSlides - 1;
+
+        currentSlide = index;
+    }
+
+    function nextSlide() {
+        if (currentSlide < totalSlides - 1) {
+            showSlide(currentSlide + 1);
+        }
+    }
+
+    function prevSlide() {
+        if (currentSlide > 0) {
+            showSlide(currentSlide - 1);
+        }
+    }
+
+    // Event listeners
+    nextBtn.addEventListener('click', nextSlide);
+    prevBtn.addEventListener('click', prevSlide);
+
+    // Click on indicators
+    indicators.forEach((indicator, index) => {
+        indicator.addEventListener('click', () => {
+            showSlide(index);
+        });
+    });
+
+    // Keyboard navigation
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowRight') {
+            nextSlide();
+        } else if (e.key === 'ArrowLeft') {
+            prevSlide();
+        }
+    });
+
+    // Initialize first slide
+    showSlide(0);
+}
