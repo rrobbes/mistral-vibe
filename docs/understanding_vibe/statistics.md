@@ -40,7 +40,6 @@ Last updated: 2026-10-19 (v2.26.1)
 ## Deep Dives
 
 - [Python Statistics](python_statistics.md) — module breakdowns, code density, language constructs, file size distribution, largest files
-- [Telemetry Statistics](telemetry_statistics.md) — focused analysis of `vibe/core/telemetry`, its source structure, dedicated tests, and event delivery behavior
 - [Rust Statistics](rust_statistics.md) — crate breakdowns, code density, language constructs, file size distribution, largest files
 
 ## Observations

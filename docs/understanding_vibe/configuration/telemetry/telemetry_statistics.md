@@ -2,7 +2,7 @@
 
 Last updated: 2026-10-19 (v2.26.1, commit `5e931ff3`)
 
-Deep-dive into `vibe/core/telemetry/`, following the structure of [Python Statistics](python_statistics.md). See [Statistics](statistics.md) for the cross-language overview.
+Deep-dive into `vibe/core/telemetry/`, following the structure of [Python Statistics](../../python_statistics.md). See [Statistics](../../statistics.md) for the cross-language overview.
 
 ## Overview
 
@@ -82,7 +82,7 @@ Both source and tests have one dominant file, rather than an even distribution o
 
 ## Source Modules
 
-Paths below are relative to [`vibe/core/telemetry/`](../../vibe/core/telemetry/).
+Paths below are relative to [`vibe/core/telemetry/`](../../../../vibe/core/telemetry/).
 
 | File | Lines | % of source | Responsibility |
 |---|---|---|---|
@@ -197,9 +197,9 @@ flowchart TD
 | `@pytest.mark.parametrize` usages (included above) | 3 |
 | Locally defined `@pytest.fixture` functions | 0 |
 
-Shared fixtures come from [`tests/conftest.py`](../../tests/conftest.py). Its `telemetry_events` fixture captures events by replacing the sending method. Transport tests restore the original method and use mocks, including `AsyncMock`, to inspect HTTP calls. Parametrization means the number of executed test cases can exceed the number of test functions.
+Shared fixtures come from [`tests/conftest.py`](../../../../tests/conftest.py). Its `telemetry_events` fixture captures events by replacing the sending method. Transport tests restore the original method and use mocks, including `AsyncMock`, to inspect HTTP calls. Parametrization means the number of executed test cases can exceed the number of test functions.
 
-Related integration tests also exist outside this scope, for example [`test_telemetry_integration.py`](../../tests/core/experiments/test_telemetry_integration.py) and [`test_telemetry_resource.py`](../../tests/app_server/test_telemetry_resource.py).
+Related integration tests also exist outside this scope, for example [`test_telemetry_integration.py`](../../../../tests/core/experiments/test_telemetry_integration.py) and [`test_telemetry_resource.py`](../../../../tests/app_server/test_telemetry_resource.py).
 
 ## Largest Source Files
 
@@ -217,7 +217,7 @@ Related integration tests also exist outside this scope, for example [`test_tele
 3. **Async work is isolated**: only two source functions are async. Public event helpers schedule work without awaiting the network; shutdown explicitly waits for pending work. The connection limit bounds connections, but the pending-task set has no explicit size bound.
 4. **Payload helpers reduce content collection**: copied text is represented by its length, requests by character/message counts, and file operations by counts/extensions. Unified subagent events intentionally exclude prompts and paths. This is not a guarantee of anonymity: session IDs and experiment attributes can still identify or correlate activity, and the generic sender accepts arbitrary properties.
 5. **Deduplication is local bookkeeping**: `SessionTelemetry` prevents repeated effect claims within its lifetime, with support for pre-marking resumed effects. It does not guarantee exactly-once delivery to the server; an event can be lost after its effect has been claimed.
-6. **The documented metadata shape deserves clarification**: [ADR 0008](../adr/0008-feature-instrumentation.md) specifies `properties.metadata`, whereas `send_telemetry_event()` merges base metadata directly into `properties`; the mocked HTTP test expects this flat shape. This is a documentation/implementation discrepancy to clarify before proposing a wire-format change.
+6. **The documented metadata shape deserves clarification**: [ADR 0008](../../../adr/0008-feature-instrumentation.md) specifies `properties.metadata`, whereas `send_telemetry_event()` merges base metadata directly into `properties`; the mocked HTTP test expects this flat shape. This is a documentation/implementation discrepancy to clarify before proposing a wire-format change.
 
 ## Measurement Method and Limits
 
