@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Déroulement et scénarios - Mistral Vibe</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+</head>
+<body>
+    <nav>
+        <div class="nav-container">
+            <a href="index.html" class="nav-title">Permissions Vibe</a>
+            <button class="nav-toggle" onclick="toggleMobileNav()" aria-label="Menu">☰</button>
+            <div class="nav-links" id="navLinks">
+                <a href="index.html">Accueil</a>
+                <a href="01-niveaux-et-modes.html">Niveaux & Modes</a>
+                <a href="02-deroulement-et-scenarios.html" class="active">Déroulement</a>
+                <a href="03-fichiers-utilisateur.html">Fichiers</a>
+                <a href="04-fichiers-et-modules.html">Modules</a>
+                <a href="05-securite-et-sandbox.html">Sécurité</a>
+                <a href="06-edge-cases.html">Edge Cases</a>
+                <a href="07-adr-et-contrat-des-outils.html">ADR & Contrat</a>
+                <a href="08-tests-et-qualite.html">Tests</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="page-container">
+        <main class="main-content">
+            <h1>Déroulement et scénarios</h1>
+
+            <section id="diagramme-principal">
+                <h2>Diagramme principal du flux de permission</h2>
+                <div class="mermaid-container">
+                    <div class="mermaid-wrapper">
+                        <pre class="mermaid">
+flowchart TB
+    subgraph Interface["Interface"]
+        UI[UI Textual/ACP]
+    end
+
+    subgraph App["Application/Resolver"]
+        AS[App Server]
+        AL[Agent Loop]
+        RB[Request Broker]
+    end
+
+    subgraph Outils["Outils"]
+        BT[BaseTool]
+    end
+
+    subgraph Stockage["Stockage"]
+        PS[PermissionStore]
+        SL[Session Log]
+    end
+
+    UI -->|callback/respond| AS
+    AS -->|callback/call| UI
+    AS -->|valide| AL
+    AL -->|_should_execute_tool| BT
+    BT -->|resolve_permission| AL
+    AL -->|covers?| PS
+    PS -->|oui/non| AL
+    AL -->|_ask_approval| RB
+    RB -->|ApprovalRequestEvent| AS
+    AS -->|Ouverture callback| UI
+    UI -->|Approuve/Refuse| AS
+    AS -->|callback/result| AL
+    AL -->|résout Future| RB
+    RB -->|ApprovalResolution| AL
+    AL -->|ToolDecision| BT
+    BT -->|run| BT
+    AL -->|ToolResultEvent| SL
+                        </pre>
+                    </div>
+                    <figcaption>
+                        <strong>Comment lire ce diagramme :</strong> Suivez le flux des appels (→). L'interface délègue à l'App Server qui valide via l'Agent Loop. Les outils implémentent <code>resolve_permission()</code>. Le PermissionStore vérifie si les permissions sont déjà accordées. Le Request Broker gère les callbacks utilisateur.
+                    </figcaption>
+                    <button class="mermaid-fullscreen-btn" onclick="openFullscreenMermaid(this)">Agrandir</button>
+                </div>
+
+                <div class="callout note">
+                    <p><strong>Interface</strong> : Affiche les callbacks de permission et transmet les réponses. Ne décide pas.</p>
+                    <p><strong>Application/Resolver</strong> : App Server est l'autorité centrale. Agent Loop vérifie et bloque si refusé.</p>
+                    <p><strong>Outils</strong> : Tous les outils implémentent <code>resolve_permission()</code>. L'exécution est validée avant toute action.</p>
+                    <p><strong>Stockage</strong> : PermissionStore stocke les règles de session. Session Log enregistre les tool calls.</p>
+                </div>
+            </section>
+
+            <section id="scenarios">
+                <h2>Scénarios de décision de permission</h2>
+                <p>
+                    Tableau complet des décisions de permission pour chaque situation. 
+                    <strong>Source vérifiée</strong> : chaque ligne correspond à du code réel.
+                </p>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Situation</th>
+                                <th>Outil</th>
+                                <th>Résultat</th>
+                                <th>Code responsable</th>
+                                <th>Source</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Lecture dans le workspace</td>
+                                <td><code>read_file</code></td>
+                                <td><code>ALWAYS</code> (si dans workspace) ou <code>ASK</code> (si outside)</td>
+                                <td><code>resolve_file_tool_permission()</code> vérifie <code>is_path_within_workdir()</code></td>
+                                <td><code>vibe/core/tools/utils.py:L183-249</code></td>
+                            </tr>
+                            <tr>
+                                <td>Écriture dans le workspace</td>
+                                <td><code>write_file</code></td>
+                                <td><code>ALWAYS</code> (si dans workspace) ou <code>ASK</code> (si outside)</td>
+                                <td><code>resolve_file_tool_permission()</code> vérifie <code>is_path_within_workdir()</code></td>
+                                <td><code>vibe/core/tools/utils.py:L183-249</code></td>
+                            </tr>
+                            <tr>
+                                <td>Accès hors workspace</td>
+                                <td><code>read_file</code>, <code>write_file</code>, <code>bash</code></td>
+                                <td><code>ASK</code> avec <code>RequiredPermission(scope=OUTSIDE_DIRECTORY)</code></td>
+                                <td>Ajoute la permission requise</td>
+                                <td><code>vibe/core/tools/utils.py:L225-238</code></td>
+                            </tr>
+                            <tr>
+                                <td>Fichier sensible (.env)</td>
+                                <td><code>read_file</code>, <code>bash</code></td>
+                                <td><code>ASK</code> avec <code>RequiredPermission(scope=FILE_PATTERN)</code></td>
+                                <td>Détecte les motifs sensibles</td>
+                                <td><code>vibe/core/tools/utils.py:L210-218</code></td>
+                            </tr>
+                            <tr>
+                                <td>Commande bash allowlistée</td>
+                                <td><code>bash</code></td>
+                                <td><code>ALWAYS</code> (si dans allowlist et pas dans denylist)</td>
+                                <td><code>_is_unconditionally_allowed()</code> vérifie les listes</td>
+                                <td><code>vibe/core/tools/builtins/bash.py:L720-722</code></td>
+                            </tr>
+                            <tr>
+                                <td>Commande bash denylistée</td>
+                                <td><code>bash</code></td>
+                                <td><code>ASK</code> avec permissions requises ou <code>NEVER</code></td>
+                                <td>Filtre par denylist</td>
+                                <td><code>vibe/core/tools/builtins/bash.py:L690-705</code></td>
+                            </tr>
+                            <tr>
+                                <td>Commande avec sudo</td>
+                                <td><code>bash</code></td>
+                                <td><code>ASK</code> avec <code>RequiredPermission</code> pour la commande</td>
+                                <td><code>needs_exact_command_scope()</code></td>
+                                <td><code>vibe/core/tools/builtins/bash.py:L730-739</code></td>
+                            </tr>
+                            <tr>
+                                <td>Permission déjà accordée pour la session</td>
+                                <td>Tous</td>
+                                <td><code>ALWAYS</code></td>
+                                <td><code>PermissionStore.covers()</code> retourne True</td>
+                                <td><code>vibe/core/agent_loop/_loop.py:L3053-3063</code></td>
+                            </tr>
+                            <tr>
+                                <td>Permission permanente (ALWAYS)</td>
+                                <td>Tous</td>
+                                <td><code>ALWAYS</code></td>
+                                <td>Config de l'outil</td>
+                                <td><code>vibe/core/tools/manager.py:L750-775</code></td>
+                            </tr>
+                            <tr>
+                                <td>Permission permanente (NEVER)</td>
+                                <td>Tous</td>
+                                <td><code>NEVER</code></td>
+                                <td>Config de l'outil</td>
+                                <td><code>vibe/core/tools/manager.py:L750-775</code></td>
+                            </tr>
+                            <tr>
+                                <td>Outil fourni par un plugin</td>
+                                <td>Plugin tools</td>
+                                <td>Même que les outils built-in</td>
+                                <td>Intégration via ToolManager</td>
+                                <td><code>vibe/core/tools/manager.py:L200-250</code></td>
+                            </tr>
+                            <tr>
+                                <td>Outil fourni par MCP</td>
+                                <td>MCP tools</td>
+                                <td>Même que les outils built-in</td>
+                                <td><code>ToolManager.integrate_mcp()</code></td>
+                                <td><code>vibe/core/tools/manager.py:L560-580</code></td>
+                            </tr>
+                            <tr>
+                                <td>Outil fourni par un connector</td>
+                                <td>Connector tools</td>
+                                <td>Même que les outils built-in</td>
+                                <td><code>ToolManager.integrate_connectors()</code></td>
+                                <td><code>vibe/core/tools/manager.py:L582-600</code></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section id="simulateur">
+                <h2>🎮 Simulateur de scénarios de permission</h2>
+                <div class="callout note">
+                    <p>
+                        Testez différents scénarios pour voir le résultat. 
+                        <strong>Basé uniquement sur les règles vérifiées dans le code</strong>.
+                    </p>
+                </div>
+                
+                <div class="interactive-section">
+                    <h3>Sélectionnez un scénario</h3>
+                    
+                    <label for="outil">Outil :</label>
+                    <select id="outil">
+                        <option value="read_file">read_file</option>
+                        <option value="write_file">write_file</option>
+                        <option value="bash">bash</option>
+                    </select>
+                    
+                    <label for="situation">Situation :</label>
+                    <select id="situation">
+                        <option value="workspace">Dans le workspace</option>
+                        <option value="outside">Hors du workspace (/etc/passwd)</option>
+                        <option value="sensitive">Fichier sensible (.env)</option>
+                        <option value="allowlist">Commande allowlistée (git status)</option>
+                        <option value="denylist">Commande denylistée (sudo)</option>
+                        <option value="sudo">Commande avec sudo</option>
+                        <option value="session_granted">Permission déjà accordée (session)</option>
+                        <option value="never">Permission configurée à NEVER</option>
+                        <option value="always">Permission configurée à ALWAYS</option>
+                    </select>
+                    
+                    <button onclick="simuler()">Simuler le scénario</button>
+                    
+                    <div id="resultat" class="result"></div>
+                </div>
+            </section>
+
+            <section id="cas-de-refus">
+                <h2>Que se passe-t-il quand une action est refusée ?</h2>
+
+                <h3>Cas (a) : L'utilisateur répond "Deny" à une demande</h3>
+                <p><strong>Flux complet vérifié dans le code</strong> :</p>
+                <ol>
+                    <li><strong>UI</strong> : L'utilisateur appuie sur <code>Esc</code> ou sélectionne "Deny" (option 4) → <code>approval_app.py:L253</code> (<code>action_reject()</code>) → sélectionne la dernière option</li>
+                    <li><strong>UI</strong> : <code>approval_app.py:L316</code> → <code>post_message(ApprovalRejected(tool_name, tool_args))</code></li>
+                    <li><strong>App</strong> : <code>app.py:L2145</code> → <code>on_approval_app_approval_rejected()</code> → appelle <code>_respond_to_approval(ApprovalDecisionType.DENY)</code></li>
+                    <li><strong>App</strong> : <code>app.py:L3123-3133</code> → <code>_respond_to_approval()</code> → <code>_respond_to_active_callback(ApprovalCallbackOutput(decision=DENY))</code></li>
+                    <li><strong>App</strong> : <code>app.py:L3135-3148</code> → <code>_respond_to_active_callback()</code> → <code>app_server.respond_to_callback(callback_id, output)</code></li>
+                    <li><strong>Server</strong> : <code>session.py:L713-722</code> → <code>respond_to_callback()</code> → envoie <code>"callback/result"</code> avec <code>CallbackResult(callback_id, output)</code></li>
+                    <li><strong>Loop</strong> : <code>_loop.py:L1147-1148</code> → <code>resolve_approval_request()</code> → <code>self._request_broker.resolve_approval(request_id, response=NO, feedback)</code></li>
+                    <li><strong>Broker</strong> : <code>_request_broker.py:L89-92</code> → <code>resolve_approval()</code> → résout le Future avec <code>ApprovalResolution(response=NO, feedback)</code></li>
+                    <li><strong>Loop</strong> : <code>_loop.py:L3068-3095</code> → <code>_ask_approval()</code> retourne <code>ToolDecision(verdict=SKIP, approval_type=ASK, approval_source=USER, feedback)</code></li>
+                    <li><strong>Loop</strong> : <code>_loop.py:L3027-3070</code> → <code>_should_execute_tool()</code> retourne cette décision</li>
+                    <li><strong>Loop</strong> : <code>_loop.py:L2855-2871</code> → <strong>L'outil n'est PAS exécuté</strong> → génère <code>ToolResultEvent</code> avec <code>error</code> et <code>decision=SKIP</code></li>
+                </ol>
+
+                <p><strong>Ce que reçoit le modèle :</strong></p>
+                <pre><code>ToolResultEvent(
+    tool_name="bash",
+    error="&lt;TOOL_ERROR_TAG&gt;bash failed: Tool call denied&lt;/TOOL_ERROR_TAG&gt;",
+    decision="skip",
+    approval_type="ask",
+    approval_source="user",
+    feedback="User denied permission"
+)
+</code></pre>
+
+                <div class="callout success">
+                    <p><strong>L'agent continue ou s'arrête :</strong> <strong>L'agent continue</strong> : Seul l'outil est skipé, la boucle passe à l'étape suivante</p>
+                </div>
+
+                <div class="callout success">
+                    <p><strong>Journalisation :</strong></p>
+                    <ul>
+                        <li>✅ <code>logger.info("Tool call denied tool=%s tool_call_id=%s outcome=denied", tool_name, tool_call_id)</code> (<code>_loop.py:L2863-2865</code>)</li>
+                        <li>✅ <code>stats.tool_calls_rejected += 1</code> (<code>_loop.py:L2868</code>)</li>
+                        <li>⚠️ <strong>Session log</strong> : Un <code>ToolResultEvent</code> est généré, probablement stocké dans le session log (non explicitement vérifié dans le code)</li>
+                    </ul>
+                </div>
+
+                <h3>Diagramme de séquence : L'utilisateur refuse</h3>
+                <div class="mermaid-container">
+                    <div class="mermaid-wrapper">
+                        <pre class="mermaid">
+sequenceDiagram
+    participant U as User
+    participant UI as UI Textual
+    participant AS as App Server
+    participant AL as Agent Loop
+    participant RB as Request Broker
+    participant PS as PermissionStore
+    participant T as Tool
+
+    U->>UI: Appuie sur Esc / "Deny"
+    UI->>UI: action_reject()
+    UI->>UI: post_message(ApprovalRejected)
+    UI->>AS: Callback response (DENY)
+    AS->>AL: callback/result
+    AL->>RB: resolve_approval(NO)
+    RB->>RB: Résout Future
+    RB->>AL: ApprovalResolution(NO)
+    AL->>AL: ToolDecision(SKIP)
+    AL->>T: Abort
+    AL->>AL: stats.tool_calls_rejected++
+    AL->>AL: logger.info("denied...")
+    AL->>UI: ToolResultEvent(error)
+                        </pre>
+                    </div>
+                    <figcaption>
+                        <strong>Comment lire ce diagramme :</strong> Suivez les flèches de haut en bas. L'utilisateur déclenche le refus, qui se propage à travers toutes les couches jusqu'à ce que l'outil soit skipé. Le message d'erreur remonte ensuite vers l'interface.
+                    </figcaption>
+                    <button class="mermaid-fullscreen-btn" onclick="openFullscreenMermaid(this)">Agrandir</button>
+                </div>
+
+                <h3>Cas (b) : La permission est NEVER</h3>
+                <p><strong>Flux :</strong></p>
+                <ol>
+                    <li><strong>Loop</strong> : <code>_loop.py:L3027-3051</code> → <code>_should_execute_tool()</code> détecte <code>ctx.permission == ToolPermission.NEVER</code> (ou <code>config_perm == NEVER</code> si <code>ctx is None</code>)</li>
+                    <li><strong>Loop</strong> : Retourne immédiatement <code>ToolDecision(verdict=SKIP, approval_type=NEVER, approval_source=NEVER, feedback=ctx.reason or f"Tool '{tool_name}' is permanently disabled")</code></li>
+                    <li><strong>Loop</strong> : <code>_loop.py:L2855-2871</code> → <strong>L'outil n'est PAS exécuté</strong> → génère <code>ToolResultEvent</code> avec <code>error</code></li>
+                </ol>
+
+                <p><strong>Ce que reçoit le modèle :</strong></p>
+                <pre><code>ToolResultEvent(
+    tool_name="bash",
+    error="&lt;TOOL_ERROR_TAG&gt;bash failed: Tool 'bash' is permanently disabled&lt;/TOOL_ERROR_TAG&gt;",
+    decision="skip",
+    approval_type="never",
+    approval_source="never",
+    feedback="Tool 'bash' is permanently disabled"
+)
+</code></pre>
+
+                <div class="callout success">
+                    <p><strong>L'agent continue ou s'arrête :</strong> <strong>L'agent continue</strong> : Seul l'outil est skipé</p>
+                </div>
+
+                <div class="callout success">
+                    <p><strong>Journalisation :</strong></p>
+                    <ul>
+                        <li>✅ Même que cas (a) : <code>logger.info("Tool call denied tool=%s tool_call_id=%s outcome=denied", ...)</code> (<code>_loop.py:L2863-2865</code>)</li>
+                        <li>✅ <code>stats.tool_calls_rejected += 1</code> (<code>_loop.py:L2868</code>)</li>
+                    </ul>
+                </div>
+
+                <h3>Cas (c) : Un motif de denylist correspond</h3>
+                <p><strong>Flux :</strong></p>
+                <ol>
+                    <li><strong>Outil</strong> : Pour <code>bash</code>, <code>bash.py:L684-739</code> → <code>resolve_permission()</code> appelle <code>_build_required_permissions()</code></li>
+                    <li><strong>Outil</strong> : Dans <code>_build_required_permissions()</code> (<code>bash.py:L636-667</code>), les commandes sont filtrées :
+                        <ul>
+                            <li>Si une commande est dans <code>denylist</code> → elle n'est <strong>pas</strong> ajoutée aux commandes autorisées automatiquement</li>
+                            <li>Les chemins en dehors du workspace sont vérifiés contre <code>allowlist</code> et <code>denylist</code> (<code>bash.py:L690-705</code>)</li>
+                        </ul>
+                    </li>
+                    <li><strong>Résultat</strong> : Si la commande correspond à un motif de denylist → <code>PermissionContext(permission=ToolPermission.ASK, required_permissions=[...])</code> ou <code>ToolPermission.NEVER</code> selon la configuration</li>
+                    <li><strong>Loop</strong> : Si <code>required_permissions</code> n'est pas vide et non couvert par <code>PermissionStore</code> → demande d'approbation à l'utilisateur</li>
+                    <li><strong>Si l'utilisateur refuse</strong> → Voir cas (a)</li>
+                </ol>
+
+                <div class="callout note">
+                    <p><strong>Comportement spécial :</strong></p>
+                    <ul>
+                        <li><strong>Denylist > Allowlist</strong> : Si un motif est dans les deux listes, la denylist <strong>l'emporte</strong> (filtré dans <code>_build_required_permissions()</code>)</li>
+                        <li><strong>Source</strong> : <code>vibe/core/tools/builtins/bash.py:L636-667</code>, <code>L690-705</code></li>
+                    </ul>
+                </div>
+
+                <h3>Cas (d) : L'utilisateur appuie sur Esc</h3>
+                <p><strong>Même que cas (a)</strong> : Dans <code>approval_app.py</code> :</p>
+                <ul>
+                    <li><code>L42</code> : <code>Binding("n", "reject", "No", show=False)</code></li>
+                    <li><code>L253</code> : <code>action_reject()</code> → <code>self._select_if_unguarded(len(self.options) - 1)</code> → sélectionne la dernière option ("Deny")</li>
+                    <li><code>L316</code> : Poste <code>ApprovalRejected</code></li>
+                </ul>
+                <p>Donc <strong>Esc → action_reject() → Deny → Voir cas (a)</strong></p>
+            </section>
+
+            <section>
+                <h2>Comportement spécial en cas de refus</h2>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Aspect</th>
+                                <th>Comportement</th>
+                                <th>Source</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Message renvoyé au LLM</strong></td>
+                                <td>Oui : <code>ToolResultEvent</code> avec <code>error</code>, <code>decision=SKIP</code>, <code>approval_type</code>, <code>approval_source</code></td>
+                                <td><code>_loop.py:L2855-2890</code></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Compteur</strong></td>
+                                <td>Oui : <code>stats.tool_calls_rejected += 1</code></td>
+                                <td><code>_loop.py:L2868</code></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Arrêt de la boucle</strong></td>
+                                <td>❌ Non : La boucle continue, seul l'outil est skipé</td>
+                                <td><code>_loop.py:L3027-3070</code></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Journalisation</strong></td>
+                                <td>✅ Oui : <code>logger.info("Tool call denied tool=%s tool_call_id=%s outcome=denied")</code></td>
+                                <td><code>_loop.py:L2863-2865</code></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Session log</strong></td>
+                                <td>⚠️ Probablement : <code>ToolResultEvent</code> est généré, mais stockage explicite dans le session log non vérifié</td>
+                                <td><code>_loop.py:L2873-2890</code></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <div class="nav-bottom">
+        <a href="01-niveaux-et-modes.html">← Précédent : Niveaux et modes</a>
+        <a href="03-fichiers-utilisateur.html">Suivant : Fichiers utilisateur →</a>
+    </div>
+
+    <!-- Modal pour plein écran -->
+    <div class="mermaid-modal" id="mermaidModal">
+        <div class="mermaid-modal-content">
+            <button class="mermaid-modal-close" onclick="closeFullscreenMermaid()">&times;</button>
+            <div id="mermaidModalContent"></div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration Mermaid
+        mermaid.initialize({
+            startOnLoad: false,
+            securityLevel: 'loose',
+            theme: window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'default'
+        });
+
+        // Re-render sur changement de thème
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
+            mermaid.initialize({
+                startOnLoad: false,
+                securityLevel: 'loose',
+                theme: e.matches ? 'dark' : 'default'
+            });
+            renderAllMermaid();
+        });
+
+        // Rendre tous les diagrammes
+        function renderAllMermaid() {
+            const diagrams = document.querySelectorAll('.mermaid');
+            diagrams.forEach(d => {
+                try {
+                    const content = d.textContent;
+                    d.innerHTML = content;
+                    mermaid.init(undefined, d);
+                } catch (e) {
+                    console.error('Erreur Mermaid:', e);
+                    d.innerHTML = '<p style="color: red;">Erreur d\'affichage du diagramme. Voir la console pour plus de détails.</p>';
+                }
+            });
+        }
+
+        // Navigation mobile
+        function toggleMobileNav() {
+            const navLinks = document.getElementById('navLinks');
+            navLinks.classList.toggle('mobile-open');
+        }
+
+        // Gestion du plein écran
+        function openFullscreenMermaid(button) {
+            const container = button.closest('.mermaid-container');
+            const mermaidElement = container.querySelector('.mermaid');
+            const modal = document.getElementById('mermaidModal');
+            const modalContent = document.getElementById('mermaidModalContent');
+            
+            modalContent.innerHTML = '<div class="mermaid">' + mermaidElement.textContent + '</div>';
+            modal.classList.add('active');
+            
+            mermaid.initialize({
+                startOnLoad: false,
+                securityLevel: 'loose',
+                theme: window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'default'
+            });
+            mermaid.init(undefined, modalContent.querySelector('.mermaid'));
+        }
+
+        function closeFullscreenMermaid() {
+            document.getElementById('mermaidModal').classList.remove('active');
+        }
+
+        // Fermer avec Échap
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeFullscreenMermaid();
+            }
+        });
+
+        // Initialisation
+        document.addEventListener('DOMContentLoaded', function() {
+            renderAllMermaid();
+        });
+        
+        // Simulateur de scénarios
+        const scenarios = {
+            read_file: {
+                workspace: { result: 'ALWAYS', reason: 'Le fichier est dans le workspace, lecture autorisée automatiquement', source: 'vibe/core/tools/utils.py:L183-249' },
+                outside: { result: 'ASK', reason: 'Le fichier est hors workspace, demande de permission requise', source: 'vibe/core/tools/utils.py:L225-238' },
+                sensitive: { result: 'ASK', reason: 'Fichier sensible détecté (.env), demande de permission forcée', source: 'vibe/core/tools/utils.py:L210-218' },
+                session_granted: { result: 'ALWAYS', reason: 'Permission déjà accordée pour cette session', source: 'vibe/core/agent_loop/_loop.py:L3053-3063' },
+                never: { result: 'NEVER', reason: 'Permission configurée à NEVER, blocage systématique', source: 'vibe/core/agent_loop/_loop.py:L3047-3051' },
+                always: { result: 'ALWAYS', reason: 'Permission configurée à ALWAYS, exécution automatique', source: 'vibe/core/tools/manager.py:L750-775' }
+            },
+            write_file: {
+                workspace: { result: 'ASK', reason: 'Écriture dans le workspace nécessite une confirmation par défaut', source: 'vibe/core/tools/utils.py:L183-249' },
+                outside: { result: 'ASK', reason: 'Le fichier est hors workspace, demande de permission requise', source: 'vibe/core/tools/utils.py:L225-238' },
+                sensitive: { result: 'ASK', reason: 'Fichier sensible détecté, demande de permission forcée', source: 'vibe/core/tools/utils.py:L210-218' },
+                session_granted: { result: 'ALWAYS', reason: 'Permission déjà accordée pour cette session', source: 'vibe/core/agent_loop/_loop.py:L3053-3063' },
+                never: { result: 'NEVER', reason: 'Permission configurée à NEVER, blocage systématique', source: 'vibe/core/agent_loop/_loop.py:L3047-3051' },
+                always: { result: 'ALWAYS', reason: 'Permission configurée à ALWAYS, exécution automatique', source: 'vibe/core/tools/manager.py:L750-775' }
+            },
+            bash: {
+                workspace: { result: 'ASK', reason: 'bash a typiquement ASK par défaut, demande de confirmation', source: 'vibe/core/tools/models.py:L12-20' },
+                outside: { result: 'ASK', reason: 'Commande accédant à des chemins hors workspace', source: 'vibe/core/tools/builtins/bash.py:L690-705' },
+                sensitive: { result: 'ASK', reason: 'Commande sensible détectée (sudo), demande forcée', source: 'vibe/core/tools/builtins/bash.py:L730-739' },
+                allowlist: { result: 'ALWAYS', reason: 'Commande dans l\'allowlist (ex: git status), exécution automatique', source: 'vibe/core/tools/builtins/bash.py:L720-722' },
+                denylist: { result: 'ASK', reason: 'Commande dans la denylist, demande de permission requise', source: 'vibe/core/tools/builtins/bash.py:L690-705' },
+                sudo: { result: 'ASK', reason: 'Commande avec sudo détectée, demande de permission forcée', source: 'vibe/core/tools/builtins/bash.py:L730-739' },
+                session_granted: { result: 'ALWAYS', reason: 'Permission déjà accordée pour cette session', source: 'vibe/core/agent_loop/_loop.py:L3053-3063' },
+                never: { result: 'NEVER', reason: 'Permission configurée à NEVER, blocage systématique', source: 'vibe/core/agent_loop/_loop.py:L3047-3051' },
+                always: { result: 'ALWAYS', reason: 'Permission configurée à ALWAYS, exécution automatique', source: 'vibe/core/tools/manager.py:L750-775' }
+            }
+        };
+        
+        function simuler() {
+            const outil = document.getElementById('outil').value;
+            const situation = document.getElementById('situation').value;
+            const resultDiv = document.getElementById('resultat');
+            
+            const scenario = scenarios[outil] && scenarios[outil][situation];
+            
+            if (scenario) {
+                resultDiv.className = 'result fade-in ' + scenario.result.toLowerCase();
+                resultDiv.innerHTML = `
+                    <p><strong>Résultat :</strong> <span style="font-size: 1.2em;">${scenario.result}</span></p>
+                    <p><strong>Raison :</strong> ${scenario.reason}</p>
+                    <p><strong>Source :</strong> <code>${scenario.source}</code></p>
+                `;
+                resultDiv.classList.add('visible');
+            } else {
+                resultDiv.className = 'result fade-in warn';
+                resultDiv.innerHTML = `
+                    <p><strong>Résultat :</strong> non vérifié</p>
+                    <p>Ce scénario n'a pas été explicitement vérifié dans le code.</p>
+                `;
+                resultDiv.classList.add('visible');
+            }
+        }
+    </script>
+</body>
+</html>

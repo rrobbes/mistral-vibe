@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cas limites (edge cases) - Mistral Vibe</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+</head>
+<body>
+    <nav>
+        <div class="nav-container">
+            <a href="index.html" class="nav-title">Permissions Vibe</a>
+            <button class="nav-toggle" onclick="toggleMobileNav()" aria-label="Menu">☰</button>
+            <div class="nav-links" id="navLinks">
+                <a href="index.html">Accueil</a>
+                <a href="01-niveaux-et-modes.html">Niveaux & Modes</a>
+                <a href="02-deroulement-et-scenarios.html">Déroulement</a>
+                <a href="03-fichiers-utilisateur.html">Fichiers</a>
+                <a href="04-fichiers-et-modules.html">Modules</a>
+                <a href="05-securite-et-sandbox.html">Sécurité</a>
+                <a href="06-edge-cases.html" class="active">Edge Cases</a>
+                <a href="07-adr-et-contrat-des-outils.html">ADR & Contrat</a>
+                <a href="08-tests-et-qualite.html">Tests</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="page-container">
+        <main class="main-content">
+        <h1>Cas limites (edge cases)</h1>
+
+        <section>
+            <h2>Chemins avec ".."</h2>
+            <p><strong>Comportement :</strong> Les chemins relatifs avec <code>..</code> sont <strong>normalisés et résolus</strong> avant la vérification des permissions.</p>
+            <p><strong>Implémentation :</strong></p>
+            <ul>
+                <li><code>vibe/core/tools/utils.py:L175-180</code> (<code>_make_absolute</code>) :
+                    <pre><code>try:
+    resolved = _make_absolute(path_str, workspace.cwd).resolve()
+except (ValueError, OSError):
+    return False
+return workspace.allows(resolved)
+</code></pre>
+                </li>
+                <li><code>Path.resolve()</code> résout les <code>..</code> et les liens symboliques</li>
+                <li>Si le chemin résolu est en dehors du workspace → <code>RequiredPermission(scope=OUTSIDE_DIRECTORY)</code></li>
+            </ul>
+            <p><strong>Exemple :</strong></p>
+            <pre><code># Depuis /home/user/projet/
+read_file("../../../etc/passwd")  # Résolu en /etc/passwd → hors workspace → demande permission
+</code></pre>
+            <p><strong>Source :</strong> <code>vibe/core/tools/utils.py:L175-249</code></p>
+            <p><strong>Test existant :</strong> ❌ Non trouvé dans les tests</p>
+        </section>
+
+        <section>
+            <h2>Liens symboliques</h2>
+            <p><strong>Comportement :</strong> Les liens symboliques sont <strong>résolus</strong> avant la vérification des permissions.</p>
+            <p><strong>Implémentation :</strong></p>
+            <ul>
+                <li><code>vibe/core/tools/utils.py:L175-180</code> : <code>_make_absolute()</code> + <code>.resolve()</code> résout les liens symboliques</li>
+                <li><code>vibe/core/trusted_folders.py:L270-280</code> : <code>_closest_decision()</code> utilise <code>Path(self._normalize_path(path)).resolve()</code></li>
+                <li>Dans <code>_shell_permission_analysis.py:L60-70</code> : Les redirections de fichiers ignorent les liens symboliques (pour éviter de suivre des liens dangereux)
+                    <pre><code>if stat.S_ISLNK(info.st_mode):
+    return 0  # Skip symlinks
+</code></pre>
+                </li>
+            </ul>
+            <p><strong>Exemple :</strong></p>
+            <pre><code># Si /home/user/projet/link -> /etc/
+read_file("link/passwd")  # Résolu en /etc/passwd → hors workspace → demande permission
+</code></pre>
+            <p><strong>Comportement spécial :</strong></p>
+            <p>Dans <code>_shell_permission_analysis.py:L60-70</code> : Les liens symboliques sont <strong>exclus</strong> de la restriction de permissions pour éviter de suivre des liens en dehors du contrôle.</p>
+            <p><strong>Source :</strong> <code>vibe/core/tools/utils.py:L175-180</code>, <code>vibe/core/trusted_folders.py:L270-280</code>, <code>vibe/core/tools/builtins/_shell_permission_analysis.py:L60-70</code></p>
+            <p><strong>Test existant :</strong> ❌ Non trouvé dans les tests</p>
+        </section>
+
+        <section>
+            <h2>Commandes enchaînées (&&, |, ;)</h2>
+            <p><strong>Comportement :</strong> Les commandes enchaînées sont <strong>analysées récursivement</strong> et chaque partie est vérifiée.</p>
+            <p><strong>Implémentation :</strong></p>
+            <ul>
+                <li><code>vibe/core/tools/builtins/_shell_permission_analysis.py:L1-150</code> :
+                    <ul>
+                        <li><code>analyze_shell_command(command)</code> : Parse la commande avec tree-sitter</li>
+                        <li>Retourne un <code>ShellPermissionAnalysis</code> avec <code>command_parts</code> (liste de toutes les commandes dans la chaîne)</li>
+                        <li>Détecte les opérateurs : <code>&&</code>, <code>||</code>, <code>;</code>, <code>&</code>, <code>|</code></li>
+                    </ul>
+                </li>
+            </ul>
+            <p><strong>Exemple :</strong></p>
+            <pre><code>bash("rm file.txt && echo done")
+# → command_parts = ["rm file.txt", "echo done"] → Chaque partie est vérifiée séparément
+</code></pre>
+            <p><strong>Source :</strong> <code>vibe/core/tools/builtins/_shell_permission_analysis.py:L1-150</code>, <code>vibe/core/tools/builtins/bash.py:L684-690</code></p>
+            <p><strong>Test existant :</strong> ✅ Oui, tests dans <code>tests/tools/test_windows_shell.py</code> et <code>tests/tools/test_bash.py</code> (analyse des commandes complexes)</p>
+        </section>
+
+        <section>
+            <h2>Substitutions $(...)</h2>
+            <p><strong>Comportement :</strong> Les substitutions de commandes (<code>$(...)</code>) sont <strong>détectées comme nœuds dynamiques</strong> et déclenchent une demande d'approbation.</p>
+            <p><strong>Implémentation :</strong></p>
+            <ul>
+                <li><code>vibe/core/tools/builtins/_shell_permission_analysis.py:L80-90</code> :
+                    <pre><code>_DYNAMIC_NODES = {
+    "command_substitution": "command substitution",
+    "arithmetic_expansion": "arithmetic expansion",
+    "brace_expression": "brace expansion",
+    "expansion": "parameter expansion",
+    "process_substitution": "process substitution",
+    "simple_expansion": "variable expansion",
+    "variable_assignment": "environment assignments",
+}
+</code></pre>
+                </li>
+                <li>Si un nœud dynamique est détecté → la commande <strong>nécessite une approbation</strong></li>
+            </ul>
+            <p><strong>Exemple :</strong></p>
+            <pre><code>bash("echo $(cat /etc/passwd)")
+# → Détecte command_substitution → analysis.requires_approval = True → demande permission
+</code></pre>
+            <p><strong>Source :</strong> <code>vibe/core/tools/builtins/_shell_permission_analysis.py:L80-90</code>, <code>vibe/core/tools/builtins/bash.py:L730-739</code></p>
+            <p><strong>Test existant :</strong> ❌ Non trouvé dans les tests (mais le code de détection est présent)</p>
+        </section>
+
+        <section>
+            <h2>Commandes non analysables</h2>
+            <p><strong>Comportement :</strong> Si le parse tree contient des <strong>nœuds non fidèles</strong> (<code>_UNFAITHFUL_PARSE_NODES</code>), la commande <strong>nécessite une approbation</strong>.</p>
+            <p><strong>Implémentation :</strong></p>
+            <ul>
+                <li><code>vibe/core/tools/builtins/_shell_permission_analysis.py:L95-100</code> :
+                    <pre><code>_UNFAITHFUL_PARSE_NODES = {"function_definition"}
+</code></pre>
+                </li>
+                <li>Si un nœud non fidèle est présent → la commande est considérée comme <strong>non analysable</strong> → <code>analysis.requires_approval = True</code></li>
+            </ul>
+            <p><strong>Exemple :</strong></p>
+            <pre><code>bash("function test() { rm -rf /; }")
+# → Détecte function_definition → nécessite une approbation
+</code></pre>
+            <p><strong>Source :</strong> <code>vibe/core/tools/builtins/_shell_permission_analysis.py:L95-100</code></p>
+            <p><strong>Test existant :</strong> ❌ Non trouvé dans les tests</p>
+        </section>
+
+        <section>
+            <h2>Windows vs POSIX</h2>
+            <p><strong>Comportement :</strong> Le système gère les différences entre Windows et POSIX.</p>
+            <p><strong>Implémentation :</strong></p>
+
+            <h4>Détection du système</h4>
+            <ul>
+                <li><code>vibe/core/utils/shell.py:L1-50</code> : <code>uses_posix_shell()</code> détermine si le shell est POSIX ou Windows</li>
+                <li><code>vibe/core/tools/builtins/bash.py:L686</code> : <code>if not uses_posix_shell(): return None</code> (bash n'est utilisé que sur POSIX)</li>
+                <li><code>vibe/core/tools/builtins/windows_shell.py</code> : Outils spécifiques à Windows</li>
+            </ul>
+
+            <h4>Normalisation des chemins</h4>
+            <ul>
+                <li><code>vibe/permissions.py:L40-90</code> :
+                    <ul>
+                        <li><code>_is_windows_path()</code> : Détecte les chemins Windows (C:\...)</li>
+                        <li><code>_normalized_path()</code> : Normalise selon le système (ntpath vs posixpath)</li>
+                    </ul>
+                </li>
+            </ul>
+
+            <h4>Commandes par défaut</h4>
+            <ul>
+                <li><strong>POSIX</strong> : <code>read_file</code> utilise les commandes POSIX (<code>cat</code>, <code>ls</code>, etc.)</li>
+                <li><strong>Windows</strong> : <code>read_file</code> utilise PowerShell (<code>Get-Content</code>, etc.)</li>
+                <li><strong>Allowlist/denylist</strong> : Différentes listes pour chaque système (<code>bash.py:L80-110</code>)</li>
+            </ul>
+            <p><strong>Exemple :</strong></p>
+            <pre><code># Sur Windows
+def uses_posix_shell() -> bool:
+    return False  # ou True si Git Bash
+
+# Sur POSIX
+def uses_posix_shell() -> bool:
+    return True
+</code></pre>
+            <p><strong>Source :</strong> <code>vibe/core/utils/shell.py:L1-50</code>, <code>vibe/permissions.py:L40-90</code>, <code>vibe/core/tools/builtins/bash.py:L1-50</code></p>
+            <p><strong>Test existant :</strong> ✅ Oui, <code>tests/tools/test_windows_shell.py</code></p>
+        </section>
+
+        <section>
+            <h2>Fichier inexistant</h2>
+            <p><strong>Comportement :</strong> L'existence du fichier est <strong>vérifiée avant l'exécution</strong>, pas pendant la résolution des permissions.</p>
+            <p><strong>Implémentation :</strong></p>
+            <ul>
+                <li><strong>read_file</strong> : <code>vibe/core/tools/builtins/read_file.py:L150-200</code> :
+                    <ul>
+                        <li><code>ToolError</code> si le fichier n'existe pas</li>
+                        <li>La permission est vérifiée <strong>avant</strong> la vérification d'existence</li>
+                    </ul>
+                </li>
+                <li><strong>write_file</strong> : <code>vibe/core/tools/builtins/write_file.py:L130-150</code> :
+                    <ul>
+                        <li>Vérifie que le fichier parent existe</li>
+                        <li><code>ToolError</code> si le parent n'existe pas</li>
+                    </ul>
+                </li>
+            </ul>
+            <p><strong>Exemple :</strong></p>
+            <pre><code>read_file("/nonexistent/file.txt")
+# → Vérification des permissions → autorisé → puis ToolError("File not found")
+</code></pre>
+            <p><strong>Source :</strong> <code>vibe/core/tools/builtins/read_file.py:L150-200</code>, <code>vibe/core/tools/builtins/write_file.py:L130-150</code></p>
+            <p><strong>Test existant :</strong> ✅ Oui, tests des outils builtin</p>
+        </section>
+
+        <section>
+            <h2>Motifs sensibles combinés avec ALWAYS</h2>
+            <p><strong>Comportement :</strong> Même si la permission globale de l'outil est <code>ALWAYS</code>, les <strong>motifs sensibles</strong> forcent une demande d'approbation.</p>
+            <p><strong>Implémentation :</strong></p>
+            <ul>
+                <li><code>vibe/core/tools/utils.py:L210-218</code> :
+                    <pre><code>if matches_sensitive_pattern(file_str, sensitive_patterns):
+    required.append(RequiredPermission(
+        scope=PermissionScope.FILE_PATTERN,
+        invocation_pattern=file_str,
+        session_pattern=glob.escape(file_str),
+        label=f"accessing sensitive files ({tool_name})",
+    ))
+</code></pre>
+                </li>
+                <li>Si <code>required_permissions</code> n'est pas vide → retourne <code>PermissionContext(permission=ToolPermission.ASK, required_permissions=required)</code></li>
+                <li><strong>Priorité</strong> : Les motifs sensibles <strong>l'emportent</strong> sur la permission globale</li>
+            </ul>
+            <p><strong>Exemple :</strong></p>
+            <pre><code># config.toml
+[tools.read_file]
+permission = "always"
+sensitive_patterns = ["**/.env"]
+
+# Commande
+read_file(".env")  # → Demande permission malgré ALWAYS
+</code></pre>
+            <p><strong>Source :</strong> <code>vibe/core/tools/utils.py:L210-218</code></p>
+            <p><strong>Test existant :</strong> ❌ Non trouvé dans les tests</p>
+        </section>
+
+        <section>
+            <h2>Conflits allowlist/denylist</h2>
+            <p><strong>Comportement :</strong> <strong>La denylist a priorité sur l'allowlist.</strong></p>
+            <p><strong>Implémentation :</strong></p>
+            <ul>
+                <li><code>vibe/core/tools/builtins/bash.py:L690-705</code> :
+                    <pre><code>outside_paths = {
+    path
+    for path in outside_paths
+    if not any(
+        path_grant_pattern_matches(path, pattern)
+        for pattern in self.config.allowlist
+    )
+}
+</code></pre>
+                </li>
+                <li><code>vibe/core/tools/utils.py:L200-210</code> (<code>resolve_path_permission</code>) :
+                    <ul>
+                        <li>Vérifie d'abord la denylist</li>
+                        <li>Puis vérifie l'allowlist</li>
+                        <li><strong>Si un motif est dans les deux → denylist l'emporte</strong></li>
+                    </ul>
+                </li>
+            </ul>
+            <p><strong>Exemple :</strong></p>
+            <pre><code>[tools.bash]
+allowlist = ["rm"]
+denylist = ["rm -rf"]
+
+bash("rm file.txt")      # → Allowlist match → ALWAYS (si pas d'autres checks)
+bash("rm -rf /")         # → Denylist match → ASK ou NEVER
+</code></pre>
+            <p><strong>Source :</strong> <code>vibe/core/tools/builtins/bash.py:L690-705</code>, <code>vibe/core/tools/utils.py:L200-210</code></p>
+            <p><strong>Test existant :</strong> ❌ Non trouvé dans les tests</p>
+        </section>
+
+        <section>
+            <h2>Résumé des edge cases</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Cas limite</th>
+                        <th>Comportement</th>
+                        <th>Source</th>
+                        <th>Test existant</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Chemins avec ".."</td>
+                        <td>Normalisés et résolus → vérification des limites workspace</td>
+                        <td><code>utils.py:L175-180</code></td>
+                        <td>❌ Non</td>
+                    </tr>
+                    <tr>
+                        <td>Liens symboliques</td>
+                        <td>Résolus avant vérification → hors workspace si cible hors workspace</td>
+                        <td><code>utils.py:L175-180</code></td>
+                        <td>❌ Non</td>
+                    </tr>
+                    <tr>
+                        <td>Commandes enchaînées (&&, |, ;)</td>
+                        <td>Analysées récursivement → chaque partie vérifiée</td>
+                        <td><code>_shell_permission_analysis.py:L1-150</code></td>
+                        <td>✅ Oui</td>
+                    </tr>
+                    <tr>
+                        <td>Substitutions $(...)</td>
+                        <td>Détectées comme nœuds dynamiques → demande approval</td>
+                        <td><code>_shell_permission_analysis.py:L80-90</code></td>
+                        <td>❌ Non</td>
+                    </tr>
+                    <tr>
+                        <td>Commandes non analysables</td>
+                        <td>Nœuds non fidèles → demande approval</td>
+                        <td><code>_shell_permission_analysis.py:L95-100</code></td>
+                        <td>❌ Non</td>
+                    </tr>
+                    <tr>
+                        <td>Windows vs POSIX</td>
+                        <td>Géré séparément → normalisation des chemins</td>
+                        <td><code>shell.py:L1-50</code>, <code>permissions.py:L40-90</code></td>
+                        <td>✅ Oui</td>
+                    </tr>
+                    <tr>
+                        <td>Fichier inexistant</td>
+                        <td>Permission vérifiée avant existence → ToolError après</td>
+                        <td><code>read_file.py:L150-200</code></td>
+                        <td>✅ Oui</td>
+                    </tr>
+                    <tr>
+                        <td>Motifs sensibles + ALWAYS</td>
+                        <td>Motifs sensibles l'emportent → demande approval</td>
+                        <td><code>utils.py:L210-218</code></td>
+                        <td>❌ Non</td>
+                    </tr>
+                    <tr>
+                        <td>Conflits allowlist/denylist</td>
+                        <td>Denylist l'emporte</td>
+                        <td><code>bash.py:L690-705</code>, <code>utils.py:L200-210</code></td>
+                        <td>❌ Non</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section>
+            <h2>Recommandations</h2>
+
+            <h3>Pour les développeurs d'outils personnalisés :</h3>
+            <ol>
+                <li><strong>Toujours implémenter resolve_permission()</strong></li>
+                <li>Vérifier les chemins avec <code>is_path_within_workdir()</code></li>
+                <li>Utiliser <code>matches_sensitive_pattern()</code> pour les fichiers sensibles</li>
+                <li>Tester les edge cases (chemins relatifs, liens symboliques, etc.)</li>
+            </ol>
+
+            <h3>Pour les utilisateurs :</h3>
+            <ol>
+                <li><strong>Configurer correctement les allowlists/denylists</strong></li>
+                <li>Ne pas désactiver <code>bypass_tool_permissions</code></li>
+                <li>Vérifier les motifs sensibles</li>
+                <li>Utiliser le scratchpad pour les fichiers temporaires</li>
+            </ol>
+
+            <h3>Pour les mainteneurs :</h3>
+            <ol>
+                <li><strong>Ajouter des tests pour les edge cases non couverts</strong></li>
+                <li>Améliorer la détection des commandes dangereuses</li>
+                <li>Documenter les comportements spécifiques</li>
+            </ol>
+        </section>
+        </main>
+    </div>
+
+    <div class="nav-bottom">
+        <a href="05-securite-et-sandbox.html">← Précédent : Sécurité et sandbox</a>
+        <a href="07-adr-et-contrat-des-outils.html">Suivant : ADR et contrat des outils →</a>
+    </div>
+
+    <script>
+        // Navigation mobile
+        function toggleMobileNav() {
+            const navLinks = document.getElementById('navLinks');
+            navLinks.classList.toggle('mobile-open');
+        }
+
+        // Initialisation
+        document.addEventListener('DOMContentLoaded', function() {
+            mermaid.initialize({
+                startOnLoad: false,
+                securityLevel: 'loose',
+                theme: window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'default'
+            });
+        });
+    </script>
+</body>
+</html>
