@@ -1,0 +1,1475 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mistral Vibe Agent Loop</title>
+<meta name="description" content="Engineering report on vibe/core/agent_loop/: turn lifecycle, typed events, permissions, middleware, error handling, tests and design decisions, verified against the source.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,650;12..96,750&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* Layout: engine reference manual. Fixed index rail on the left, one chapter on screen at a time,
+   event families colour-coded everywhere an event name appears. */
+:root {
+  --ground: #f2f3f5;
+  --sheet: #ffffff;
+  --sunk: #eceef2;
+  --ink: #161a22;
+  --ink-2: #4a5160;
+  --ink-3: #7a8191;
+  --rule: #dcdfe5;
+  --signal: #e8530c;
+  --signal-ink: #b33f06;
+  --signal-wash: #fdeee6;
+
+  /* Event families */
+  --f-user: #2563c9;   --f-user-wash: #e7eefb;
+  --f-model: #7a4fd0;  --f-model-wash: #f0eafb;
+  --f-tool: #c2560c;   --f-tool-wash: #fcede3;
+  --f-ask: #a17200;    --f-ask-wash: #fbf2d9;
+  --f-ctx: #0f7f73;    --f-ctx-wash: #e1f3f0;
+  --f-hook: #5b6474;   --f-hook-wash: #eceef2;
+
+  --ok: #1d7a4a; --ok-wash: #e3f3ea;
+  --bad: #b4232c; --bad-wash: #fbe7e8;
+
+  --font-display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans", "Helvetica Neue", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  --rail: 288px;
+  --measure: 68ch;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: #0e1015;
+    --sheet: #161921;
+    --sunk: #1d212b;
+    --ink: #e8eaf0;
+    --ink-2: #b2b8c5;
+    --ink-3: #848b9b;
+    --rule: #2a2f3b;
+    --signal: #ff7a3a;
+    --signal-ink: #ff9a66;
+    --signal-wash: #2b1a12;
+    --f-user: #7aa7ff;   --f-user-wash: #18233a;
+    --f-model: #b49aff;  --f-model-wash: #241d3a;
+    --f-tool: #ff9b5c;   --f-tool-wash: #2e1d12;
+    --f-ask: #e6b84a;    --f-ask-wash: #2b2412;
+    --f-ctx: #4fd1c0;    --f-ctx-wash: #102a28;
+    --f-hook: #a3abbb;   --f-hook-wash: #222632;
+    --ok: #5cd08f; --ok-wash: #132a1e;
+    --bad: #ff7b82; --bad-wash: #2f1517;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --ground: #0e1015;
+  --sheet: #161921;
+  --sunk: #1d212b;
+  --ink: #e8eaf0;
+  --ink-2: #b2b8c5;
+  --ink-3: #848b9b;
+  --rule: #2a2f3b;
+  --signal: #ff7a3a;
+  --signal-ink: #ff9a66;
+  --signal-wash: #2b1a12;
+  --f-user: #7aa7ff;   --f-user-wash: #18233a;
+  --f-model: #b49aff;  --f-model-wash: #241d3a;
+  --f-tool: #ff9b5c;   --f-tool-wash: #2e1d12;
+  --f-ask: #e6b84a;    --f-ask-wash: #2b2412;
+  --f-ctx: #4fd1c0;    --f-ctx-wash: #102a28;
+  --f-hook: #a3abbb;   --f-hook-wash: #222632;
+  --ok: #5cd08f; --ok-wash: #132a1e;
+  --bad: #ff7b82; --bad-wash: #2f1517;
+  color-scheme: dark;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--ground);
+  color: var(--ink);
+  font: 400 15.5px/1.65 var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+::selection { background: var(--signal-wash); color: var(--ink); }
+a { color: var(--signal-ink); text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--signal-ink) 35%, transparent); text-underline-offset: 3px; }
+a:hover { text-decoration-color: currentColor; }
+:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; border-radius: 3px; }
+code, kbd, .mono { font-family: var(--font-mono); font-size: .86em; font-variant-ligatures: none; }
+p code, li code, td code, dd code, h3 code, h4 code { background: var(--sunk); padding: .08em .38em; border-radius: 4px; color: var(--ink); }
+strong { font-weight: 600; }
+
+/* Shell */
+.shell { display: grid; grid-template-columns: var(--rail) minmax(0, 1fr); min-height: 100vh; }
+.rail {
+  position: sticky; top: 0; height: 100vh; overflow-y: auto;
+  border-right: 1px solid var(--rule); background: var(--sheet);
+  display: flex; flex-direction: column;
+}
+.rail-head { padding: 26px 24px 18px; border-bottom: 1px solid var(--rule); }
+.mark { display: flex; align-items: center; gap: 12px; }
+.mark svg { flex: none; }
+.mark-name { font: 750 17px/1.1 var(--font-display); letter-spacing: -.01em; }
+.mark-path { font: 400 12px/1.3 var(--font-mono); color: var(--ink-3); margin-top: 3px; }
+.index { padding: 14px 12px 20px; display: flex; flex-direction: column; gap: 18px; }
+.index-group-label {
+  font: 600 10.5px/1 var(--font-body); letter-spacing: .12em; text-transform: uppercase;
+  color: var(--ink-3); padding: 0 12px 8px;
+}
+.index a {
+  display: grid; grid-template-columns: 28px 1fr; align-items: baseline;
+  padding: 6px 12px; border-radius: 6px; color: var(--ink-2); text-decoration: none;
+  font-size: 14px; font-weight: 500; position: relative;
+}
+.index a .n { font: 500 11.5px var(--font-mono); color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.index a:hover { background: var(--sunk); color: var(--ink); }
+.index a[aria-current="page"] { background: var(--signal-wash); color: var(--signal-ink); }
+.index a[aria-current="page"] .n { color: var(--signal-ink); }
+.rail-foot {
+  margin-top: auto; padding: 16px 24px 22px; border-top: 1px solid var(--rule);
+  font-size: 12px; color: var(--ink-3); display: grid; gap: 10px;
+}
+.rail-foot dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; }
+.rail-foot dt { color: var(--ink-3); }
+.rail-foot dd { margin: 0; color: var(--ink-2); font-family: var(--font-mono); font-size: 11.5px; }
+.btn {
+  appearance: none; border: 1px solid var(--rule); background: var(--sheet); color: var(--ink);
+  font: 500 12.5px/1 var(--font-body); padding: 8px 12px; border-radius: 6px; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 8px;
+}
+.btn:hover { border-color: var(--ink-3); }
+
+.page { min-width: 0; padding-block: 48px 72px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.page-inner { max-width: 1080px; margin: 0 auto; padding: 0 40px; }
+.topbar { display: none; }
+
+/* Chapter */
+.chapter { display: none; }
+.chapter.is-active { display: block; }
+@media (prefers-reduced-motion: no-preference) {
+  .chapter.is-active { animation: rise .22s ease-out; }
+  @keyframes rise { from { opacity: .4; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+}
+.kicker { display: flex; align-items: center; gap: 10px; font: 600 11.5px/1 var(--font-body); letter-spacing: .12em; text-transform: uppercase; color: var(--ink-3); }
+.kicker .n { font-family: var(--font-mono); color: var(--signal-ink); letter-spacing: 0; font-size: 12.5px; }
+h1 {
+  font: 750 clamp(30px, 4vw, 44px)/1.05 var(--font-display); letter-spacing: -.025em;
+  margin: 14px 0 16px; text-wrap: balance;
+}
+h2 { font: 650 22px/1.2 var(--font-display); letter-spacing: -.01em; margin: 48px 0 14px; text-wrap: balance; }
+h3 { font: 600 15.5px/1.35 var(--font-body); margin: 0 0 6px; }
+.lede { font-size: 18px; line-height: 1.55; color: var(--ink-2); max-width: var(--measure); margin: 0 0 32px; }
+p, ul, ol { max-width: var(--measure); }
+p { margin: 0 0 14px; }
+ul, ol { margin: 0 0 16px; padding-left: 20px; }
+li { margin: 4px 0; }
+li::marker { color: var(--ink-3); }
+.note { font-size: 13px; color: var(--ink-3); }
+
+/* Panels and grids */
+.panel { background: var(--sheet); border: 1px solid var(--rule); border-radius: 10px; min-width: 0; }
+.panel-pad { padding: 22px 24px; }
+.grid { display: grid; gap: 20px; }
+.cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.split { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 36px; align-items: start; }
+.ruled > * + * { border-top: 1px solid var(--rule); }
+
+/* Facts strip */
+.facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border: 1px solid var(--rule); border-radius: 10px; background: var(--sheet); margin: 0 0 36px; }
+.fact { padding: 18px 20px; min-width: 0; }
+.fact + .fact { border-left: 1px solid var(--rule); }
+.fact-v { font: 750 30px/1 var(--font-display); letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.fact-l { font-size: 13px; color: var(--ink-2); margin-top: 8px; line-height: 1.4; }
+
+/* Event chips */
+.ev {
+  display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
+  font: 500 12.5px/1.5 var(--font-mono); padding: 1px 8px 1px 7px; border-radius: 5px;
+  background: var(--fam-wash); color: var(--fam);
+}
+.ev::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex: none; }
+[data-fam="user"]  { --fam: var(--f-user);  --fam-wash: var(--f-user-wash); }
+[data-fam="model"] { --fam: var(--f-model); --fam-wash: var(--f-model-wash); }
+[data-fam="tool"]  { --fam: var(--f-tool);  --fam-wash: var(--f-tool-wash); }
+[data-fam="ask"]   { --fam: var(--f-ask);   --fam-wash: var(--f-ask-wash); }
+[data-fam="ctx"]   { --fam: var(--f-ctx);   --fam-wash: var(--f-ctx-wash); }
+[data-fam="hook"]  { --fam: var(--f-hook);  --fam-wash: var(--f-hook-wash); }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 16px; font-size: 12.5px; color: var(--ink-2); }
+.legend span { display: inline-flex; align-items: center; gap: 7px; }
+.legend i { width: 9px; height: 9px; border-radius: 2px; background: var(--fam); display: inline-block; }
+
+/* Trace (signature element) */
+.trace { background: var(--sheet); border: 1px solid var(--rule); border-radius: 10px; overflow: hidden; min-width: 0; }
+.trace-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--rule); background: var(--sunk); }
+.trace-title { font: 500 12px/1.3 var(--font-mono); color: var(--ink-2); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.trace-body { list-style: none; margin: 0; padding: 10px 0; max-width: none; font: 400 12.5px/1.5 var(--font-mono); overflow-x: auto; }
+.trace-body li { display: grid; grid-template-columns: 48px minmax(0, 1fr); gap: 2px 12px; padding: 5px 16px; margin: 0; align-items: baseline; }
+.trace-body .t { color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.trace-body .d { grid-column: 2; color: var(--ink-2); overflow-wrap: anywhere; }
+.trace-body .d b { color: var(--ink); font-weight: 500; }
+.trace-body li.gap { color: var(--ink-3); padding-top: 8px; padding-bottom: 8px; font-style: italic; font-family: var(--font-body); font-size: 12.5px; }
+.trace-body li.is-hidden { visibility: hidden; }
+.trace-body li.is-new { background: var(--signal-wash); transition: background 1.2s ease; }
+.trace-foot { padding: 10px 16px; border-top: 1px solid var(--rule); font-size: 12px; color: var(--ink-3); }
+
+/* Callout and quote */
+.quote { margin: 0 0 20px; padding: 2px 0 2px 18px; border-left: 2px solid var(--signal); max-width: var(--measure); }
+.quote p { font: 500 16px/1.5 var(--font-body); color: var(--ink); margin: 0 0 6px; }
+.quote cite { font-style: normal; font-size: 12.5px; color: var(--ink-3); }
+
+/* Tables */
+.table-wrap { overflow-x: auto; border: 1px solid var(--rule); border-radius: 10px; background: var(--sheet); margin: 0 0 24px; }
+table { border-collapse: collapse; width: 100%; font-size: 13.5px; line-height: 1.5; }
+th, td { text-align: left; padding: 11px 16px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+th { font: 600 11px/1.3 var(--font-body); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); background: var(--sunk); white-space: nowrap; position: sticky; top: 0; }
+tbody tr:last-child td { border-bottom: none; }
+tbody tr:hover td { background: color-mix(in srgb, var(--sunk) 55%, transparent); }
+td.nw, td.nw code { white-space: nowrap; }
+td .muted { color: var(--ink-3); }
+.num { font-variant-numeric: tabular-nums; text-align: right; }
+.toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 0 0 14px; }
+.search {
+  flex: 1 1 240px; max-width: 340px; font: 400 14px var(--font-body); color: var(--ink);
+  background: var(--sheet); border: 1px solid var(--rule); border-radius: 7px; padding: 8px 12px;
+}
+.search::placeholder { color: var(--ink-3); }
+.chipbar { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  appearance: none; cursor: pointer; border: 1px solid var(--rule); background: var(--sheet); color: var(--ink-2);
+  font: 500 12.5px/1 var(--font-body); padding: 7px 11px; border-radius: 999px; display: inline-flex; align-items: center; gap: 7px;
+}
+.chip i { width: 8px; height: 8px; border-radius: 50%; background: var(--fam, var(--ink-3)); }
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--ground); border-color: var(--ink); }
+.tag { display: inline-block; font: 600 11px/1.4 var(--font-body); letter-spacing: .02em; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+.tag.ok { background: var(--ok-wash); color: var(--ok); }
+.tag.bad { background: var(--bad-wash); color: var(--bad); }
+.tag.warn { background: var(--f-ask-wash); color: var(--f-ask); }
+.tag.dim { background: var(--sunk); color: var(--ink-2); }
+
+/* Source references */
+a.ref { text-decoration: none; white-space: nowrap; }
+a.ref code { background: transparent !important; padding: 0 !important; color: var(--signal-ink) !important; border-bottom: 1px dotted color-mix(in srgb, var(--signal-ink) 50%, transparent); }
+a.ref:hover code { border-bottom-style: solid; }
+.src { font-size: 12.5px; color: var(--ink-3); margin: 0 0 10px; }
+
+/* Turn stepper */
+.stepper { display: grid; grid-template-columns: 300px minmax(0, 1fr); border: 1px solid var(--rule); border-radius: 10px; background: var(--sheet); overflow: hidden; }
+.steps { list-style: none; margin: 0; padding: 8px; max-width: none; border-right: 1px solid var(--rule); background: var(--sunk); counter-reset: s; }
+.steps li { margin: 0; }
+.steps button {
+  appearance: none; width: 100%; text-align: left; cursor: pointer; border: 0; background: transparent; color: var(--ink-2);
+  display: grid; grid-template-columns: 26px 1fr; gap: 8px; align-items: baseline; padding: 9px 10px; border-radius: 6px;
+  font: 500 13.5px/1.35 var(--font-body);
+}
+.steps button .n { font: 500 11.5px var(--font-mono); color: var(--ink-3); }
+.steps button .where { grid-column: 2; font: 400 11.5px var(--font-mono); color: var(--ink-3); }
+.steps button:hover { background: var(--sheet); color: var(--ink); }
+.steps button[aria-selected="true"] { background: var(--sheet); color: var(--ink); box-shadow: inset 2px 0 0 var(--signal); }
+.steps button[aria-selected="true"] .n { color: var(--signal-ink); }
+.step-panel { padding: 26px 28px; min-width: 0; }
+.step-panel h3 { font: 650 20px/1.2 var(--font-display); margin: 0 0 4px; }
+.step-panel .emits { display: flex; flex-wrap: wrap; gap: 6px; margin: 16px 0 0; padding-top: 14px; border-top: 1px dashed var(--rule); align-items: center; }
+.step-panel .emits > span:first-child { font-size: 12px; color: var(--ink-3); margin-right: 4px; }
+.step-panel ol, .step-panel ul { margin-bottom: 0; }
+.step-nav { display: flex; gap: 8px; margin-top: 20px; }
+
+/* Decision ladder */
+.ladder { list-style: none; padding: 0; margin: 0 0 24px; max-width: none; display: grid; gap: 0; border: 1px solid var(--rule); border-radius: 10px; background: var(--sheet); overflow: hidden; }
+.ladder li { display: grid; grid-template-columns: 44px minmax(0, 1fr) 190px; gap: 16px; padding: 16px 20px; margin: 0; align-items: start; }
+.ladder li + li { border-top: 1px solid var(--rule); }
+.ladder .rung { font: 750 22px/1 var(--font-display); color: var(--ink-3); }
+.ladder .out { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+
+/* Diagrams */
+.tabs { display: flex; flex-wrap: wrap; gap: 0; border-bottom: 1px solid var(--rule); margin-bottom: 0; }
+.tab {
+  appearance: none; background: none; border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px;
+  padding: 10px 16px; font: 500 14px var(--font-body); color: var(--ink-3); cursor: pointer;
+}
+.tab:hover { color: var(--ink); }
+.tab[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--signal); }
+.figure { border: 1px solid var(--rule); border-top: 0; border-radius: 0 0 10px 10px; background: var(--sheet); }
+.figure[hidden] { display: none; }
+.figure-cap { padding: 16px 22px 0; font-size: 13.5px; color: var(--ink-2); max-width: none; }
+.diagram { overflow-x: auto; padding: 18px 22px 24px; min-height: 240px; }
+.diagram svg { display: block; margin: 0 auto; max-width: 100%; height: auto; }
+.diagram .wait { color: var(--ink-3); font-size: 13px; }
+
+/* Questions */
+.q { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 4px 14px; padding: 18px 0; }
+.q + .q { border-top: 1px solid var(--rule); }
+.q .qn { font: 650 18px/1.3 var(--font-display); color: var(--ink-3); }
+.q h3 { display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: center; }
+.q p { margin: 0; }
+.q .answer { margin-top: 8px; padding: 10px 14px; background: var(--ok-wash); border-radius: 6px; font-size: 14px; }
+
+/* Pager */
+.pager { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 64px; padding-top: 24px; border-top: 1px solid var(--rule); }
+.pager a { display: block; padding: 14px 18px; border: 1px solid var(--rule); border-radius: 10px; background: var(--sheet); color: var(--ink); text-decoration: none; }
+.pager a:hover { border-color: var(--ink-3); }
+.pager .dir { display: block; font-size: 12px; color: var(--ink-3); margin-bottom: 2px; }
+.pager .t { font: 650 16px/1.3 var(--font-display); }
+.pager .next { grid-column: 2; text-align: right; }
+.hint { text-align: center; font-size: 12px; color: var(--ink-3); margin-top: 16px; }
+kbd { border: 1px solid var(--rule); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; background: var(--sheet); }
+
+.pro, .con { list-style: none; padding-left: 0; }
+.pro li::before, .con li::before { font-weight: 700; display: inline-block; width: 16px; }
+.pro li::before { content: "+"; color: var(--ok); }
+.con li::before { content: "–"; color: var(--bad); }
+.decision { padding: 24px 26px; }
+.decision + .decision { border-top: 1px solid var(--rule); }
+.decision-grid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 28px; margin-top: 10px; }
+.decision h4 { font: 600 11px/1 var(--font-body); letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3); margin: 0 0 10px; }
+
+@media (max-width: 1080px) {
+  .page-inner { padding: 0 8px; }
+  .cols-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .split { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 820px) {
+  .shell { display: block; }
+  .rail {
+    position: fixed; inset: 0 auto 0 0; width: min(310px, 86vw); height: 100%; z-index: 30;
+    transform: translateX(-102%); transition: transform .2s ease;
+    padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px);
+    padding-left: env(safe-area-inset-left, 0px);
+  }
+  body.nav-open .rail { transform: none; box-shadow: 0 0 60px rgba(0,0,0,.3); }
+  .scrim { position: fixed; inset: 0; background: rgba(10,12,16,.45); z-index: 25; display: none; }
+  body.nav-open .scrim { display: block; }
+  body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--sheet); }
+  .topbar {
+    display: flex; align-items: center; gap: 12px; position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20;
+    background: var(--sheet); border-bottom: 1px solid var(--rule);
+    padding: 10px max(16px, env(safe-area-inset-right, 0px)) 10px max(16px, env(safe-area-inset-left, 0px));
+  }
+  .topbar-t { font: 650 15px/1.2 var(--font-display); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .page { padding-block: 28px 56px; }
+  .page-inner { padding: 0; }
+  .cols-2, .cols-3, .decision-grid { grid-template-columns: minmax(0, 1fr); }
+  .facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .fact:nth-child(3) { border-left: 0; }
+  .fact:nth-child(n+3) { border-top: 1px solid var(--rule); }
+  .stepper { grid-template-columns: minmax(0, 1fr); }
+  .steps { border-right: 0; border-bottom: 1px solid var(--rule); display: flex; overflow-x: auto; gap: 4px; }
+  .steps li { flex: none; }
+  .steps button { grid-template-columns: auto; padding: 8px 12px; }
+  .steps button .where, .steps button .label { display: none; }
+  .step-panel { padding: 20px; }
+  .ladder li { grid-template-columns: 32px minmax(0, 1fr); }
+  .ladder .out { grid-column: 2; flex-direction: row; flex-wrap: wrap; }
+  .pager { grid-template-columns: minmax(0, 1fr); }
+  .pager .next { grid-column: 1; }
+  .hint { display: none; }
+}
+</style>
+</head>
+<body>
+<div class="scrim" id="scrim"></div>
+<div class="shell">
+
+<aside class="rail" id="rail" aria-label="Report index">
+  <div class="rail-head">
+    <div class="mark">
+      <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true">
+        <rect x="0.5" y="0.5" width="33" height="33" rx="8" fill="var(--signal-wash)" stroke="var(--signal)" />
+        <path d="M17 8a9 9 0 1 1-8.5 6" fill="none" stroke="var(--signal)" stroke-width="2.4" stroke-linecap="round" />
+        <path d="M6 11.5l2.6 3 3.2-2.4" fill="none" stroke="var(--signal)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" />
+      </svg>
+      <div>
+        <div class="mark-name">Agent Loop</div>
+        <div class="mark-path">vibe/core/agent_loop/</div>
+      </div>
+    </div>
+  </div>
+  <nav class="index" id="index"></nav>
+  <div class="rail-foot">
+    <dl>
+      <dt>Source</dt><dd>rrobbes/mistral-vibe</dd>
+      <dt>Pinned at</dt><dd>9ebde8f2</dd>
+      <dt>Verified</dt><dd>2 Nov 2026</dd>
+    </dl>
+    <button class="btn" id="themeBtn" type="button">Switch to dark</button>
+  </div>
+</aside>
+
+<main class="page">
+  <div class="topbar">
+    <button class="btn" id="menuBtn" type="button" aria-controls="rail" aria-expanded="false">Index</button>
+    <span class="topbar-t" id="topbarT">Agent Loop</span>
+  </div>
+  <div class="page-inner">
+
+<!-- ============================ 01 OVERVIEW ============================ -->
+<section class="chapter" id="overview" data-title="Overview" data-group="Understand">
+  <div class="kicker"><span class="n">01</span> Overview</div>
+  <h1>One async generator runs every turn</h1>
+  <p class="lede">The agent loop is the engine of Mistral Vibe. It takes a user message, calls the model, runs the tools the model asks for, and repeats until the model answers in plain text. Each change of state becomes a typed event that it yields to whoever is listening: the Textual CLI, the Rust TUI through the app server, ACP clients, or a test.</p>
+
+  <div class="facts">
+    <div class="fact"><div class="fact-v">4,084</div><div class="fact-l">lines in <code>_loop.py</code>, almost all in one class</div></div>
+    <div class="fact"><div class="fact-v">16</div><div class="fact-l">event types the loop yields, plus the hook event family</div></div>
+    <div class="fact"><div class="fact-v">6</div><div class="fact-l">middleware types checked before every model call (3 only when a limit is set)</div></div>
+    <div class="fact"><div class="fact-v">440</div><div class="fact-l">test functions across 32 agent-loop test files</div></div>
+  </div>
+
+  <div class="split">
+    <div>
+      <h2 style="margin-top:0">What the loop owns</h2>
+      <p>ADR 0003 splits responsibilities cleanly. The loop owns model and tool execution. The app server owns session lifecycle and delivery to clients.</p>
+      <div class="quote">
+        <p>“Typed events keep UI rendering, protocol translation, logging, and tests from reaching into agent-loop internals.”</p>
+        <cite>ADR 0003, <span data-ref="docs/adr/0003-event-driven-agent-loop.md"></span></cite>
+      </div>
+      <p>Concretely, <code>AgentLoop.act()</code> (<span data-ref="vibe/core/agent_loop/_loop.py:1676-1739"></span>) returns <code>AsyncGenerator[BaseEvent, None]</code>. Inside one call it:</p>
+      <ul>
+        <li>keeps the conversation in <code>self.messages</code> and saves it after every model step;</li>
+        <li>runs the middleware pipeline that enforces turn, price and token limits and triggers compaction;</li>
+        <li>executes tool calls concurrently and decides, per call, whether it may run;</li>
+        <li>pauses on approvals and questions, one prompt at a time, while tools already running carry on;</li>
+        <li>records a checkpoint so the turn can be rewound.</li>
+      </ul>
+      <h2>How to read this report</h2>
+      <p>Start with <a href="#lifecycle">Turn lifecycle</a> for the mechanics, then <a href="#permissions">Permissions and limits</a> for the two policy layers. <a href="#events">Event vocabulary</a> is a reference. Every <span class="mono" style="color:var(--signal-ink)">path:line</span> link opens the source on GitHub at the pinned commit.</p>
+    </div>
+
+    <figure class="trace" style="margin:0" aria-label="Illustrative event trace of one turn">
+      <div class="trace-head">
+        <span class="trace-title">async for event in loop.act("Fix the failing test in tests/test_dates.py")</span>
+        <button class="btn" id="replayBtn" type="button">Replay</button>
+      </div>
+      <ol class="trace-body" id="trace">
+        <li><span class="t">0.00s</span><span><span class="ev" data-fam="user">UserMessageEvent</span></span><span class="d">content=<b>"Fix the failing test…"</b></span></li>
+        <li><span class="t">0.84s</span><span><span class="ev" data-fam="model">ReasoningEvent</span></span><span class="d">"The test probably compares naive and aware…"</span></li>
+        <li><span class="t">1.12s</span><span><span class="ev" data-fam="model">AssistantEvent</span></span><span class="d">"Let me read the test first."</span></li>
+        <li><span class="t">1.30s</span><span><span class="ev" data-fam="tool">ToolCallEvent</span></span><span class="d">tool_name=<b>read_file</b></span></li>
+        <li><span class="t">1.31s</span><span><span class="ev" data-fam="tool">ToolResultEvent</span></span><span class="d">decision=execute approval_source=<b>config</b></span></li>
+        <li class="gap"><span></span><span>model step 1 ends: last message is a tool result, so the loop continues</span></li>
+        <li><span class="t">2.95s</span><span><span class="ev" data-fam="tool">ToolCallEvent</span></span><span class="d">tool_name=<b>edit</b></span></li>
+        <li><span class="t">2.95s</span><span><span class="ev" data-fam="ask">ApprovalRequestEvent</span></span><span class="d">request_id=<b>7f3c…</b> tool_name=edit</span></li>
+        <li class="gap"><span></span><span>loop waits on an asyncio.Future until the client calls resolve_approval_request()</span></li>
+        <li><span class="t">6.40s</span><span><span class="ev" data-fam="tool">ToolResultEvent</span></span><span class="d">decision=execute approval_source=<b>user</b></span></li>
+        <li><span class="t">7.80s</span><span><span class="ev" data-fam="model">AssistantEvent</span></span><span class="d">"Fixed: the fixture now builds aware datetimes."</span></li>
+        <li><span class="t">7.81s</span><span><span class="ev" data-fam="ctx">BackgroundWorkEvent</span></span><span class="d">kind=session_title phase=<b>started</b></span></li>
+        <li><span class="t">7.82s</span><span><span class="ev" data-fam="hook">HookRunStartEvent</span></span><span class="d">a post_agent hook is configured; it requests no retry</span></li>
+      </ol>
+      <figcaption class="trace-foot">Illustrative trace. The event names, fields and order are real; the message text and timings are invented.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<!-- ============================ 02 CODEBASE MAP ============================ -->
+<section class="chapter" id="codebase" data-title="Codebase map" data-group="Understand">
+  <div class="kicker"><span class="n">02</span> Codebase map</div>
+  <h1>Four files, a dozen collaborators</h1>
+  <p class="lede">The loop itself lives in four files. Everything else it touches is injected or reached through a port, which is why the constructor takes so many arguments.</p>
+
+  <div class="toolbar"><input class="search" id="q-files" type="search" placeholder="Filter by path or class" data-filter="t-files" aria-label="Filter files"></div>
+  <div class="table-wrap">
+    <table id="t-files">
+      <thead><tr><th>Path</th><th>Role</th><th>Key symbols</th><th class="num">Lines</th></tr></thead>
+      <tbody>
+        <tr><td class="nw"><span data-ref="vibe/core/agent_loop/_loop.py"></span></td><td><strong>The engine.</strong> Turn guards, conversation loop, streaming, tool batch, permissions, compaction, plan mode, teleport.</td><td><code>AgentLoop</code>, <code>act()</code>, <code>_conversation_loop()</code>, error classes</td><td class="num">4,084</td></tr>
+        <tr><td class="nw"><span data-ref="vibe/core/agent_loop/_request_broker.py"></span></td><td>Turns approval and user-input requests into events and waits for the answer.</td><td><code>InteractionRequestBroker</code></td><td class="num">106</td></tr>
+        <tr><td class="nw"><span data-ref="vibe/core/agent_loop/_title_cadence.py"></span></td><td>Decides when to (re)generate the session title.</td><td><code>TitleCadence</code>, <code>TitleGenTicket</code></td><td class="num">90</td></tr>
+        <tr><td class="nw"><span data-ref="vibe/core/agent_loop/__init__.py"></span></td><td>Public exports.</td><td><code>__all__</code></td><td class="num">33</td></tr>
+        <tr><td class="nw"><span data-ref="vibe/core/agent_loop_hooks.py"></span></td><td>Mixin that runs pre-tool, post-tool and post-agent hooks around the loop.</td><td><code>AgentLoopHooksMixin</code></td><td class="num">467</td></tr>
+        <tr><td class="nw"><span data-ref="vibe/core/middleware.py"></span></td><td>Checks run before every model call: limits, compaction, warnings, plan mode.</td><td><code>MiddlewarePipeline</code> + 6 middlewares</td><td class="num">256</td></tr>
+        <tr><td class="nw"><span data-ref="vibe/core/types.py"></span></td><td>Event and message models.</td><td><code>BaseEvent</code> and subclasses, <code>LLMMessage</code>, <code>AgentStats</code></td><td class="num">797</td></tr>
+        <tr><td class="nw"><span data-ref="vibe/core/llm/format.py"></span></td><td>Parses model output and resolves tool calls against the registry.</td><td><code>APIToolFormatHandler</code>, <code>ResolvedToolCall</code>, <code>FailedToolCall</code></td><td class="num muted">–</td></tr>
+        <tr><td class="nw"><span data-ref="vibe/core/llm/backend/factory.py"></span></td><td>Creates the Mistral or generic backend.</td><td><code>create_backend()</code></td><td class="num">72</td></tr>
+        <tr><td class="nw"><span data-ref="vibe/core/tools/manager.py:117"></span></td><td>Discovers, configures and instantiates tools.</td><td><code>ToolManager</code></td><td class="num muted">–</td></tr>
+        <tr><td class="nw"><span data-ref="vibe/core/tools/permissions.py"></span></td><td>Session-scoped approvals (“always allow this”).</td><td><code>PermissionStore</code></td><td class="num">56</td></tr>
+        <tr><td class="nw"><span data-ref="vibe/core/tools/base.py"></span></td><td>Tool contract and invocation context.</td><td><code>BaseTool</code>, <code>InvokeContext</code>, <code>ToolPermission</code>, <code>ToolError</code></td><td class="num muted">–</td></tr>
+        <tr><td class="nw"><span data-ref="vibe/core/subagents.py"></span></td><td>Port the <code>task</code> tool uses to run a child loop.</td><td><code>SubagentRunnerPort</code>, <code>SubagentRunAccumulator</code></td><td class="num">88</td></tr>
+        <tr><td class="nw"><span data-ref="vibe/core/hooks/models.py:291"></span></td><td>Hook configuration and hook events.</td><td><code>HookType</code>, <code>HookEvent</code></td><td class="num muted">–</td></tr>
+        <tr><td class="nw"><span data-ref="vibe/core/compaction/"></span></td><td>Summarises old messages when context runs out.</td><td><code>CompactionManager</code></td><td class="num muted">–</td></tr>
+        <tr><td class="nw"><span data-ref="vibe/core/session/"></span></td><td>Session log, checkpoints, rewind.</td><td><code>SessionLogger</code>, <code>CheckpointRecorder</code></td><td class="num muted">–</td></tr>
+        <tr><td class="nw"><span data-ref="vibe/core/telemetry/"></span></td><td>Analytics events.</td><td><code>TelemetryClient</code></td><td class="num muted">–</td></tr>
+        <tr><td class="nw"><span data-ref="vibe/core/config/"></span></td><td>Layered configuration.</td><td><code>VibeConfigSchema</code>, <code>ConfigOrchestrator</code></td><td class="num muted">–</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="note">Line counts are measured at the pinned commit; a dash means the file was only read in part.</p>
+</section>
+
+<!-- ============================ 03 LIFECYCLE ============================ -->
+<section class="chapter" id="lifecycle" data-title="Turn lifecycle" data-group="Mechanics">
+  <div class="kicker"><span class="n">03</span> Turn lifecycle</div>
+  <h1>From <code style="font-size:.8em;background:none;padding:0">act()</code> to the final answer</h1>
+  <p class="lede">A turn starts with one user message and ends when the model replies without calling a tool. In between, the loop runs as many <em>model steps</em> as the model needs: each step is one model call followed by the tools it requested.</p>
+
+  <div class="stepper" id="stepper">
+    <ol class="steps" role="tablist" aria-label="Turn phases">
+      <li><button role="tab" type="button" aria-selected="true" aria-controls="sp-1" id="st-1"><span class="n">01</span><span class="label">Guard the entry</span><span class="where">act()</span></button></li>
+      <li><button role="tab" type="button" aria-selected="false" aria-controls="sp-2" id="st-2"><span class="n">02</span><span class="label">Open the user turn</span><span class="where">_open_user_turn()</span></button></li>
+      <li><button role="tab" type="button" aria-selected="false" aria-controls="sp-3" id="st-3"><span class="n">03</span><span class="label">Check middleware</span><span class="where">run_before_turn()</span></button></li>
+      <li><button role="tab" type="button" aria-selected="false" aria-controls="sp-4" id="st-4"><span class="n">04</span><span class="label">Call the model</span><span class="where">_perform_llm_turn()</span></button></li>
+      <li><button role="tab" type="button" aria-selected="false" aria-controls="sp-5" id="st-5"><span class="n">05</span><span class="label">Resolve tool calls</span><span class="where">format_handler</span></button></li>
+      <li><button role="tab" type="button" aria-selected="false" aria-controls="sp-6" id="st-6"><span class="n">06</span><span class="label">Run the tool batch</span><span class="where">_run_tools_concurrently()</span></button></li>
+      <li><button role="tab" type="button" aria-selected="false" aria-controls="sp-7" id="st-7"><span class="n">07</span><span class="label">Execute one tool</span><span class="where">_execute_tool_call()</span></button></li>
+      <li><button role="tab" type="button" aria-selected="false" aria-controls="sp-8" id="st-8"><span class="n">08</span><span class="label">Close the step</span><span class="where">_conversation_loop()</span></button></li>
+      <li><button role="tab" type="button" aria-selected="false" aria-controls="sp-9" id="st-9"><span class="n">09</span><span class="label">Continue or stop</span><span class="where">should_break_loop</span></button></li>
+    </ol>
+
+    <div>
+      <div class="step-panel" role="tabpanel" id="sp-1" aria-labelledby="st-1">
+        <h3>Guard the entry</h3>
+        <p class="src"><code>AgentLoop.act()</code> · <span data-ref="vibe/core/agent_loop/_loop.py:1676-1739"></span></p>
+        <p>Before anything is appended to the conversation, <code>act()</code> refuses work it cannot do safely:</p>
+        <ol>
+          <li>Images sent to a model without image support raise <code>ImagesNotSupportedError</code> (<span data-ref="vibe/core/agent_loop/_loop.py:1697-1700"></span>).</li>
+          <li>A second concurrent turn raises <code>AgentLoopStateError</code> (<span data-ref="vibe/core/agent_loop/_loop.py:1701-1702"></span>).</li>
+          <li>A running <em>holder</em>, such as a directory relocation, also blocks the turn (<span data-ref="vibe/core/agent_loop/_loop.py:1707-1710"></span>). The comment explains why: a turn starting mid-move would bind tools to a directory being moved.</li>
+          <li>Backends whose close was deferred during the previous turn are closed now (<span data-ref="vibe/core/agent_loop/_loop.py:1713"></span>).</li>
+          <li>An <code>_ActiveTurn</code> records the turn-scoped subagent runner, tool I/O and retry sink (<span data-ref="vibe/core/agent_loop/_loop.py:1715-1719"></span>).</li>
+          <li>History is cleaned and a checkpoint is created (<span data-ref="vibe/core/agent_loop/_loop.py:1721-1722"></span>).</li>
+        </ol>
+        <p>Two nested <code>finally</code> blocks seal the checkpoint and clear <code>_active_turn</code> however the turn ends, including on cancellation (<span data-ref="vibe/core/agent_loop/_loop.py:1736-1739"></span>).</p>
+        <div class="emits"><span>Emits</span><span class="muted note">nothing yet</span></div>
+      </div>
+
+      <div class="step-panel" role="tabpanel" id="sp-2" aria-labelledby="st-2" hidden>
+        <h3>Open the user turn</h3>
+        <p class="src"><code>_open_user_turn()</code> · <span data-ref="vibe/core/agent_loop/_loop.py:2059-2125"></span></p>
+        <ol>
+          <li>The message is appended to <code>self.messages</code> and <code>stats.steps</code> is incremented (<span data-ref="vibe/core/agent_loop/_loop.py:2098-2099"></span>).</li>
+          <li><span class="ev" data-fam="user">UserMessageEvent</span> is yielded (<span data-ref="vibe/core/agent_loop/_loop.py:2105-2111"></span>).</li>
+          <li>If the message invokes a skill, its content is injected (<span data-ref="vibe/core/agent_loop/_loop.py:2113"></span>).</li>
+          <li>Files mentioned with <code>@</code> are injected (<span data-ref="vibe/core/agent_loop/_loop.py:2116"></span>).</li>
+          <li>An auto-title supplied by the client is applied once (<span data-ref="vibe/core/agent_loop/_loop.py:2119-2122"></span>).</li>
+          <li>The post-agent hook retry counter is reset.</li>
+        </ol>
+        <p>An <em>injected</em> message (a retry queued by a hook, for example) takes a short path: it is appended silently and no event is emitted.</p>
+        <div class="emits"><span>Emits</span><span class="ev" data-fam="user">UserMessageEvent</span><span class="ev" data-fam="ctx">SessionTitleUpdatedEvent</span></div>
+      </div>
+
+      <div class="step-panel" role="tabpanel" id="sp-3" aria-labelledby="st-3" hidden>
+        <h3>Check middleware</h3>
+        <p class="src"><code>_conversation_loop()</code> · <span data-ref="vibe/core/agent_loop/_loop.py:2157-2163"></span></p>
+        <p>At the top of <strong>every</strong> model step, not only the first, the loop asks the pipeline for a verdict and acts on it in <code>_handle_middleware_result()</code> (<span data-ref="vibe/core/agent_loop/_loop.py:1943-1965"></span>):</p>
+        <ul>
+          <li><code>STOP</code>: yield an assistant message wrapped in the stop tag with <code>stopped_by_middleware=True</code>, then return.</li>
+          <li><code>COMPACT</code>: run compaction, then carry on with the model call.</li>
+          <li><code>INJECT_MESSAGE</code>: append a hidden user message (a context warning, the plan-mode reminder).</li>
+          <li><code>CONTINUE</code>: nothing.</li>
+        </ul>
+        <p>See <a href="#permissions">Permissions and limits</a> for the six middlewares and how the pipeline combines them.</p>
+        <div class="emits"><span>Emits</span><span class="ev" data-fam="model">AssistantEvent</span><span class="ev" data-fam="ctx">CompactStartEvent</span><span class="ev" data-fam="ctx">CompactEndEvent</span></div>
+      </div>
+
+      <div class="step-panel" role="tabpanel" id="sp-4" aria-labelledby="st-4" hidden>
+        <h3>Call the model</h3>
+        <p class="src"><code>_perform_llm_turn()</code> · <span data-ref="vibe/core/agent_loop/_loop.py:2549-2574"></span></p>
+        <p>With streaming on, <code>_stream_assistant_events()</code> (<span data-ref="vibe/core/agent_loop/_loop.py:2603-2631"></span>) turns each backend chunk into events as it arrives:</p>
+        <ul>
+          <li>reasoning text becomes <span class="ev" data-fam="model">ReasoningEvent</span>;</li>
+          <li>answer text becomes <span class="ev" data-fam="model">AssistantEvent</span>;</li>
+          <li>a tool call whose name is known becomes an early <span class="ev" data-fam="tool">ToolCallEvent</span>, de-duplicated by id, so the UI can show it before arguments finish streaming.</li>
+        </ul>
+        <p>Without streaming, <code>_get_assistant_event()</code> (<span data-ref="vibe/core/agent_loop/_loop.py:2633-2638"></span>) makes one call and yields a single <span class="ev" data-fam="model">AssistantEvent</span>, only if it has content.</p>
+        <p>A <code>ContextTooLongError</code> here is caught by the conversation loop and may trigger reactive compaction (<span data-ref="vibe/core/agent_loop/_loop.py:2173-2179"></span>).</p>
+        <div class="emits"><span>Emits</span><span class="ev" data-fam="model">ReasoningEvent</span><span class="ev" data-fam="model">AssistantEvent</span><span class="ev" data-fam="tool">ToolCallEvent</span></div>
+      </div>
+
+      <div class="step-panel" role="tabpanel" id="sp-5" aria-labelledby="st-5" hidden>
+        <h3>Resolve tool calls</h3>
+        <p class="src"><span data-ref="vibe/core/agent_loop/_loop.py:2558-2564"></span> · <span data-ref="vibe/core/llm/format.py:89-111"></span></p>
+        <p>The last assistant message is parsed, then each tool call is matched against the <code>ToolManager</code> and its arguments validated. The result has two lists:</p>
+        <ul>
+          <li><code>tool_calls</code>: valid, typed <code>ResolvedToolCall</code>s;</li>
+          <li><code>failed_calls</code>: unknown tools or invalid arguments.</li>
+        </ul>
+        <p>If both are empty the model answered in text and the step ends. Otherwise <code>_handle_tool_calls()</code> (<span data-ref="vibe/core/agent_loop/_loop.py:2640-2666"></span>) first reports each failed call as a <span class="ev" data-fam="tool">ToolResultEvent</span> with an error and a tool response message so the model sees the mistake, then yields the final <span class="ev" data-fam="tool">ToolCallEvent</span> for each valid call with its parsed arguments and UI presentation.</p>
+        <div class="emits"><span>Emits</span><span class="ev" data-fam="tool">ToolResultEvent</span><span class="ev" data-fam="tool">ToolCallEvent</span></div>
+      </div>
+
+      <div class="step-panel" role="tabpanel" id="sp-6" aria-labelledby="st-6" hidden>
+        <h3>Run the tool batch</h3>
+        <p class="src"><code>_run_tools_concurrently()</code> · <span data-ref="vibe/core/agent_loop/_loop.py:2695-2741"></span></p>
+        <ol>
+          <li>Refuses to start if a batch is already active (<span data-ref="vibe/core/agent_loop/_loop.py:2700"></span>).</li>
+          <li>Creates one <code>asyncio.Queue</code> and binds the interaction broker to it (<span data-ref="vibe/core/agent_loop/_loop.py:2699-2703"></span>), so approval requests from any tool flow into the same stream.</li>
+          <li>Starts one task per call (<span data-ref="vibe/core/agent_loop/_loop.py:2705-2708"></span>) and a monitor that pushes a <code>None</code> sentinel when all have finished.</li>
+          <li>Yields events from the queue in the order they arrive, which is completion order, not call order.</li>
+        </ol>
+        <p>If the consumer stops iterating (<code>GeneratorExit</code>) or the turn is cancelled, unfinished tasks are cancelled. On cancellation the loop also awaits them so their cleanup runs (<span data-ref="vibe/core/agent_loop/_loop.py:2724-2741"></span>).</p>
+        <div class="emits"><span>Emits</span><span class="muted note">whatever the tools emit, see step 07</span></div>
+      </div>
+
+      <div class="step-panel" role="tabpanel" id="sp-7" aria-labelledby="st-7" hidden>
+        <h3>Execute one tool</h3>
+        <p class="src"><code>_execute_tool_call()</code> · <span data-ref="vibe/core/agent_loop/_loop.py:2761-2911"></span></p>
+        <ol>
+          <li><strong>Instantiate</strong> the tool; a failure becomes an error result (<span data-ref="vibe/core/agent_loop/_loop.py:2764-2769"></span>).</li>
+          <li><strong>Serialise</strong> the input for hooks; a failure becomes an error result.</li>
+          <li><strong>Pre-tool hooks</strong> can deny the call or rewrite its input (<span data-ref="vibe/core/agent_loop_hooks.py:258-294"></span>).</li>
+          <li><strong>Permission</strong>: <code>_should_execute_tool()</code> returns a <code>ToolDecision</code>. A skip ends here with a skipped result.</li>
+          <li><strong>Invoke</strong> (<span data-ref="vibe/core/agent_loop/_loop.py:2913-3023"></span>): snapshot the files the tool will touch into the checkpoint, iterate <code>tool.invoke()</code> (yielding each <span class="ev" data-fam="tool">ToolStreamEvent</span>), then build a <span class="ev" data-fam="tool">ToolResultEvent</span> with duration, decision and approval source.</li>
+          <li><strong>Post-tool hooks</strong> may replace the text the model will see, then the tool response message is appended.</li>
+        </ol>
+        <p>Exceptions are converted, never propagated, except cancellation, which is reported and then re-raised. See <a href="#errors">Errors and recovery</a>.</p>
+        <div class="emits"><span>Emits</span><span class="ev" data-fam="ask">ApprovalRequestEvent</span><span class="ev" data-fam="ask">UserInputRequestEvent</span><span class="ev" data-fam="tool">ToolStreamEvent</span><span class="ev" data-fam="tool">ToolResultEvent</span><span class="ev" data-fam="hook">HookEvent</span></div>
+      </div>
+
+      <div class="step-panel" role="tabpanel" id="sp-8" aria-labelledby="st-8" hidden>
+        <h3>Close the step</h3>
+        <p class="src"><span data-ref="vibe/core/agent_loop/_loop.py:2180-2204"></span></p>
+        <p>Back in <code>_perform_llm_turn()</code>, plan-mode tool calls produce <span class="ev" data-fam="ctx">PlanReviewRequestedEvent</span> and <span class="ev" data-fam="ctx">PlanReviewEndedEvent</span>, and a profile switch made by a tool produces <span class="ev" data-fam="ctx">AgentProfileChangedEvent</span> (<span data-ref="vibe/core/agent_loop/_loop.py:2566-2574"></span>). Then the conversation loop:</p>
+        <ol>
+          <li>increments <code>stats.steps</code>, which the turn limit reads (<span data-ref="vibe/core/agent_loop/_loop.py:2183"></span>); a step retried after overflow never reaches this line, so it is not counted;</li>
+          <li>saves messages to the session log (<span data-ref="vibe/core/agent_loop/_loop.py:2187"></span>);</li>
+          <li>schedules title generation after each step rather than at turn end, because one tool-heavy turn can run for minutes (<span data-ref="vibe/core/agent_loop/_loop.py:2190-2198"></span>);</li>
+          <li>clears the context if a plan was just accepted, then loops again (<span data-ref="vibe/core/agent_loop/_loop.py:2200-2204"></span>).</li>
+        </ol>
+        <div class="emits"><span>Emits</span><span class="ev" data-fam="ctx">BackgroundWorkEvent</span><span class="ev" data-fam="ctx">SessionTitleUpdatedEvent</span><span class="ev" data-fam="ctx">ContextClearedEvent</span><span class="ev" data-fam="ctx">AgentProfileChangedEvent</span></div>
+      </div>
+
+      <div class="step-panel" role="tabpanel" id="sp-9" aria-labelledby="st-9" hidden>
+        <h3>Continue or stop</h3>
+        <p class="src"><span data-ref="vibe/core/agent_loop/_loop.py:2206-2217"></span></p>
+        <p>The loop computes <code>should_break_loop = last_message.role != Role.tool and not drained</code>. In words, it runs another model step when either:</p>
+        <ul>
+          <li>the last message is a tool result, so the model has to read it; or</li>
+          <li>pending injected messages were just drained into the conversation. At the pinned commit the only source is plan review: if the user edited the plan file while reviewing it, its new content is queued as a hidden message (<span data-ref="vibe/core/agent_loop/_loop.py:2519-2536"></span>).</li>
+        </ul>
+        <p>It returns immediately if a tool result in this step was marked <code>cancelled</code>, which is what <code>is_user_cancellation_event()</code> checks (<span data-ref="vibe/core/utils/tags.py:77-80"></span>). That happens when the user interrupts at an approval prompt. When it is about to break, post-agent hooks run (<span data-ref="vibe/core/agent_loop_hooks.py:448-467"></span>); a hook can return a user message, which is appended and starts another step. The outer <code>finally</code> saves messages one last time (<span data-ref="vibe/core/agent_loop/_loop.py:2218-2219"></span>).</p>
+        <div class="emits"><span>Emits</span><span class="ev" data-fam="hook">HookEvent</span></div>
+      </div>
+
+      <div class="step-panel" style="padding-top:0">
+        <div class="step-nav"><button class="btn" type="button" id="stepPrev">← Previous phase</button><button class="btn" type="button" id="stepNext">Next phase →</button></div>
+      </div>
+    </div>
+  </div>
+
+  <h2>What “turn” means in the counters</h2>
+  <p><code>stats.steps</code> goes up once for the user message and once per completed model step. <code>TurnLimitMiddleware</code> stops when <code>steps - 1 &gt;= max_turns</code>, so <code>max_turns</code> caps model steps per session, not user messages.</p>
+</section>
+
+<!-- ============================ 04 DIAGRAMS ============================ -->
+<section class="chapter" id="diagrams" data-title="Diagrams" data-group="Mechanics">
+  <div class="kicker"><span class="n">04</span> Diagrams</div>
+  <h1>The loop, drawn four ways</h1>
+  <p class="lede">Each view answers a different question: who talks to whom, which state the loop is in, how a tool call is authorised, and which types are involved.</p>
+
+  <div class="tabs" role="tablist" aria-label="Diagram">
+    <button class="tab" role="tab" type="button" aria-selected="true" data-fig="seq">Sequence</button>
+    <button class="tab" role="tab" type="button" aria-selected="false" data-fig="state">State machine</button>
+    <button class="tab" role="tab" type="button" aria-selected="false" data-fig="perm">Permission flow</button>
+    <button class="tab" role="tab" type="button" aria-selected="false" data-fig="class">Types</button>
+  </div>
+  <div class="figure" data-fig="seq"><p class="figure-cap">One turn with one tool that needs approval. Every event shown going to the client is actually yielded through <code>act()</code>; the arrows show where it originates.</p><div class="diagram" data-src="d-seq"><span class="wait">Rendering…</span></div></div>
+  <div class="figure" data-fig="state" hidden><p class="figure-cap">Compaction happens <em>before</em> a model call (middleware) or <em>after</em> it fails (reactive), never after saving. Reactive recovery is allowed once per turn.</p><div class="diagram" data-src="d-state"><span class="wait">Rendering…</span></div></div>
+  <div class="figure" data-fig="perm" hidden><p class="figure-cap">The order of checks inside <code>_execute_tool_call()</code> and <code>_should_execute_tool()</code>. The label on each outcome is the <code>approval_source</code> written to the result event.</p><div class="diagram" data-src="d-perm"><span class="wait">Rendering…</span></div></div>
+  <div class="figure" data-fig="class" hidden><p class="figure-cap">The main collaborators and the event hierarchy. Approval and user-input requests share a <code>RequestEvent</code> base carrying <code>request_id</code>.</p><div class="diagram" data-src="d-class"><span class="wait">Rendering…</span></div></div>
+</section>
+
+<!-- ============================ 05 EVENTS ============================ -->
+<section class="chapter" id="events" data-title="Event vocabulary" data-group="Mechanics">
+  <div class="kicker"><span class="n">05</span> Event vocabulary</div>
+  <h1>Everything a client can observe</h1>
+  <p class="lede">All events subclass <code>BaseEvent</code> (<span data-ref="vibe/core/types.py:522"></span>), a Pydantic model. Clients branch on the class; there are no string event types to keep in sync.</p>
+
+  <div class="toolbar">
+    <input class="search" id="q-events" type="search" placeholder="Filter by name or field" data-filter="t-events" aria-label="Filter events">
+    <div class="chipbar" id="famFilter" role="group" aria-label="Event family">
+      <button class="chip" type="button" aria-pressed="true" data-fam-filter="all">All</button>
+      <button class="chip" type="button" aria-pressed="false" data-fam-filter="user" data-fam="user"><i></i>User</button>
+      <button class="chip" type="button" aria-pressed="false" data-fam-filter="model" data-fam="model"><i></i>Model</button>
+      <button class="chip" type="button" aria-pressed="false" data-fam-filter="tool" data-fam="tool"><i></i>Tool</button>
+      <button class="chip" type="button" aria-pressed="false" data-fam-filter="ask" data-fam="ask"><i></i>Interaction</button>
+      <button class="chip" type="button" aria-pressed="false" data-fam-filter="ctx" data-fam="ctx"><i></i>Session</button>
+      <button class="chip" type="button" aria-pressed="false" data-fam-filter="hook" data-fam="hook"><i></i>Hooks</button>
+    </div>
+  </div>
+  <div class="table-wrap">
+    <table id="t-events">
+      <thead><tr><th>Event</th><th>When</th><th>Fields</th><th>Yielded from</th></tr></thead>
+      <tbody>
+        <tr data-row-fam="user"><td class="nw"><span class="ev" data-fam="user">UserMessageEvent</span></td><td>The user message has been appended.</td><td><code>content</code>, <code>message_id</code>, <code>images</code>, <code>resources</code>, <code>user_display_content</code></td><td><code>_open_user_turn()</code> <span data-ref="vibe/core/agent_loop/_loop.py:2105"></span></td></tr>
+        <tr data-row-fam="model"><td class="nw"><span class="ev" data-fam="model">ReasoningEvent</span></td><td>A reasoning chunk arrives (streaming only).</td><td><code>content</code>, <code>message_id</code></td><td><code>_stream_assistant_events()</code> <span data-ref="vibe/core/agent_loop/_loop.py:2617"></span></td></tr>
+        <tr data-row-fam="model"><td class="nw"><span class="ev" data-fam="model">AssistantEvent</span></td><td>An answer chunk arrives, the non-streamed answer completes, or middleware stops the turn.</td><td><code>content</code>, <code>message_id</code>, <code>stopped_by_middleware</code>. Chunks can be summed with <code>+</code>.</td><td><span data-ref="vibe/core/agent_loop/_loop.py:2623"></span>, <span data-ref="vibe/core/agent_loop/_loop.py:2633"></span>, <span data-ref="vibe/core/agent_loop/_loop.py:1947"></span></td></tr>
+        <tr data-row-fam="tool"><td class="nw"><span class="ev" data-fam="tool">ToolCallEvent</span></td><td>Twice per call: early while streaming (no args), then once resolved (with args).</td><td><code>tool_call_id</code>, <code>tool_name</code>, <code>tool_class</code>, <code>tool_call_index</code>, <code>args</code>, <code>presentation</code></td><td><span data-ref="vibe/core/agent_loop/_loop.py:2576-2601"></span>, <span data-ref="vibe/core/agent_loop/_loop.py:2648-2663"></span></td></tr>
+        <tr data-row-fam="tool"><td class="nw"><span class="ev" data-fam="tool">ToolStreamEvent</span></td><td>A running tool reports progress (shell output, subagent activity).</td><td><code>tool_name</code>, <code>message</code>, <code>tool_call_id</code></td><td><code>_invoke_tool()</code> <span data-ref="vibe/core/agent_loop/_loop.py:2937-2963"></span></td></tr>
+        <tr data-row-fam="tool"><td class="nw"><span class="ev" data-fam="tool">ToolResultEvent</span></td><td>A call ends: success, error, skip, denial or cancellation.</td><td><code>result</code>, <code>error</code>, <code>error_display</code>, <code>skipped</code>, <code>skip_reason</code>, <code>cancelled</code>, <code>duration</code>, <code>decision</code>, <code>approval_type</code>, <code>approval_source</code>, <code>presentation</code></td><td><span data-ref="vibe/core/agent_loop/_loop.py:2978-3000"></span>, <span data-ref="vibe/core/agent_loop_hooks.py:369-398"></span></td></tr>
+        <tr data-row-fam="ask"><td class="nw"><span class="ev" data-fam="ask">ApprovalRequestEvent</span></td><td>A tool needs the user’s permission.</td><td><code>request_id</code>, <code>tool_name</code>, <code>tool_args</code>, <code>tool_call_id</code>, <code>required_permissions</code></td><td><code>request_approval()</code> <span data-ref="vibe/core/agent_loop/_request_broker.py:41-67"></span></td></tr>
+        <tr data-row-fam="ask"><td class="nw"><span class="ev" data-fam="ask">UserInputRequestEvent</span></td><td>A tool asks the user a question (<code>ask_user_question</code>).</td><td><code>request_id</code>, <code>args</code>, <code>tool_call_id</code></td><td><code>request_user_input()</code> <span data-ref="vibe/core/agent_loop/_request_broker.py:70-85"></span></td></tr>
+        <tr data-row-fam="ctx"><td class="nw"><span class="ev" data-fam="ctx">CompactStartEvent</span></td><td>Compaction begins.</td><td><code>current_context_tokens</code>, <code>threshold</code>, <code>tool_call_id</code></td><td><code>_run_compaction()</code> <span data-ref="vibe/core/agent_loop/_loop.py:1975"></span></td></tr>
+        <tr data-row-fam="ctx"><td class="nw"><span class="ev" data-fam="ctx">CompactEndEvent</span></td><td>Compaction succeeded. At the pinned commit the session id does not change, so both ids are equal.</td><td><code>summary_length</code>, <code>old_session_id</code>, <code>new_session_id</code>, <code>tool_call_id</code></td><td><code>_run_compaction()</code> <span data-ref="vibe/core/agent_loop/_loop.py:1999"></span></td></tr>
+        <tr data-row-fam="ctx"><td class="nw"><span class="ev" data-fam="ctx">PlanReviewRequestedEvent</span></td><td>The model called <code>exit_plan_mode</code>.</td><td><code>file_path</code></td><td><span data-ref="vibe/core/agent_loop/_loop.py:2538-2541"></span></td></tr>
+        <tr data-row-fam="ctx"><td class="nw"><span class="ev" data-fam="ctx">PlanReviewEndedEvent</span></td><td>That call returned.</td><td><span class="muted">none</span></td><td><span data-ref="vibe/core/agent_loop/_loop.py:2543-2545"></span></td></tr>
+        <tr data-row-fam="ctx"><td class="nw"><span class="ev" data-fam="ctx">ContextClearedEvent</span></td><td>History was cleared after a plan was accepted.</td><td><code>plan_file_path</code></td><td><span data-ref="vibe/core/agent_loop/_loop.py:3733-3762"></span></td></tr>
+        <tr data-row-fam="ctx"><td class="nw"><span class="ev" data-fam="ctx">AgentProfileChangedEvent</span></td><td>A tool switched the agent profile during the step.</td><td><code>agent_name</code></td><td><span data-ref="vibe/core/agent_loop/_loop.py:2573-2574"></span></td></tr>
+        <tr data-row-fam="ctx"><td class="nw"><span class="ev" data-fam="ctx">SessionTitleUpdatedEvent</span></td><td>A title was set by the client or generated.</td><td><code>title</code>, <code>session_id</code></td><td><span data-ref="vibe/core/agent_loop/_loop.py:2122"></span>, <code>_generate_title_task()</code> <span data-ref="vibe/core/agent_loop/_loop.py:2307"></span></td></tr>
+        <tr data-row-fam="ctx"><td class="nw"><span class="ev" data-fam="ctx">BackgroundWorkEvent</span></td><td>Title generation started or finished in the background.</td><td><code>work_id</code>, <code>kind</code> (<code>"session_title"</code>), <code>phase</code>, <code>session_id</code></td><td><span data-ref="vibe/core/agent_loop/_loop.py:2228-2306"></span></td></tr>
+        <tr data-row-fam="hook"><td class="nw"><span class="ev" data-fam="hook">HookEvent</span></td><td>Base of <code>HookRunStartEvent</code>, <code>HookRunEndEvent</code>, <code>HookStartEvent</code>, <code>HookEndEvent</code>.</td><td>per subclass</td><td><span data-ref="vibe/core/hooks/models.py:291-319"></span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>Defined but not yielded by the loop</h2>
+  <div class="grid cols-2">
+    <div class="panel panel-pad">
+      <h3><span class="ev" data-fam="ask">WaitingForInputEvent</span></h3>
+      <p class="src"><span data-ref="vibe/core/types.py:585-588"></span></p>
+      <p style="margin:0">Created only by the app server’s projector (<span data-ref="vibe/app_server/_projector.py:142"></span>), which derives client-facing state from loop events. It belongs to the delivery layer.</p>
+    </div>
+    <div class="panel panel-pad">
+      <h3><span class="ev" data-fam="ctx">TokenUsageUpdatedEvent</span></h3>
+      <p class="src"><span data-ref="vibe/core/types.py:607-609"></span></p>
+      <p style="margin:0">No code under <code>vibe/</code> constructs it at the pinned commit. Token usage reaches clients through <code>AgentStats</code> instead. It is a candidate for removal.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ 06 PERMISSIONS & LIMITS ============================ -->
+<section class="chapter" id="permissions" data-title="Permissions and limits" data-group="Mechanics">
+  <div class="kicker"><span class="n">06</span> Permissions and limits</div>
+  <h1>Two policy layers</h1>
+  <p class="lede">Middleware decides whether the <em>model</em> may be called again. Tool permissions decide whether each <em>tool call</em> may run. Neither layer knows about the other.</p>
+
+  <h2>Tool permissions: first match wins</h2>
+  <p>Pre-tool hooks run first and can deny the call outright. Then <code>_should_execute_tool()</code> (<span data-ref="vibe/core/agent_loop/_loop.py:3025-3072"></span>) walks this ladder under the permission store’s lock:</p>
+  <ol class="ladder">
+    <li><span class="rung">1</span><div><h3>Bypass</h3><p style="margin:0">If <code>bypass_tool_permissions</code> is set, every call runs.</p></div><div class="out"><span class="tag ok">execute</span><code>approval_source=bypass</code></div></li>
+    <li><span class="rung">2</span><div><h3>Resolve the permission</h3><p style="margin:0">The tool may compute a permission from its arguments with <code>resolve_permission(args)</code>. The bash tool uses this to classify commands, and file tools use it to check paths. If it returns nothing, the configured permission for that tool is used.</p></div><div class="out"><span class="tag dim">no outcome yet</span></div></li>
+    <li><span class="rung">3</span><div><h3><code>ALWAYS</code></h3><p style="margin:0">Configured or resolved as always allowed.</p></div><div class="out"><span class="tag ok">execute</span><code>approval_source=config</code></div></li>
+    <li><span class="rung">4</span><div><h3><code>NEVER</code></h3><p style="margin:0">Disabled. The model receives the reason as feedback.</p></div><div class="out"><span class="tag bad">skip</span><code>approval_source=never</code></div></li>
+    <li><span class="rung">5</span><div><h3>Smart approval</h3><p style="margin:0">Otherwise, if the call lists required permissions and the session’s <code>PermissionStore</code> already covers every one of them (the user chose “always allow” earlier), it runs.</p></div><div class="out"><span class="tag ok">execute</span><code>approval_source=smart</code></div></li>
+    <li><span class="rung">6</span><div><h3>Ask the user</h3><p style="margin:0"><code>_ask_approval()</code> (<span data-ref="vibe/core/agent_loop/_loop.py:3074-3094"></span>) asks the broker for the uncovered permissions only. Any answer other than <code>YES</code> skips the call.</p></div><div class="out"><span class="tag warn">execute or skip</span><code>approval_source=user</code></div></li>
+  </ol>
+
+  <h2>How an approval round-trip works</h2>
+  <div class="grid cols-2">
+    <div>
+      <ol>
+        <li>The broker creates a <code>request_id</code> and an <code>asyncio.Future</code>, and puts an <span class="ev" data-fam="ask">ApprovalRequestEvent</span> on the batch queue (<span data-ref="vibe/core/agent_loop/_request_broker.py:41-67"></span>).</li>
+        <li>The tool task awaits the future. Tools that already passed their permission check keep running.</li>
+        <li>The client calls <code>resolve_approval_request(request_id, response, feedback)</code> (<span data-ref="vibe/core/agent_loop/_loop.py:1147-1150"></span>), which sets the future’s result.</li>
+        <li><code>reject_request()</code> sets an exception instead. The app server uses it when it cancels its pending callbacks (<span data-ref="vibe/app_server/_turns.py:1152-1162"></span>).</li>
+      </ol>
+    </div>
+    <div class="grid" style="gap:16px">
+      <div class="panel panel-pad">
+        <h3>One prompt at a time</h3>
+        <p style="margin:0"><code>_should_execute_tool()</code> holds the <code>PermissionStore</code> lock while it waits for the user. Approval prompts in a batch are therefore serialised, and a tool that reaches its permission check while a prompt is open waits too, even one that would be auto-approved. <code>test_parallel_approval_requests_are_serialized</code> asserts this (<span data-ref="tests/agent_loop/test_agent_tool_call.py:790-818"></span>). Only <code>bypass_tool_permissions</code> skips the lock.</p>
+      </div>
+      <div class="panel panel-pad">
+        <h3>Outside a batch</h3>
+        <p style="margin:0">When no queue is bound, <code>request_approval()</code> returns <code>NO</code> with <em>“Tool execution not permitted.”</em>, and <code>request_user_input()</code> raises <code>ToolError</code>. A tool cannot block on a user who is not there.</p>
+      </div>
+    </div>
+  </div>
+
+  <h2>Middleware: checked before each model call</h2>
+  <p>Built in <code>_setup_middleware()</code> (<span data-ref="vibe/core/agent_loop/_loop.py:1911-1941"></span>) in this order. The first three exist only when their limit is set.</p>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Middleware</th><th>Condition</th><th>Action</th><th>Source</th></tr></thead>
+      <tbody>
+        <tr><td class="nw"><code>TurnLimitMiddleware</code></td><td><code>stats.steps - 1 &gt;= max_turns</code></td><td><span class="tag bad">STOP</span></td><td><span data-ref="vibe/core/middleware.py:49-62"></span></td></tr>
+        <tr><td class="nw"><code>PriceLimitMiddleware</code></td><td><code>stats.session_cost &gt; max_price</code></td><td><span class="tag bad">STOP</span></td><td><span data-ref="vibe/core/middleware.py:65-78"></span></td></tr>
+        <tr><td class="nw"><code>TokenLimitMiddleware</code></td><td><code>stats.session_total_llm_tokens &gt; max_session_tokens</code></td><td><span class="tag bad">STOP</span></td><td><span data-ref="vibe/core/middleware.py:81-97"></span></td></tr>
+        <tr><td class="nw"><code>AutoCompactMiddleware</code></td><td><code>threshold &gt; 0</code> and <code>context_tokens &gt;= threshold</code></td><td><span class="tag warn">COMPACT</span></td><td><span data-ref="vibe/core/middleware.py:100-109"></span></td></tr>
+        <tr><td class="nw"><code>ContextWarningMiddleware</code></td><td>Context reaches 50% of the compaction threshold; fires once until reset. Only if <code>context_warnings</code> is on.</td><td><span class="tag dim">INJECT_MESSAGE</span></td><td><span data-ref="vibe/core/middleware.py:112-142"></span></td></tr>
+        <tr><td class="nw"><code>ReadOnlyAgentMiddleware</code></td><td>The <code>plan</code> agent becomes active (inject the plan-mode rules) or inactive (inject the exit notice).</td><td><span class="tag dim">INJECT_MESSAGE</span></td><td><span data-ref="vibe/core/middleware.py:183-224"></span></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p><strong>Combination rule</strong> (<span data-ref="vibe/core/middleware.py:242-256"></span>): the pipeline runs middlewares in order and returns the first <code>STOP</code> or <code>COMPACT</code> immediately. Injected messages from the others are joined with a blank line into one hidden user message. A limit therefore always wins over a warning.</p>
+</section>
+
+<!-- ============================ 07 ERRORS ============================ -->
+<section class="chapter" id="errors" data-title="Errors and recovery" data-group="Mechanics">
+  <div class="kicker"><span class="n">07</span> Errors and recovery</div>
+  <h1>Tool failures stay inside the turn</h1>
+  <p class="lede">The loop draws a sharp line. Problems with a request are raised to the caller before anything changes. Problems with a tool are turned into results the model can read and react to.</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Failure</th><th>Where it is handled</th><th>What happens</th><th>Turn</th></tr></thead>
+      <tbody>
+        <tr><td class="nw"><code>ImagesNotSupportedError</code></td><td><span data-ref="vibe/core/agent_loop/_loop.py:1697-1700"></span></td><td>Raised to the caller before the message is appended.</td><td><span class="tag bad">never starts</span></td></tr>
+        <tr><td class="nw"><code>AgentLoopStateError</code></td><td><span data-ref="vibe/core/agent_loop/_loop.py:1701-1710"></span></td><td>A turn or holder is already active. Raised, no state change.</td><td><span class="tag bad">never starts</span></td></tr>
+        <tr><td class="nw"><code>ContextTooLongError</code></td><td><span data-ref="vibe/core/agent_loop/_loop.py:2173-2179"></span></td><td>Compaction, then the same step is retried. Allowed once per turn; re-raised in strict mode.</td><td><span class="tag ok">recovers</span></td></tr>
+        <tr><td class="nw">Unknown tool or bad arguments</td><td><span data-ref="vibe/core/agent_loop/_loop.py:2677-2693"></span></td><td>Error result plus a tool response so the model can correct itself. Counts as failed.</td><td><span class="tag ok">continues</span></td></tr>
+        <tr><td class="nw">Tool cannot be instantiated</td><td><span data-ref="vibe/core/agent_loop/_loop.py:2764-2769"></span></td><td>Error result.</td><td><span class="tag ok">continues</span></td></tr>
+        <tr><td class="nw">Pre-tool hook denial</td><td><span data-ref="vibe/core/agent_loop_hooks.py:347-367"></span></td><td>Denial result; the tool never runs.</td><td><span class="tag ok">continues</span></td></tr>
+        <tr><td class="nw"><code>ToolPermissionError</code></td><td><span data-ref="vibe/core/agent_loop/_loop.py:2863-2870"></span></td><td>Error result. The call moves from <em>agreed</em> to <em>rejected</em> in the stats.</td><td><span class="tag ok">continues</span></td></tr>
+        <tr><td class="nw"><code>ToolError</code>, any <code>Exception</code></td><td><span data-ref="vibe/core/agent_loop/_loop.py:2859-2911"></span></td><td>Error result with a separate <code>error_display</code> for the UI; post-tool hooks still run. Counts as failed.</td><td><span class="tag ok">continues</span></td></tr>
+        <tr><td class="nw"><code>asyncio.CancelledError</code></td><td><span data-ref="vibe/core/agent_loop/_loop.py:2817-2857"></span></td><td>Result with <code>cancelled=True</code>, cleanup through <code>_finalize_cancelled_tool()</code>, then re-raised.</td><td><span class="tag warn">aborts</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="grid cols-3">
+    <div class="panel panel-pad">
+      <h3>Reactive compaction</h3>
+      <p><code>_should_self_heal()</code> (<span data-ref="vibe/core/agent_loop/_loop.py:2022-2027"></span>) is two conditions: recovery not yet used in this turn, and <code>raise_on_compaction_failure</code> off.</p>
+      <p style="margin:0">The flag is reset at the start of each turn (<span data-ref="vibe/core/agent_loop/_loop.py:2154"></span>). A second overflow in the same turn propagates, which prevents a compact-and-retry loop.</p>
+    </div>
+    <div class="panel panel-pad">
+      <h3>Cancellation points</h3>
+      <ul style="margin:0">
+        <li><strong>Interrupt at an approval prompt</strong>: the answer carries a cancellation message, so the skipped result has <code>cancelled=True</code>. The loop saves the step and returns without calling the model again (<code>test_act_handles_user_cancellation_during_streaming</code>).</li>
+        <li><strong>Plain denial</strong>: a skipped result without <code>cancelled</code>; the model is called again and sees the refusal.</li>
+        <li><strong>Task cancelled by the client</strong>: <code>asyncio.CancelledError</code> reaches the tools, each yields a cancelled result, and the error propagates out of <code>act()</code> through the <code>finally</code> blocks that save and seal.</li>
+      </ul>
+    </div>
+    <div class="panel panel-pad">
+      <h3>State stays consistent</h3>
+      <ul style="margin:0">
+        <li>Checkpoint created at entry, sealed in <code>finally</code>.</li>
+        <li>Files a tool will change are snapshotted before it runs.</li>
+        <li>Messages are saved after every step and again in <code>finally</code>.</li>
+        <li>Every tool call gets a tool response, even on failure, so the history stays valid for the next model call.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ 08 INTEGRATION ============================ -->
+<section class="chapter" id="integration" data-title="Integration" data-group="Context">
+  <div class="kicker"><span class="n">08</span> Integration</div>
+  <h1>What plugs into the loop</h1>
+  <p class="lede">Most subsystems reach the loop in one of two ways: through <code>InvokeContext</code>, which every tool receives, or through hooks around tool calls and turns.</p>
+
+  <h2>What a tool receives</h2>
+  <p><code>InvokeContext</code> is built per call in <code>_invoke_tool()</code> (<span data-ref="vibe/core/agent_loop/_loop.py:2937-2961"></span>). Its fields show what tools are allowed to do:</p>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Field</th><th>Lets a tool…</th></tr></thead>
+      <tbody>
+        <tr><td class="nw"><code>interaction_requests</code></td><td>ask for approval or user input (the broker).</td></tr>
+        <tr><td class="nw"><code>subagent_runner</code></td><td>run a child agent loop (the <code>task</code> tool).</td></tr>
+        <tr><td class="nw"><code>switch_agent_callback</code></td><td>change the active agent profile (leaving plan mode).</td></tr>
+        <tr><td class="nw"><code>request_clear_context_callback</code></td><td>clear history after a plan is accepted.</td></tr>
+        <tr><td class="nw"><code>sampling_callback</code></td><td>call the model itself (MCP sampling).</td></tr>
+        <tr><td class="nw"><code>permission_store</code></td><td>read and record session approvals.</td></tr>
+        <tr><td class="nw"><code>skill_manager</code>, <code>is_skill_loaded</code></td><td>load skills without duplicating them.</td></tr>
+        <tr><td class="nw"><code>mcp_pool</code>, <code>tool_io</code></td><td>reach MCP servers and client-provided I/O.</td></tr>
+        <tr><td class="nw"><code>session_dir</code>, <code>scratchpad_dir</code>, <code>plan_file_path</code></td><td>know where to write.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="grid cols-2">
+    <div class="panel panel-pad">
+      <h3>Subagents</h3>
+      <p style="margin:0">The <code>task</code> tool receives a <code>SubagentRunnerPort</code> (<span data-ref="vibe/core/subagents.py:34-39"></span>) and runs another <code>AgentLoop</code>. <code>SubagentRunAccumulator</code> (<span data-ref="vibe/core/subagents.py:41"></span>) turns the child’s events into <span class="ev" data-fam="tool">ToolStreamEvent</span>s for the parent and builds the final <code>TaskResult</code>. Subagents inherit the parent’s session approvals and share its approval lock (<span data-ref="tests/test_permission_store.py:169-250"></span>).</p>
+    </div>
+    <div class="panel panel-pad">
+      <h3>Hooks</h3>
+      <p style="margin:0">Three <code>HookType</code>s (<span data-ref="vibe/core/hooks/models.py:20-23"></span>). <strong>pre_tool</strong> can deny or rewrite input; its events are buffered because it is meant to be quick. <strong>post_tool</strong> can replace the text the model sees. <strong>post_agent</strong> runs when the turn would end and can return a user message that starts another step.</p>
+    </div>
+    <div class="panel panel-pad">
+      <h3>Compaction</h3>
+      <p style="margin:0"><code>compact()</code> (<span data-ref="vibe/core/agent_loop/_loop.py:3709"></span>) delegates to <code>CompactionManager</code>, which appends the summary as a hidden user message marked <code>context_boundary="compaction"</code> and resets <code>context_tokens</code> (<span data-ref="vibe/core/compaction/manager.py:99-110"></span>). The full history stays in the session; only what follows the boundary is sent to the model. The session id does not change, so the two ids on <span class="ev" data-fam="ctx">CompactEndEvent</span> are equal. Telemetry records the outcome (success, failure, cancelled) in a <code>finally</code>.</p>
+    </div>
+    <div class="panel panel-pad">
+      <h3>Sessions and rewind</h3>
+      <p style="margin:0"><code>SessionLogger</code> persists messages and stats. <code>CheckpointRecorder</code> brackets each turn and collects the file snapshots tools add, which is what lets rewind restore files as well as messages.</p>
+    </div>
+    <div class="panel panel-pad">
+      <h3>Configuration</h3>
+      <p style="margin:0">The loop reads a layered <code>VibeConfigSchema</code> through <code>ConfigOrchestrator</code>. <code>max_turns</code>, <code>max_price</code> and <code>max_session_tokens</code> are constructor arguments that feed the middlewares; <code>max_tokens</code> is passed to the backend as the per-response limit. <code>set_max_turns()</code> rebuilds the middleware pipeline.</p>
+    </div>
+    <div class="panel panel-pad">
+      <h3>Telemetry and experiments</h3>
+      <p style="margin:0">The loop sends <code>new_session</code>, <code>ready</code>, <code>session_closed</code>, <code>auto_compact_triggered</code>, <code>request_sent</code> and <code>tool_call_finished</code> events, and wraps each turn in an <code>agent_span</code> and each tool in a <code>tool_span</code> for tracing. Feature flags come from <code>ExperimentManager</code>, whose attributes also decide the reported <code>user_plan</code>.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ 09 TESTS ============================ -->
+<section class="chapter" id="tests" data-title="Tests and quality" data-group="Assessment">
+  <div class="kicker"><span class="n">09</span> Tests and quality</div>
+  <h1>Well tested where it matters most</h1>
+  <p class="lede">32 test files with 440 test functions and about 10,700 lines cover the loop directly. Middleware and permissions have their own suites at the top of <code>tests/</code>.</p>
+
+  <div class="toolbar"><input class="search" id="q-tests" type="search" placeholder="Filter tests" data-filter="t-tests" aria-label="Filter tests"></div>
+  <div class="table-wrap">
+    <table id="t-tests">
+      <thead><tr><th>File</th><th>Covers</th></tr></thead>
+      <tbody>
+        <tr><td class="nw"><span data-ref="tests/agent_loop/test_agent_tool_call.py"></span></td><td>Single and concurrent calls, approval, denial, cancellation timing with post-tool hooks</td></tr>
+        <tr><td class="nw"><span data-ref="tests/agent_loop/test_agent_auto_compact.py"></span></td><td>Auto and reactive compaction, strict mode, turn budget after overflow, fallbacks</td></tr>
+        <tr><td class="nw"><span data-ref="tests/agent_loop/test_agent_observer_streaming.py"></span></td><td>Streamed events, cancellation during streaming</td></tr>
+        <tr><td class="nw"><span data-ref="tests/agent_loop/test_agent_auto_title.py"></span></td><td>Title cadence and background work events</td></tr>
+        <tr><td class="nw"><span data-ref="tests/agent_loop/test_agent_backend.py"></span></td><td>Request headers and metadata, token accounting, MCP sampling, refusal errors</td></tr>
+        <tr><td class="nw"><span data-ref="tests/agent_loop/test_agent_stats.py"></span></td><td>Tokens, cost, step counting, config reload</td></tr>
+        <tr><td class="nw"><span data-ref="tests/agent_loop/test_agent_override_resolve_permission.py"></span></td><td>Argument-based permissions: plan mode allows <code>write_file</code> and <code>edit</code> only on the plan file</td></tr>
+        <tr><td class="nw"><span data-ref="tests/agent_loop/test_approve_always_permanent.py"></span></td><td>Persisting “always allow”</td></tr>
+        <tr><td class="nw"><span data-ref="tests/agent_loop/test_agent_steer_tool_call.py"></span></td><td>Steering messages during tool calls</td></tr>
+        <tr><td class="nw"><span data-ref="tests/agent_loop/test_agent_clear_context_on_plan_accept.py"></span></td><td>Clearing context when a plan is accepted</td></tr>
+        <tr><td class="nw"><span data-ref="tests/agent_loop/test_agent_skill_injection.py"></span></td><td>Skill invocation</td></tr>
+        <tr><td class="nw"><span data-ref="tests/agent_loop/test_agent_file_injection.py"></span></td><td><code>@</code>-mentioned files</td></tr>
+        <tr><td class="nw"><span data-ref="tests/agent_loop/test_agent_loop_images.py"></span></td><td>Image attachments and model support</td></tr>
+        <tr><td class="nw"><span data-ref="tests/agent_loop/test_agent_loop_refresh_system_prompt.py"></span></td><td>System prompt refresh</td></tr>
+        <tr><td class="nw"><span data-ref="tests/agent_loop/test_agents.py"></span></td><td>Agent profiles and switching</td></tr>
+        <tr><td class="nw"><span data-ref="tests/agent_loop/test_deferred_init.py"></span></td><td>Deferred MCP/connector discovery and experiments init</td></tr>
+        <tr><td class="nw"><span data-ref="tests/agent_loop/test_hook_reload.py"></span></td><td>Hook configuration reload</td></tr>
+        <tr><td class="nw"><span data-ref="tests/agent_loop/test_registry_skills_sync.py"></span></td><td>Registry skills sync</td></tr>
+        <tr><td class="nw"><span data-ref="tests/agent_loop/test_relocate.py"></span></td><td>Moving a session to another directory</td></tr>
+        <tr><td class="nw"><span data-ref="tests/agent_loop/test_title_cadence.py"></span></td><td><code>TitleCadence</code> unit tests</td></tr>
+        <tr><td class="nw"><span data-ref="tests/agent_loop/test_user_plan_snapshot.py"></span></td><td><code>user_plan</code> derivation</td></tr>
+        <tr><td class="nw"><span data-ref="tests/agent_loop/e2e/"></span></td><td>9 end-to-end files: loop, bash, compaction, connectors, fork and plan, hooks, provider APIs, teleport, tools</td></tr>
+        <tr><td class="nw"><span data-ref="tests/core/agent_loop/"></span></td><td>Last user message, model catalog</td></tr>
+        <tr><td class="nw"><span data-ref="tests/test_middleware.py"></span></td><td>33 tests, mostly <code>ReadOnlyAgentMiddleware</code> (plan mode) and the token limit</td></tr>
+        <tr><td class="nw"><span data-ref="tests/core/test_middleware.py"></span></td><td>9 tests for auto-compaction and context warnings</td></tr>
+        <tr><td class="nw"><span data-ref="tests/test_permission_store.py"></span></td><td>Session approvals, including subagent inheritance</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>Coverage</h2>
+  <div class="grid cols-2">
+    <div class="panel panel-pad">
+      <h3><span class="tag ok">Covered</span></h3>
+      <ul style="margin:0">
+        <li>Tool execution paths: success, denial, skip, errors, and parallel batches, including serialised approvals and call events emitted before results</li>
+        <li>Reactive compaction, including strict mode (<code>test_reactive_compaction_disabled_in_strict_mode</code>) and the turn budget after overflow</li>
+        <li>Interrupting at an approval prompt, and cancellation before and during tool execution</li>
+        <li>Plan-mode middleware, auto-compaction, context warnings, token limit</li>
+        <li><code>reject_request()</code> from the app server side (<span data-ref="tests/app_server/test_session.py:2261-2276"></span>)</li>
+        <li>Plan mode, hooks and teleport end to end</li>
+      </ul>
+    </div>
+    <div class="panel panel-pad">
+      <h3><span class="tag warn">Thinner</span></h3>
+      <ul style="margin:0">
+        <li>A second overflow in the same turn (the “once per turn” rule): every reactive test overflows only once.</li>
+        <li><code>PriceLimitMiddleware</code> has no unit test; <code>TurnLimitMiddleware</code> is only exercised inside a compaction test.</li>
+        <li>The pipeline’s combination rule (first <code>STOP</code>/<code>COMPACT</code> wins, injections are joined) is not tested with several middlewares at once.</li>
+        <li>An auto-approved tool waiting on the permission lock while another tool’s prompt is open.</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2>Code quality</h2>
+  <div class="grid cols-2">
+    <div>
+      <h3>Strengths</h3>
+      <ul class="pro">
+        <li>Strict typing throughout: Pydantic events, <code>ToolDecision</code>, literal types for approval sources.</li>
+        <li>Comments explain why, not what (the holder check, the per-step title scheduling, the turn budget).</li>
+        <li>Cleanup is structural: nested <code>finally</code> blocks, queue unbinding, task cancellation.</li>
+        <li>Ports (<code>SubagentRunnerPort</code>, <code>InteractionRequestPort</code>) keep tools testable without a loop.</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Weaknesses</h3>
+      <ul class="con">
+        <li><code>AgentLoop</code> is a 3,500-line class whose <code>noqa: PLR0904</code> (too many public methods) admits it. Plan mode, teleport and title generation could be collaborators.</li>
+        <li>Turn state is spread over <code>_active_turn</code>, <code>_holders</code>, <code>_tool_event_queue</code> and flags like <code>_reactive_recovery_used</code>; an explicit state object would make invariants checkable.</li>
+        <li><code>_conversation_loop()</code> needs <code>noqa: PLR0912</code> (too many branches).</li>
+        <li>An unused event type (<code>TokenUsageUpdatedEvent</code>) remains in the public vocabulary.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ 10 DESIGN DECISIONS ============================ -->
+<section class="chapter" id="design" data-title="Design decisions" data-group="Assessment">
+  <div class="kicker"><span class="n">10</span> Design decisions</div>
+  <h1>Why it is built this way</h1>
+  <p class="lede">Five decisions shape the loop. Each is weighed here against what it costs.</p>
+
+  <div class="panel">
+    <div class="decision">
+      <h3>An async generator as the only interface</h3>
+      <p class="src"><span data-ref="vibe/core/agent_loop/_loop.py:1676-1689"></span> · ADR 0003</p>
+      <div class="decision-grid">
+        <div><h4>Reasoning</h4><p style="margin:0">The caller pulls events at its own pace, so the CLI, ACP and tests consume exactly the same stream. Cancelling the consumer cancels the turn, because <code>GeneratorExit</code> propagates into the tool batch.</p></div>
+        <div><h4>Trade-offs</h4><ul class="pro" style="margin:0 0 6px"><li>One interface for every surface</li><li>Natural backpressure</li></ul><ul class="con" style="margin:0"><li>Answering approvals needs a side channel (<code>resolve_approval_request()</code>)</li><li>Every exit path must clean up in <code>finally</code></li></ul></div>
+      </div>
+    </div>
+    <div class="decision">
+      <h3>Typed events instead of callbacks</h3>
+      <p class="src">ADR 0003, <span data-ref="docs/adr/0003-event-driven-agent-loop.md"></span></p>
+      <div class="decision-grid">
+        <div><h4>Reasoning</h4><div class="quote" style="margin:0"><p>“Prefer adding or extending typed events over adding surface-specific callbacks into the agent loop.”</p></div></div>
+        <div><h4>Trade-offs</h4><ul class="pro" style="margin:0 0 6px"><li>Clients cannot reach into internals</li><li>Tests assert on event sequences</li></ul><ul class="con" style="margin:0"><li>Unused events linger</li><li>Compaction rides on <code>tool_call_id</code> as an ACP workaround</li></ul></div>
+      </div>
+    </div>
+    <div class="decision">
+      <h3>Concurrent tools through one queue</h3>
+      <p class="src"><span data-ref="vibe/core/agent_loop/_loop.py:2695-2741"></span></p>
+      <div class="decision-grid">
+        <div><h4>Reasoning</h4><p style="margin:0">Tool calls in one model response are usually independent reads, so running them in parallel cuts latency. The single queue also carries approval requests to the client. Permission checks, however, run under one lock, so the user answers one prompt at a time.</p></div>
+        <div><h4>Trade-offs</h4><ul class="pro" style="margin:0 0 6px"><li>Lower latency for independent calls</li><li>Never two approval prompts at once</li></ul><ul class="con" style="margin:0"><li>Results arrive in completion order</li><li>An open prompt also delays tools that would be auto-approved</li><li>Two calls that touch the same file are not serialised by the loop</li></ul></div>
+      </div>
+    </div>
+    <div class="decision">
+      <h3>Middleware for limits and reminders</h3>
+      <p class="src"><span data-ref="vibe/core/middleware.py:227-256"></span></p>
+      <div class="decision-grid">
+        <div><h4>Reasoning</h4><p style="margin:0">Each concern is a small class with one <code>before_turn()</code>; the loop only interprets four actions. Plan mode reuses the same mechanism to inject its rules.</p></div>
+        <div><h4>Trade-offs</h4><ul class="pro" style="margin:0 0 6px"><li>Easy to add a limit</li><li>Unit-testable in isolation</li></ul><ul class="con" style="margin:0"><li>Runs before model calls only, never before a tool</li><li>Order matters but is implicit in <code>_setup_middleware()</code></li></ul></div>
+      </div>
+    </div>
+    <div class="decision">
+      <h3>Reactive compaction, once per turn</h3>
+      <p class="src"><span data-ref="vibe/core/agent_loop/_loop.py:2173-2179"></span></p>
+      <div class="decision-grid">
+        <div><h4>Reasoning</h4><p style="margin:0">Token estimates can be wrong, so proactive compaction alone is not enough. When the provider still rejects the context, compacting and retrying keeps the conversation alive without user action.</p></div>
+        <div><h4>Trade-offs</h4><ul class="pro" style="margin:0 0 6px"><li>Overflow is invisible to the user</li><li>A retried step does not consume turn budget</li></ul><ul class="con" style="margin:0"><li>Detail is lost in the summary</li><li>The step costs an extra model call</li></ul></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ 11 OPEN QUESTIONS ============================ -->
+<section class="chapter" id="questions" data-title="Open questions" data-group="Assessment">
+  <div class="kicker"><span class="n">11</span> Open questions</div>
+  <h1>What we checked, and what is still open</h1>
+  <p class="lede">The first draft of this report listed ten open questions. Reading the code answered three of them.</p>
+
+  <div class="panel panel-pad" style="padding-top:4px;padding-bottom:4px">
+    <div class="q"><span class="qn">1</span><div><h3>Is <code>TokenUsageUpdatedEvent</code> used? <span class="tag ok">answered</span></h3><p class="answer">No. Nothing under <code>vibe/</code> constructs it at the pinned commit (<span data-ref="vibe/core/types.py:607-609"></span>).</p></div></div>
+    <div class="q"><span class="qn">2</span><div><h3>How does <code>WaitingForInputEvent</code> relate to the loop? <span class="tag ok">answered</span></h3><p class="answer">It is a delivery-layer event built by the app server projector (<span data-ref="vibe/app_server/_projector.py:142"></span>), not by the loop.</p></div></div>
+    <div class="q"><span class="qn">3</span><div><h3>When does reactive compaction run? <span class="tag ok">answered</span></h3><p class="answer">When recovery has not been used in the current turn and <code>raise_on_compaction_failure</code> is off (<span data-ref="vibe/core/agent_loop/_loop.py:2022-2027"></span>).</p></div></div>
+    <div class="q"><span class="qn">4</span><div><h3>How does the session lease interact with turns? <span class="tag dim">open</span></h3><p><code>SessionLease</code> is passed to the constructor; its use during a turn was not traced.</p></div></div>
+    <div class="q"><span class="qn">5</span><div><h3>What happens to <code>self.messages</code> when a stream fails midway? <span class="tag dim">open</span></h3><p>Whether a partial assistant message is kept or rolled back depends on <code>_chat_streaming()</code> (<span data-ref="vibe/core/agent_loop/_loop.py:3341"></span>), which was not read in full.</p></div></div>
+    <div class="q"><span class="qn">6</span><div><h3>Are concurrent writes to the same file safe? <span class="tag dim">open</span></h3><p>The loop runs all calls of a step in parallel and does not order them. Whether tools lock files themselves was not checked.</p></div></div>
+    <div class="q"><span class="qn">7</span><div><h3>How does teleport fit the turn lifecycle? <span class="tag dim">open</span></h3><p><code>teleport_to_vibe_code()</code> (<span data-ref="vibe/core/agent_loop/_loop.py:1758"></span>) and its end-to-end test exist; the flow was not traced.</p></div></div>
+    <div class="q"><span class="qn">8</span><div><h3>Are backend closes bounded in long sessions? <span class="tag dim">open</span></h3><p>The module-level <code>_pending_close_tasks</code> set (<span data-ref="vibe/core/agent_loop/_loop.py:333-353"></span>) holds references until each close finishes. The set looks self-cleaning; its behaviour under a failing close was not checked.</p></div></div>
+    <div class="q"><span class="qn">9</span><div><h3>What are the semantics of a checkpoint while streaming? <span class="tag dim">open</span></h3><p>Created at entry and sealed at exit; whether a rewind mid-turn is possible was not verified.</p></div></div>
+    <div class="q"><span class="qn">10</span><div><h3>When do the experimental flags graduate? <span class="tag dim">open</span></h3><p><code>experimental_enable_registry_skills</code> and <code>experimental_enable_model_catalog</code> gate features with no visible roadmap in the repository.</p></div></div>
+  </div>
+</section>
+
+<!-- ============================ 12 REFERENCES ============================ -->
+<section class="chapter" id="references" data-title="References" data-group="Assessment">
+  <div class="kicker"><span class="n">12</span> References</div>
+  <h1>Where to look in the code</h1>
+  <p class="lede">The symbols this report refers to most, and the files it was built from. Every link points at commit <code>9ebde8f2</code>.</p>
+
+  <div class="toolbar"><input class="search" id="q-refs" type="search" placeholder="Filter symbols" data-filter="t-refs" aria-label="Filter symbols"></div>
+  <div class="table-wrap">
+    <table id="t-refs">
+      <thead><tr><th>Symbol</th><th>Location</th></tr></thead>
+      <tbody>
+        <tr><td><code>class AgentLoop</code></td><td><span data-ref="vibe/core/agent_loop/_loop.py:534"></span></td></tr>
+        <tr><td><code>resolve_approval_request()</code></td><td><span data-ref="vibe/core/agent_loop/_loop.py:1147-1150"></span></td></tr>
+        <tr><td><code>act()</code></td><td><span data-ref="vibe/core/agent_loop/_loop.py:1676-1739"></span></td></tr>
+        <tr><td><code>teleport_to_vibe_code()</code></td><td><span data-ref="vibe/core/agent_loop/_loop.py:1758"></span></td></tr>
+        <tr><td><code>_setup_middleware()</code></td><td><span data-ref="vibe/core/agent_loop/_loop.py:1911-1941"></span></td></tr>
+        <tr><td><code>_handle_middleware_result()</code></td><td><span data-ref="vibe/core/agent_loop/_loop.py:1943-1965"></span></td></tr>
+        <tr><td><code>_run_compaction()</code></td><td><span data-ref="vibe/core/agent_loop/_loop.py:1967-2004"></span></td></tr>
+        <tr><td><code>_should_self_heal()</code></td><td><span data-ref="vibe/core/agent_loop/_loop.py:2022-2027"></span></td></tr>
+        <tr><td><code>_open_user_turn()</code></td><td><span data-ref="vibe/core/agent_loop/_loop.py:2059-2125"></span></td></tr>
+        <tr><td><code>_conversation_loop()</code></td><td><span data-ref="vibe/core/agent_loop/_loop.py:2127-2219"></span></td></tr>
+        <tr><td><code>_perform_llm_turn()</code></td><td><span data-ref="vibe/core/agent_loop/_loop.py:2549-2574"></span></td></tr>
+        <tr><td><code>_stream_assistant_events()</code></td><td><span data-ref="vibe/core/agent_loop/_loop.py:2603-2631"></span></td></tr>
+        <tr><td><code>_handle_tool_calls()</code></td><td><span data-ref="vibe/core/agent_loop/_loop.py:2640-2666"></span></td></tr>
+        <tr><td><code>_run_tools_concurrently()</code></td><td><span data-ref="vibe/core/agent_loop/_loop.py:2695-2741"></span></td></tr>
+        <tr><td><code>_execute_tool_call()</code></td><td><span data-ref="vibe/core/agent_loop/_loop.py:2761-2911"></span></td></tr>
+        <tr><td><code>_invoke_tool()</code></td><td><span data-ref="vibe/core/agent_loop/_loop.py:2913-3023"></span></td></tr>
+        <tr><td><code>_should_execute_tool()</code></td><td><span data-ref="vibe/core/agent_loop/_loop.py:3025-3072"></span></td></tr>
+        <tr><td><code>_ask_approval()</code></td><td><span data-ref="vibe/core/agent_loop/_loop.py:3074-3094"></span></td></tr>
+        <tr><td><code>compact()</code></td><td><span data-ref="vibe/core/agent_loop/_loop.py:3709"></span></td></tr>
+        <tr><td><code>InteractionRequestBroker</code></td><td><span data-ref="vibe/core/agent_loop/_request_broker.py:25-106"></span></td></tr>
+        <tr><td><code>TitleCadence</code></td><td><span data-ref="vibe/core/agent_loop/_title_cadence.py:14"></span></td></tr>
+        <tr><td><code>_run_pre_tool_pipeline()</code></td><td><span data-ref="vibe/core/agent_loop_hooks.py:258-294"></span></td></tr>
+        <tr><td><code>_dispatch_post_turn_hooks()</code></td><td><span data-ref="vibe/core/agent_loop_hooks.py:448-467"></span></td></tr>
+        <tr><td><code>MiddlewarePipeline.run_before_turn()</code></td><td><span data-ref="vibe/core/middleware.py:242-256"></span></td></tr>
+        <tr><td><code>class BaseEvent</code></td><td><span data-ref="vibe/core/types.py:522"></span></td></tr>
+        <tr><td><code>class ToolManager</code></td><td><span data-ref="vibe/core/tools/manager.py:117"></span></td></tr>
+        <tr><td><code>class PermissionStore</code></td><td><span data-ref="vibe/core/tools/permissions.py:25"></span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>Method</h2>
+  <p>The report was drafted with Mistral Vibe: a broad exploration first, then targeted questions on each part. Every claim and line reference was then checked by hand against the pinned commit. A first pass corrected about fifteen line numbers, added <code>ReadOnlyAgentMiddleware</code>, redrew the state diagram, and answered three open questions. A second pass checked behaviour against the code and the tests. It corrected five claims: compaction keeps the session id, approval prompts are serialised, user cancellation is detected from a cancelled tool result, drained injections come from plan review only, and several test descriptions.</p>
+  <p>Related ADRs: <span data-ref="docs/adr/0002-core-engine-and-delivery-surfaces.md"></span>, <span data-ref="docs/adr/0003-event-driven-agent-loop.md"></span>, <span data-ref="docs/adr/0004-typed-permissioned-tools.md"></span>, <span data-ref="docs/adr/0009-app-server-boundary.md"></span>.</p>
+</section>
+
+    <nav class="pager" id="pager" aria-label="Chapter navigation"></nav>
+    <p class="hint"><kbd>←</kbd> <kbd>→</kbd> move between chapters</p>
+  </div>
+</main>
+</div>
+
+<!-- ============================ Diagram sources ============================ -->
+<script type="text/plain" id="d-seq">
+sequenceDiagram
+    autonumber
+    participant C as Client (CLI · ACP · app server)
+    participant L as AgentLoop
+    participant M as MiddlewarePipeline
+    participant B as LLM backend
+    participant T as Tool task
+    participant R as InteractionRequestBroker
+
+    C->>L: act(msg)
+    L-->>C: UserMessageEvent
+    loop each model step
+        L->>M: run_before_turn(context)
+        M-->>L: CONTINUE / INJECT / COMPACT / STOP
+        L->>B: _chat_streaming()
+        B-->>L: chunks
+        L-->>C: ReasoningEvent · AssistantEvent · ToolCallEvent
+        opt the model called tools
+            L->>T: one asyncio task per call
+            T->>T: pre_tool hooks, then _should_execute_tool()
+            opt needs approval
+                T->>R: request_approval()
+                R-->>C: ApprovalRequestEvent (via queue)
+                C->>L: resolve_approval_request(id, YES)
+                L->>R: resolve_approval()
+                R-->>T: future resolved
+            end
+            T-->>C: ToolStreamEvent* · ToolResultEvent (via queue)
+        end
+        L->>L: stats.steps += 1, _save_messages()
+    end
+    L-->>C: HookEvent* (post_agent)
+</script>
+<script type="text/plain" id="d-state">
+stateDiagram-v2
+    direction TB
+    [*] --> Idle
+    Idle --> Rejected: images unsupported / turn or holder active
+    Rejected --> Idle
+    Idle --> OpenTurn: act() · checkpoint created
+    OpenTurn --> Middleware: UserMessageEvent
+    Middleware --> Stopped: STOP
+    Middleware --> Compacting: COMPACT
+    Middleware --> ModelCall: CONTINUE / INJECT_MESSAGE
+    Compacting --> ModelCall
+    ModelCall --> Reactive: ContextTooLongError, first time
+    Reactive --> ModelCall: compacted, same step retried
+    ModelCall --> Raised: ContextTooLongError, second time
+    ModelCall --> ToolBatch: tool calls
+    ModelCall --> StepDone: text only
+    ToolBatch --> StepDone: every call has a result
+    StepDone --> Middleware: last message is a tool result / injections drained / context cleared
+    StepDone --> Done: user cancelled
+    StepDone --> PostAgentHooks: model answered
+    PostAgentHooks --> Middleware: hook queued a retry message
+    PostAgentHooks --> Done
+    Stopped --> Done
+    Raised --> Done
+    Done --> Idle: save messages · seal checkpoint
+</script>
+<script type="text/plain" id="d-perm">
+flowchart TD
+    A["Resolved tool call"] --> H{"pre_tool hooks"}
+    H -- "deny" --> HD["Denied result"]
+    H -- "allow or rewrite input" --> B{"bypass_tool_permissions?"}
+    B -- "yes" --> X1["Execute · bypass"]
+    B -- "no" --> R["tool.resolve_permission(args)<br/>else configured permission"]
+    R --> P{"permission"}
+    P -- "ALWAYS" --> X2["Execute · config"]
+    P -- "NEVER" --> S1["Skip · never"]
+    P -- "ASK" --> C{"required permissions all<br/>covered by PermissionStore?"}
+    C -- "yes" --> X3["Execute · smart"]
+    C -- "no" --> U["ApprovalRequestEvent<br/>await Future"]
+    U -- "YES" --> X4["Execute · user"]
+    U -- "anything else" --> S2["Skip · user"]
+</script>
+<script type="text/plain" id="d-class">
+classDiagram
+    direction LR
+    class AgentLoop {
+        +act(msg) AsyncGenerator~BaseEvent~
+        +resolve_approval_request(id, response, feedback)
+        +resolve_user_input_request(id, result)
+        +compact() str
+        +messages MessageList
+        +stats AgentStats
+        -_conversation_loop()
+        -_perform_llm_turn()
+        -_run_tools_concurrently()
+        -_should_execute_tool() ToolDecision
+    }
+    class AgentLoopHooksMixin {
+        -_run_pre_tool_pipeline()
+        -_dispatch_post_turn_hooks()
+    }
+    class MiddlewarePipeline {
+        +run_before_turn(ctx) MiddlewareResult
+    }
+    class InteractionRequestBroker {
+        +request_approval() ApprovalResponse
+        +request_user_input() BaseModel
+        +resolve_approval()
+        +reject()
+    }
+    class ToolManager {
+        +get(name) BaseTool
+        +available_tools
+    }
+    class BaseTool {
+        <<abstract>>
+        +invoke(ctx, **args)
+        +resolve_permission(args)
+    }
+    class PermissionStore {
+        +covers(tool, permission) bool
+    }
+    class BaseEvent {
+        <<abstract>>
+    }
+    class RequestEvent {
+        +request_id
+    }
+    AgentLoopHooksMixin <|-- AgentLoop
+    AgentLoop --> MiddlewarePipeline
+    AgentLoop --> InteractionRequestBroker
+    AgentLoop --> ToolManager
+    AgentLoop --> PermissionStore
+    ToolManager --> BaseTool
+    BaseEvent <|-- RequestEvent
+    RequestEvent <|-- ApprovalRequestEvent
+    RequestEvent <|-- UserInputRequestEvent
+    BaseEvent <|-- UserMessageEvent
+    BaseEvent <|-- AssistantEvent
+    BaseEvent <|-- ToolCallEvent
+    BaseEvent <|-- ToolResultEvent
+    BaseEvent <|-- HookEvent
+    InteractionRequestBroker ..> RequestEvent : emits
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"></script>
+<script>
+(function () {
+  "use strict";
+  // Source links are pinned to the commit the report was verified against, so line numbers stay correct.
+  var REPO = "https://github.com/rrobbes/mistral-vibe/blob/9ebde8f2643a9ab48ac76d4700ab83a1d84bb983/";
+  var root = document.documentElement;
+
+  document.querySelectorAll("[data-ref]").forEach(function (el) {
+    var ref = el.getAttribute("data-ref");
+    var m = ref.match(/^(.*?)(?::(\d+)(?:-(\d+))?)?$/);
+    var url = REPO + m[1];
+    if (m[2]) url += "#L" + m[2] + (m[3] ? "-L" + m[3] : "");
+    var a = document.createElement("a");
+    a.className = "ref"; a.href = url; a.target = "_blank"; a.rel = "noopener";
+    var code = document.createElement("code");
+    code.textContent = ref;
+    a.appendChild(code);
+    el.replaceWith(a);
+  });
+
+  // Theme
+  function storedTheme() { try { return localStorage.getItem("al-theme"); } catch (e) { return null; } }
+  function isDark() {
+    var t = root.getAttribute("data-theme");
+    return t ? t === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
+  }
+  var themeBtn = document.getElementById("themeBtn");
+  function syncThemeLabel() { themeBtn.textContent = isDark() ? "Switch to light" : "Switch to dark"; }
+  var saved = storedTheme();
+  if (saved) root.setAttribute("data-theme", saved);
+  syncThemeLabel();
+  themeBtn.addEventListener("click", function () {
+    var next = isDark() ? "light" : "dark";
+    root.setAttribute("data-theme", next);
+    try { localStorage.setItem("al-theme", next); } catch (e) {}
+    syncThemeLabel();
+    resetDiagrams();
+  });
+  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", function () {
+    if (!root.getAttribute("data-theme")) { syncThemeLabel(); resetDiagrams(); }
+  });
+
+  // Table filters (text search + event family chips)
+  var famFilter = "all";
+  function applyFilter(table) {
+    var input = document.querySelector('[data-filter="' + table.id + '"]');
+    var q = input ? input.value.trim().toLowerCase() : "";
+    Array.prototype.forEach.call(table.tBodies[0].rows, function (r) {
+      var famOk = table.id !== "t-events" || famFilter === "all" || r.getAttribute("data-row-fam") === famFilter;
+      r.hidden = !famOk || (q && r.textContent.toLowerCase().indexOf(q) === -1);
+    });
+  }
+  document.querySelectorAll("[data-filter]").forEach(function (input) {
+    var table = document.getElementById(input.getAttribute("data-filter"));
+    input.addEventListener("input", function () { applyFilter(table); });
+  });
+  document.querySelectorAll("[data-fam-filter]").forEach(function (chip) {
+    chip.addEventListener("click", function () {
+      famFilter = chip.getAttribute("data-fam-filter");
+      document.querySelectorAll("[data-fam-filter]").forEach(function (c) { c.setAttribute("aria-pressed", String(c === chip)); });
+      applyFilter(document.getElementById("t-events"));
+    });
+  });
+
+  // Trace replay
+  var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var traceTimer = null;
+  document.getElementById("replayBtn").addEventListener("click", function () {
+    var rows = Array.prototype.slice.call(document.querySelectorAll("#trace li"));
+    clearTimeout(traceTimer);
+    if (reduceMotion) return;
+    rows.forEach(function (r) { r.classList.add("is-hidden"); r.classList.remove("is-new"); });
+    var i = 0;
+    (function next() {
+      if (i > 0) rows[i - 1].classList.remove("is-new");
+      if (i >= rows.length) return;
+      rows[i].classList.remove("is-hidden");
+      rows[i].classList.add("is-new");
+      i++;
+      traceTimer = setTimeout(next, rows[i - 1].classList.contains("gap") ? 700 : 380);
+    })();
+  });
+
+  // Turn stepper
+  var stepTabs = Array.prototype.slice.call(document.querySelectorAll("#stepper [role=tab]"));
+  var stepIdx = 0;
+  function selectStep(i, focus) {
+    stepIdx = Math.max(0, Math.min(stepTabs.length - 1, i));
+    stepTabs.forEach(function (t, j) {
+      var on = j === stepIdx;
+      t.setAttribute("aria-selected", String(on));
+      t.tabIndex = on ? 0 : -1;
+      document.getElementById(t.getAttribute("aria-controls")).hidden = !on;
+    });
+    if (focus) stepTabs[stepIdx].focus();
+    stepTabs[stepIdx].scrollIntoView({ block: "nearest", inline: "nearest" });
+    document.getElementById("stepPrev").disabled = stepIdx === 0;
+    document.getElementById("stepNext").disabled = stepIdx === stepTabs.length - 1;
+  }
+  stepTabs.forEach(function (t, i) {
+    t.addEventListener("click", function () { selectStep(i); });
+    t.addEventListener("keydown", function (e) {
+      if (e.key === "ArrowDown" || e.key === "ArrowRight") { e.preventDefault(); e.stopPropagation(); selectStep(stepIdx + 1, true); }
+      if (e.key === "ArrowUp" || e.key === "ArrowLeft") { e.preventDefault(); e.stopPropagation(); selectStep(stepIdx - 1, true); }
+    });
+  });
+  document.getElementById("stepPrev").addEventListener("click", function () { selectStep(stepIdx - 1); });
+  document.getElementById("stepNext").addEventListener("click", function () { selectStep(stepIdx + 1); });
+  selectStep(0);
+
+  // Diagrams: mermaid cannot measure hidden nodes, so each figure renders the first time it is shown.
+  var seq = 0;
+  function css(name) { return getComputedStyle(root).getPropertyValue(name).trim(); }
+  function renderVisibleDiagrams() {
+    if (!window.mermaid) {
+      document.querySelectorAll(".diagram .wait").forEach(function (w) { w.textContent = "Diagrams need an internet connection to load the Mermaid library."; });
+      return;
+    }
+    var dark = isDark();
+    mermaid.initialize({
+      startOnLoad: false, securityLevel: "strict", theme: "base",
+      fontFamily: '"IBM Plex Sans", system-ui, sans-serif',
+      themeVariables: {
+        darkMode: dark, fontSize: "14px",
+        background: css("--sheet"), mainBkg: css("--sunk"), primaryColor: css("--sunk"),
+        primaryTextColor: css("--ink"), primaryBorderColor: css("--rule"), lineColor: css("--ink-3"),
+        secondaryColor: css("--signal-wash"), tertiaryColor: css("--sheet"), textColor: css("--ink"),
+        actorBkg: css("--sunk"), actorBorder: css("--ink-3"), actorTextColor: css("--ink"), actorLineColor: css("--rule"),
+        signalColor: css("--ink-2"), signalTextColor: css("--ink"), labelBoxBkgColor: css("--signal-wash"),
+        labelBoxBorderColor: css("--signal"), labelTextColor: css("--ink"), loopTextColor: css("--ink-2"),
+        noteBkgColor: css("--signal-wash"), noteTextColor: css("--ink"), noteBorderColor: css("--signal"),
+        sequenceNumberColor: css("--sheet"), edgeLabelBackground: css("--sheet"), clusterBkg: css("--sheet"),
+        nodeBorder: css("--ink-3"), classText: css("--ink"), stateLabelColor: css("--ink"), transitionColor: css("--ink-3"),
+        transitionLabelColor: css("--ink-2"), compositeBackground: css("--sheet"), altBackground: css("--sunk")
+      }
+    });
+    document.querySelectorAll(".chapter.is-active .figure:not([hidden]) .diagram:not([data-done])").forEach(function (el) {
+      el.setAttribute("data-done", "1");
+      var src = document.getElementById(el.getAttribute("data-src")).textContent;
+      mermaid.render("mmd-" + (seq++), src).then(function (out) {
+        el.innerHTML = out.svg;
+      }).catch(function (err) {
+        el.innerHTML = "";
+        var p = document.createElement("p");
+        p.className = "wait";
+        p.textContent = "This diagram failed to render: " + (err && err.message ? err.message : err);
+        el.appendChild(p);
+      });
+    });
+  }
+  function resetDiagrams() {
+    document.querySelectorAll(".diagram[data-done]").forEach(function (el) {
+      el.removeAttribute("data-done");
+      el.innerHTML = '<span class="wait">Rendering…</span>';
+    });
+    renderVisibleDiagrams();
+  }
+  document.querySelectorAll(".tab[data-fig]").forEach(function (tab) {
+    tab.addEventListener("click", function () {
+      var key = tab.getAttribute("data-fig");
+      document.querySelectorAll(".tab[data-fig]").forEach(function (t) { t.setAttribute("aria-selected", String(t === tab)); });
+      document.querySelectorAll(".figure[data-fig]").forEach(function (f) { f.hidden = f.getAttribute("data-fig") !== key; });
+      renderVisibleDiagrams();
+    });
+  });
+
+  // Chapters, index and routing
+  var chapters = Array.prototype.slice.call(document.querySelectorAll(".chapter"));
+  var index = document.getElementById("index");
+  var groups = {};
+  chapters.forEach(function (c, i) {
+    var g = c.getAttribute("data-group");
+    if (!groups[g]) {
+      var wrap = document.createElement("div");
+      var label = document.createElement("div");
+      label.className = "index-group-label";
+      label.textContent = g;
+      wrap.appendChild(label);
+      index.appendChild(wrap);
+      groups[g] = wrap;
+    }
+    var a = document.createElement("a");
+    a.href = "#" + c.id;
+    var n = document.createElement("span"); n.className = "n"; n.textContent = String(i + 1).padStart(2, "0");
+    var t = document.createElement("span"); t.textContent = c.getAttribute("data-title");
+    a.appendChild(n); a.appendChild(t);
+    groups[g].appendChild(a);
+  });
+  var links = Array.prototype.slice.call(index.querySelectorAll("a"));
+  var pager = document.getElementById("pager");
+  function pagerLink(c, cls, dir) {
+    if (!c) return "";
+    return '<a class="' + cls + '" href="#' + c.id + '"><span class="dir">' + dir + '</span><span class="t">' + c.getAttribute("data-title") + "</span></a>";
+  }
+  function currentIdx() {
+    var id = decodeURIComponent(location.hash.slice(1));
+    var i = chapters.findIndex(function (c) { return c.id === id; });
+    return i === -1 ? 0 : i;
+  }
+  function show() {
+    var i = currentIdx();
+    chapters.forEach(function (c, j) { c.classList.toggle("is-active", j === i); });
+    links.forEach(function (a, j) { if (j === i) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
+    pager.innerHTML = pagerLink(chapters[i - 1], "prev", "← Previous") + pagerLink(chapters[i + 1], "next", "Next →");
+    document.getElementById("topbarT").textContent = chapters[i].getAttribute("data-title");
+    document.title = chapters[i].getAttribute("data-title") + " · Mistral Vibe Agent Loop";
+    closeNav();
+    window.scrollTo(0, 0);
+    renderVisibleDiagrams();
+  }
+  window.addEventListener("hashchange", show);
+  document.addEventListener("keydown", function (e) {
+    var tag = e.target.tagName;
+    if (tag === "INPUT" || tag === "TEXTAREA" || e.target.getAttribute("role") === "tab" || e.metaKey || e.ctrlKey || e.altKey) return;
+    var i = currentIdx();
+    if (e.key === "ArrowRight" && chapters[i + 1]) location.hash = chapters[i + 1].id;
+    if (e.key === "ArrowLeft" && chapters[i - 1]) location.hash = chapters[i - 1].id;
+  });
+
+  // Mobile index drawer
+  var menuBtn = document.getElementById("menuBtn");
+  function closeNav() { document.body.classList.remove("nav-open"); menuBtn.setAttribute("aria-expanded", "false"); }
+  menuBtn.addEventListener("click", function () { document.body.classList.add("nav-open"); menuBtn.setAttribute("aria-expanded", "true"); });
+  document.getElementById("scrim").addEventListener("click", closeNav);
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape") closeNav(); });
+
+  show();
+})();
+</script>
+</body>
+</html>
