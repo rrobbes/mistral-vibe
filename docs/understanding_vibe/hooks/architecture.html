@@ -521,77 +521,65 @@ timeout = 10</code></pre>
                 Voici comment les hooks s'intègrent dans le cycle de vie de Mistral Vibe :
             </p>
             
-            <div class="flowchart" style="margin: 2rem 0;">
+            <div class="flowchart">
                 <div style="text-align: center; margin-bottom: 2rem;">
-                    <h3>Flux Complet avec Hooks</h3>
+                    <h3>📊 Flux Complet avec Hooks</h3>
                 </div>
                 
                 <div class="flowchart-grid">
                     <div class="flowchart-item">
-                        <strong>1. Requête Utilisateur</strong><br>
-                        <span style="color: var(--text-muted); font-size: 0.85rem;">"Ouvre le fichier"</span>
+                        <strong>Étape 1 : Requête Utilisateur</strong>
+                        <span>"Ouvre le fichier"</span>
                     </div>
-                    <div class="flowchart-arrow">→</div>
+                    
                     <div class="flowchart-item">
-                        <strong>2. LLM Génère Réponse</strong><br>
-                        <span style="color: var(--text-muted); font-size: 0.85rem;">"J'appelle read_file"</span>
+                        <strong>Étape 2 : LLM Génère Réponse</strong>
+                        <span>"J'appelle read_file"</span>
                     </div>
-                    <div class="flowchart-arrow">→</div>
-                    <div class="flowchart-item">
-                        <strong>✅ POST_AGENT Hooks</strong><br>
-                        <span style="color: var(--text-muted); font-size: 0.85rem;">(Optionnel)</span>
+                    
+                    <div class="flowchart-item hook-post-agent">
+                        <strong>✅ Étape 2b : POST_AGENT Hooks</strong>
+                        <span>(Optionnel - Injection de contexte)</span>
                     </div>
-                </div>
-                
-                <div style="text-align: center; margin: 1rem 0; color: var(--primary-light);">↓</div>
-                
-                <div class="flowchart-grid">
+                    
                     <div class="flowchart-item">
-                        <strong>3. Résolution de l'outil</strong><br>
-                        <span style="color: var(--text-muted); font-size: 0.85rem;">read_file("fichier.txt")</span>
+                        <strong>Étape 3 : Résolution de l'outil</strong>
+                        <span>read_file("fichier.txt")</span>
                     </div>
-                    <div class="flowchart-arrow">→</div>
-                    <div class="flowchart-item">
-                        <strong>✅ PRE_TOOL Hooks</strong><br>
-                        <span style="color: var(--text-muted); font-size: 0.85rem;">Vérification/Modification</span>
+                    
+                    <div class="flowchart-item hook-pre-tool">
+                        <strong>🔴 Étape 3b : PRE_TOOL Hooks</strong>
+                        <span>Vérification/Modification des arguments</span>
                     </div>
-                    <div class="flowchart-arrow">→</div>
+                    
                     <div class="flowchart-item">
-                        <strong>4. Exécution de l'outil</strong><br>
-                        <span style="color: var(--text-muted); font-size: 0.85rem;">read_file s'exécute</span>
+                        <strong>Étape 4 : Exécution de l'outil</strong>
+                        <span>read_file s'exécute réellement</span>
                     </div>
-                </div>
-                
-                <div style="text-align: center; margin: 1rem 0; color: var(--primary-light);">↓</div>
-                
-                <div class="flowchart-grid">
+                    
                     <div class="flowchart-item">
-                        <strong>5. Résultat de l'outil</strong><br>
-                        <span style="color: var(--text-muted); font-size: 0.85rem;">Contenu du fichier</span>
+                        <strong>Étape 5 : Résultat de l'outil</strong>
+                        <span>Contenu du fichier</span>
                     </div>
-                    <div class="flowchart-arrow">→</div>
-                    <div class="flowchart-item">
-                        <strong>✅ POST_TOOL Hooks</strong><br>
-                        <span style="color: var(--text-muted); font-size: 0.85rem;">Transformation/Journalisation</span>
+                    
+                    <div class="flowchart-item hook-post-tool">
+                        <strong>🟢 Étape 5b : POST_TOOL Hooks</strong>
+                        <span>Transformation/Journalisation de la sortie</span>
                     </div>
-                    <div class="flowchart-arrow">→</div>
+                    
                     <div class="flowchart-item">
-                        <strong>6. Réponse Finale</strong><br>
-                        <span style="color: var(--text-muted); font-size: 0.85rem;">Affichage à l'utilisateur</span>
+                        <strong>Étape 6 : Réponse Finale</strong>
+                        <span>Affichage à l'utilisateur</span>
                     </div>
-                </div>
-                
-                <div style="text-align: center; margin: 1rem 0; color: var(--primary-light);">↓</div>
-                
-                <div class="flowchart-grid">
+                    
                     <div class="flowchart-item">
-                        <strong>7. Fin du Tour</strong><br>
-                        <span style="color: var(--text-muted); font-size: 0.85rem;">Mise à jour du contexte</span>
+                        <strong>Étape 7 : Fin du Tour</strong>
+                        <span>Mise à jour du contexte</span>
                     </div>
-                    <div class="flowchart-arrow">→</div>
-                    <div class="flowchart-item">
-                        <strong>✅ POST_AGENT Hooks</strong><br>
-                        <span style="color: var(--text-muted); font-size: 0.85rem;">(Optionnel)</span>
+                    
+                    <div class="flowchart-item hook-post-agent">
+                        <strong>🔵 Étape 7b : POST_AGENT Hooks</strong>
+                        <span>(Optionnel - Audit, notification, etc.)</span>
                     </div>
                 </div>
             </div>

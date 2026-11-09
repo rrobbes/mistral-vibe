@@ -207,31 +207,33 @@ match = "*"</code></pre>
                     <strong>Ordre d'exécution :</strong> <code>hook-1-validate</code> → <code>hook-2-transform</code> → <code>hook-3-audit</code>
                 </p>
                 
-                <div class="flowchart" style="margin: 2rem 0;">
+                <div class="flowchart">
+                    <div style="text-align: center; margin-bottom: 1.5rem;">
+                        <h4>Chaîne de PRE_TOOL Hooks</h4>
+                        <p style="color: var(--text-muted); font-size: 0.9rem;">Si un hook retourne "deny", les suivants ne sont PAS exécutés</p>
+                    </div>
+                    
                     <div class="flowchart-grid">
                         <div class="flowchart-item">
-                            <strong>1. hook-1-validate</strong><br>
-                            <span style="color: var(--text-muted);">Valide l'appel</span>
+                            <strong>Étape 1 : hook-1-validate</strong>
+                            <span>Valide l'appel d'outil</span>
                         </div>
-                        <div class="flowchart-arrow">→</div>
+                        
                         <div class="flowchart-item">
-                            <strong>2. hook-2-transform</strong><br>
-                            <span style="color: var(--text-muted);">Transforme l'input</span>
+                            <strong>Étape 2 : hook-2-transform</strong>
+                            <span>Transforme les arguments de l'outil</span>
                         </div>
-                        <div class="flowchart-arrow">→</div>
+                        
                         <div class="flowchart-item">
-                            <strong>3. hook-3-audit</strong><br>
-                            <span style="color: var(--text-muted);">Logger l'appel</span>
+                            <strong>Étape 3 : hook-3-audit</strong>
+                            <span>Journalise l'appel avant exécution</span>
                         </div>
-                        <div class="flowchart-arrow">→</div>
+                        
                         <div class="flowchart-item">
-                            <strong>4. Exécution</strong><br>
-                            <span style="color: var(--text-muted);">L'outil s'exécute</span>
+                            <strong>Étape 4 : Exécution</strong>
+                            <span>L'outil s'exécute avec les arguments</span>
                         </div>
                     </div>
-                    <p style="text-align: center; margin-top: 1rem; color: var(--text-muted);">
-                        Si hook-1 retourne "deny", hook-2 et hook-3 ne sont PAS exécutés
-                    </p>
                 </div>
             </div>
             
@@ -450,54 +452,45 @@ match = "*"</code></pre>
                     Chaque hook a un timeout configuré (par défaut : 60 secondes). Voici comment ça fonctionne :
                 </p>
                 
-                <div class="flowchart" style="margin: 2rem 0;">
-                    <div class="flowchart-grid">
-                        <div class="flowchart-item">
-                            <strong>1. Début</strong><br>
-                            <span style="color: var(--text-muted);">Hook commence</span>
-                        </div>
-                        <div class="flowchart-arrow">→</div>
-                        <div class="flowchart-item">
-                            <strong>2. Timer Start</strong><br>
-                            <span style="color: var(--text-muted);">Timeout = 30s</span>
-                        </div>
-                        <div class="flowchart-arrow">→</div>
-                        <div class="flowchart-item">
-                            <strong>3. Exécution</strong><br>
-                            <span style="color: var(--text-muted);">Le hook s'exécute...</span>
-                        </div>
-                        <div class="flowchart-arrow">→</div>
-                        <div class="flowchart-item">
-                            <strong>4. Timeout ?</strong><br>
-                            <span style="color: var(--text-muted);">Temps écoulé ?</span>
-                        </div>
+                <div class="flowchart">
+                    <div style="text-align: center; margin-bottom: 1.5rem;">
+                        <h4>Gestion des Timeouts</h4>
                     </div>
                     
-                    <div style="display: flex; justify-content: center; gap: 2rem; margin: 1.5rem 0;">
-                        <div style="text-align: center;">
-                            <div class="flowchart-item" style="background: rgba(16, 185, 129, 0.2); border: 1px solid var(--success-color);">
-                                <strong>✅ Non</strong><br>
-                                <span style="color: var(--text-muted);">Hook termine normalement</span>
-                            </div>
-                            <div class="flowchart-arrow" style="transform: rotate(90deg);">↓</div>
-                            <div class="flowchart-item" style="background: rgba(16, 185, 129, 0.2); border: 1px solid var(--success-color);">
-                                <strong>Récupérer Résultat</strong>
-                            </div>
+                    <div class="flowchart-grid">
+                        <div class="flowchart-item">
+                            <strong>Étape 1 : Début</strong>
+                            <span>Le hook commence son exécution</span>
                         </div>
                         
-                        <div style="text-align: center;">
-                            <div class="flowchart-item" style="background: rgba(239, 68, 68, 0.2); border: 1px solid var(--error-color);">
-                                <strong>❌ Oui</strong><br>
-                                <span style="color: var(--text-muted);">Timeout atteint</span>
-                            </div>
-                            <div class="flowchart-arrow" style="transform: rotate(90deg);">↓</div>
-                            <div class="flowchart-item" style="background: rgba(239, 68, 68, 0.2); border: 1px solid var(--error-color);">
-                                <strong>Tuer Processus</strong>
-                            </div>
-                            <div class="flowchart-arrow" style="transform: rotate(90deg);">↓</div>
-                            <div class="flowchart-item" style="background: rgba(239, 68, 68, 0.2); border: 1px solid var(--error-color);">
-                                <strong>Gérer Erreur</strong>
-                            </div>
+                        <div class="flowchart-item">
+                            <strong>Étape 2 : Timer Start</strong>
+                            <span>Démarrage du compteur (ex: Timeout = 30s)</span>
+                        </div>
+                        
+                        <div class="flowchart-item">
+                            <strong>Étape 3 : Exécution</strong>
+                            <span>Le hook s'exécute...</span>
+                        </div>
+                        
+                        <div class="flowchart-item">
+                            <strong>Étape 4 : Vérification Timeout</strong>
+                            <span>Le temps limite est-il atteint ?</span>
+                        </div>
+                        
+                        <div class="flowchart-item hook-success">
+                            <strong>✅ Cas : Non (hook termine à temps)</strong>
+                            <span>Récupérer le résultat du hook</span>
+                        </div>
+                        
+                        <div class="flowchart-item hook-error">
+                            <strong>❌ Cas : Oui (timeout dépassé)</strong>
+                            <span>Tuer le processus du hook</span>
+                        </div>
+                        
+                        <div class="flowchart-item hook-error">
+                            <strong>❌ Gestion de l'erreur</strong>
+                            <span>Traiter le timeout comme une erreur</span>
                         </div>
                     </div>
                 </div>

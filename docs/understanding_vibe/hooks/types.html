@@ -46,54 +46,50 @@
                     Les 3 types de hooks correspondent aux <strong>3 moments clés</strong> du cycle de vie de Mistral Vibe :
                 </p>
                 
-                <div class="flowchart" style="margin: 2rem 0;">
+                <div class="flowchart">
                     <div style="text-align: center; margin-bottom: 2rem;">
-                        <h3>Timeline du Cycle de Vie</h3>
+                        <h3>📈 Timeline du Cycle de Vie</h3>
                     </div>
                     
                     <div class="flowchart-grid">
-                        <div class="flowchart-item" style="background: rgba(139, 92, 246, 0.2); border: 1px solid var(--secondary-color);">
-                            <strong>🔵 POST_AGENT</strong><br>
-                            <span style="color: var(--text-muted); font-size: 0.85rem;">Après le tour LLM</span>
+                        <div class="flowchart-item hook-post-agent">
+                            <strong>🔵 Étape 1 : POST_AGENT</strong>
+                            <span>Exécuté après le tour LLM (début)</span>
                         </div>
-                        <div class="flowchart-arrow">→</div>
-                        <div class="flowchart-item" style="background: rgba(245, 158, 11, 0.2); border: 1px solid var(--warning-color);">
-                            <strong>🟠 LLM Génère Réponse</strong><br>
-                            <span style="color: var(--text-muted); font-size: 0.85rem;">"J'appelle un outil"</span>
+                        
+                        <div class="flowchart-item hook-llm">
+                            <strong>🟠 Étape 2 : LLM Génère Réponse</strong>
+                            <span>L'agent décide d'appeler des outils</span>
                         </div>
-                        <div class="flowchart-arrow">→</div>
-                        <div class="flowchart-item" style="background: rgba(239, 68, 68, 0.2); border: 1px solid var(--error-color);">
-                            <strong>🔴 PRE_TOOL</strong><br>
-                            <span style="color: var(--text-muted); font-size: 0.85rem;">Avant l'exécution</span>
+                        
+                        <div class="flowchart-item hook-pre-tool">
+                            <strong>🔴 Étape 3 : PRE_TOOL</strong>
+                            <span>Intercepte AVANT chaque appel d'outil</span>
                         </div>
-                    </div>
-                    
-                    <div style="text-align: center; margin: 1rem 0; color: var(--primary-light);">↓</div>
-                    
-                    <div class="flowchart-grid">
-                        <div class="flowchart-item" style="background: rgba(20, 184, 166, 0.2); border: 1px solid #14b8a6;">
-                            <strong>🔵 Exécution de l'outil</strong><br>
-                            <span style="color: var(--text-muted); font-size: 0.85rem;">tool()</span>
+                        
+                        <div class="flowchart-item hook-exec">
+                            <strong>⚡ Étape 4 : Exécution de l'outil</strong>
+                            <span>L'outil s'exécute (read_file, bash, etc.)</span>
                         </div>
-                        <div class="flowchart-arrow">→</div>
-                        <div class="flowchart-item" style="background: rgba(16, 185, 129, 0.2); border: 1px solid var(--success-color);">
-                            <strong>🟢 POST_TOOL</strong><br>
-                            <span style="color: var(--text-muted); font-size: 0.85rem;">Après l'exécution</span>
+                        
+                        <div class="flowchart-item hook-post-tool">
+                            <strong>🟢 Étape 5 : POST_TOOL</strong>
+                            <span>Intercepte APRÈS chaque appel d'outil</span>
                         </div>
-                        <div class="flowchart-arrow">→</div>
+                        
                         <div class="flowchart-item">
-                            <strong>Réponse à l'Utilisateur</strong><br>
-                            <span style="color: var(--text-muted); font-size: 0.85rem;">Affichage du résultat</span>
+                            <strong>📄 Étape 6 : Réponse à l'Utilisateur</strong>
+                            <span>Affichage du résultat final</span>
+                        </div>
+                        
+                        <div class="flowchart-item hook-post-agent">
+                            <strong>🔵 Étape 7 : POST_AGENT</strong>
+                            <span>Exécuté après le tour complet (fin)</span>
                         </div>
                     </div>
                     
-                    <div style="text-align: center; margin: 1rem 0; color: var(--primary-light);">↓</div>
-                    
-                    <div class="flowchart-grid">
-                        <div class="flowchart-item" style="background: rgba(139, 92, 246, 0.2); border: 1px solid var(--secondary-color);">
-                            <strong>🔵 POST_AGENT</strong><br>
-                            <span style="color: var(--text-muted); font-size: 0.85rem;">Après le tour complet</span>
-                        </div>
+                    <div style="text-align: center; margin-top: 2rem; padding: 1rem; background: var(--bg-secondary); border-radius: var(--radius-sm);">
+                        <strong>⚠️ Note importante :</strong> POST_AGENT s'exécute <strong>2 fois</strong> : au début et à la fin du tour.
                     </div>
                 </div>
                 
