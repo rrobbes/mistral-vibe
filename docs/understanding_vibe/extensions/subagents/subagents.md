@@ -679,14 +679,14 @@ cargo test subagent
 
 | ADR | Title | Subagent Relevance |
 |-----|-------|-------------------|
-| [0001](docs/adr/0001-architecture-principles.md) | Architecture Principles | Module boundaries, simplicity |
-| [0002](docs/adr/0002-core-engine-and-delivery-surfaces.md) | Core Engine and Delivery Surfaces | Engine vs UI separation |
-| [0003](docs/adr/0003-event-driven-agent-loop.md) | Event Driven Agent Loop | Event streaming to parent |
-| [0004](docs/adr/0004-typed-permissioned-tools.md) | Typed Permissioned Tools | Task tool permissions |
-| [0006](docs/adr/0006-local-sessions.md) | Local Sessions | Subagent session logging |
-| [0007](docs/adr/0007-extension-mechanisms.md) | Extension Mechanisms | Agents, subagents, skills |
-| [0009](docs/adr/0009-app-server-boundary.md) | App Server Boundary | Subagent ownership, lifecycle |
-| [0013](docs/adr/0013-queue-edit-mode.md) | Queue Selection and Edit Mode | Subagent interaction patterns |
+| [0001](../../../adr/0001-architecture-principles.md) | Architecture Principles | Module boundaries, simplicity |
+| [0002](../../../adr/0002-core-engine-and-delivery-surfaces.md) | Core Engine and Delivery Surfaces | Engine vs UI separation |
+| [0003](../../../adr/0003-event-driven-agent-loop.md) | Event Driven Agent Loop | Event streaming to parent |
+| [0004](../../../adr/0004-typed-permissioned-tools.md) | Typed Permissioned Tools | Task tool permissions |
+| [0006](../../../adr/0006-local-sessions.md) | Local Sessions | Subagent session logging |
+| [0007](../../../adr/0007-extension-mechanisms.md) | Extension Mechanisms | Agents, subagents, skills |
+| [0009](../../../adr/0009-app-server-boundary.md) | App Server Boundary | Subagent ownership, lifecycle |
+| [0013](../../../adr/0013-queue-edit-mode.md) | Queue Selection and Edit Mode | Subagent interaction patterns |
 
 ### Key Architectural Decisions
 
@@ -703,8 +703,8 @@ cargo test subagent
 ### Related Documentation
 
 - [README.md - Subagents and Task Delegation](https://github.com/rrobbes/mistral-vibe#subagents-and-task-delegation)
-- [ADR 0007 - Extension Mechanisms](docs/adr/0007-extension-mechanisms.md)
-- [ADR 0009 - App Server Boundary](docs/adr/0009-app-server-boundary.md)
+- [ADR 0007 - Extension Mechanisms](../../../adr/0007-extension-mechanisms.md)
+- [ADR 0009 - App Server Boundary](../../../adr/0009-app-server-boundary.md)
 
 ### Implementation Files
 
