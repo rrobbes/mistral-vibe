@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Concepts Avancés - Mistral Vibe Hooks</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Fira+Code&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <div class="logo"><div class="logo-icon">V</div><span>Mistral Vibe Hooks</span></div>
+            <button class="nav-toggle" onclick="toggleNav()">☰</button>
+            <nav class="nav">
+                <a href="index.html">Accueil</a>
+                <a href="architecture.html">Architecture</a>
+                <a href="configuration.html">Configuration</a>
+                <a href="types.html">Types de Hooks</a>
+                <a href="execution.html">Exécution</a>
+                <a href="examples.html">Exemples</a>
+                <a href="integration.html">Intégration</a>
+                <a href="advanced.html" class="active">Avancé</a>
+            </nav>
+        </div>
+    </header>
+
+    <section class="hero" style="padding: 2rem 0;">
+        <div class="container">
+            <h1>🚀 Concepts Avancés des Hooks</h1>
+            <p style="max-width: 800px; margin: 0 auto;">
+                Plongez dans les <strong>fonctionnalités avancées</strong> des hooks de Mistral Vibe.
+                Découvrez comment tirer le maximum de ce système puissant pour créer des solutions 
+                <strong>robustes</strong>, <strong>performantes</strong> et <strong>maintenables</strong>.
+            </p>
+        </div>
+    </section>
+
+    <!-- Introduction -->
+    <section class="section">
+        <div class="container">
+            <h2>📚 Pourquoi ces Concepts sont-ils Importants ?</h2>
+            
+            <div class="card">
+                <h3>🎯 Passer au Niveau Supérieur</h3>
+                <p>
+                    Vous maîtrisez déjà les bases des hooks : configuration, types, exécution.
+                    Les concepts avancés vous permettront de :
+                </p>
+                
+                <div class="card-grid">
+                    <div class="card">
+                        <div class="card-icon red">🔥</div>
+                        <h4>Optimiser</h4>
+                        <p>Améliorer les performances de vos hooks</p>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-icon orange">🛡️</div>
+                        <h4>Sécuriser</h4>
+                        <p>Rendre vos hooks plus robustes et sûrs</p>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-icon green">📊</div>
+                        <h4>Évoluer</h4>
+                        <p>Faire évoluer vos hooks avec votre organisation</p>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-icon blue">🔧</div>
+                        <h4>Debugger</h4>
+                        <p>Diagnostiquer et résoudre les problèmes</p>
+                    </div>
+                </div>
+                
+                <div class="warning-box">
+                    <p>
+                        <strong>⚠️ Attention :</strong> Les concepts avancés nécessitent une bonne compréhension 
+                        des bases. Si vous débutez, commencez par les pages <a href="index.html">Accueil</a>,
+                        <a href="configuration.html">Configuration</a> et <a href="types.html">Types de Hooks</a>.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Comparaison avec Autres Approches -->
+    <section class="section" style="background: var(--bg-secondary);">
+        <div class="container">
+            <h2>⚖️ Comparaison avec Autres Approches</h2>
+            
+            <div class="card">
+                <h3>🎯 Pourquoi Choisir les Hooks ?</h3>
+                <p>
+                    Comparons les hooks avec d'autres mécanismes d'extension pour comprendre leurs forces et leurs limites.
+                </p>
+            </div>
+            
+            <div class="card">
+                <h3>⚖️ Hooks vs Modification du Code Source</h3>
+                
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Critère</th>
+                            <th>Modification du Code</th>
+                            <th>Hooks</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Maintenabilité</strong></td>
+                            <td class="text-muted">❌ Difficile (code mélangé)</td>
+                            <td class="success-color">✅ Facile (séparation claire)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Portabilité</strong></td>
+                            <td class="text-muted">❌ Spécifique à une version</td>
+                            <td class="success-color">✅ Portable entre projets</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Mises à jour</strong></td>
+                            <td class="text-muted">❌ Conflits possibles</td>
+                            <td class="success-color">✅ Indépendant du code core</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Isolation</strong></td>
+                            <td class="text-muted">❌ Risque d'effets de bord</td>
+                            <td class="success-color">✅ Processus séparés</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Collaboration</strong></td>
+                            <td class="text-muted">❌ Requiert PR sur le repo</td>
+                            <td class="success-color">✅ Chacun gère ses hooks</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Complexité</strong></td>
+                            <td class="text-muted">⚠️ Nécessite de comprendre tout le codebase</td>
+                            <td class="success-color">✅ API simple et documentée</td>
+                        </tr>
+                    </tbody>
+                </table>
+                
+                <div class="warning-box">
+                    <p>
+                        <strong>⚠️ Attention :</strong> Modifier le code source de Mistral Vibe pour ajouter vos fonctionnalités 
+                        revient à "forker" le projet. Vous perdrez le bénéfice des mises à jour et 
+                        devrez maintenir votre propre version.
+                    </p>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h3>⚖️ Hooks vs Plugins</h3>
+                
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Critère</th>
+                            <th>Plugins</th>
+                            <th>Hooks</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Complexité</strong></td>
+                            <td class="text-muted">❌ API complexe à apprendre</td>
+                            <td class="success-color">✅ Simple : JSON stdin/stdout</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Flexibilité</strong></td>
+                            <td class="text-muted">❌ Limité aux points d'extension prévus</td>
+                            <td class="success-color">✅ Peut tout faire (accès complet aux données)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Langage</strong></td>
+                            <td class="text-muted">❌ Souvent limité à un langage</td>
+                            <td class="success-color">✅ N'importe quel langage</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Intégration</strong></td>
+                            <td class="text-muted">❌ Requiert une API spécifique</td>
+                            <td class="success-color">✅ Standard : processus + JSON</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Sécurité</strong></td>
+                            <td class="text-muted">⚠️ Variable selon l'API</td>
+                            <td class="success-color">✅ Isolation par processus + timeouts</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Performance</strong></td>
+                            <td class="success-color">✅ Souvent optimisé</td>
+                            <td class="success-color">✅ Processus séparés, pas de surcharge</td>
+                        </tr>
+                    </tbody>
+                </table>
+                
+                <div class="info-box">
+                    <p>
+                        <strong>ℹ️ Inspiration :</strong> Les hooks de Mistral Vibe sont inspirés des <strong>Git Hooks</strong> et des 
+                        <strong>Webhooks</strong> : un mécanisme simple mais puissant basé sur des événements 
+                        et des appels de processus externes.
+                    </p>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h3>⚖️ Hooks vs Middleware</h3>
+                <p>
+                    Dans certains frameworks, le middleware permet d'intercepter les requêtes. Comparons :
+                </p>
+                
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Critère</th>
+                            <th>Middleware</th>
+                            <th>Hooks</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Couplage</strong></td>
+                            <td class="text-muted">⚠️ Couplé au framework</td>
+                            <td class="success-color">✅ Complètement découplé</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Exécution</strong></td>
+                            <td class="success-color">✅ Dans le même processus</td>
+                            <td class="success-color">✅ Processus séparé (plus sûr)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Points d'interception</strong></td>
+                            <td class="success-color">✅ Définis par le framework</td>
+                            <td class="success-color">✅ Définis par l'utilisateur</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Erreurs</strong></td>
+                            <td class="text-muted">❌ Peut crasher l'application</td>
+                            <td class="success-color">✅ Isolé, ne crash pas l'agent</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- Pourquoi c'est Révolutionnaire -->
+    <section class="section">
+        <div class="container">
+            <h2>🌟 Pourquoi les Hooks sont Révolutionnaires</h2>
+            
+            <p class="text-center">
+                Les hooks ne sont pas juste une feature technique, ce sont des <strong>multiplicateurs de puissance</strong>.
+            </p>
+            
+            <div class="card-grid">
+                <div class="card">
+                    <div class="card-icon green">🔄</div>
+                    <h3>Extensibilité Illimitée</h3>
+                    <p>
+                        Ajoutez n'importe quelle fonctionnalité sans toucher au code core. 
+                        La seule limite est votre imagination et vos besoins.
+                    </p>
+                    <div class="badge badge-success">Flexibilité Maximale</div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-icon blue">🛡️</div>
+                    <h3>Sécurité Granulaire</h3>
+                    <p>
+                        Contrôlez finement ce que l'agent peut faire. Bloquez les actions 
+                        dangereuses avant qu'elles ne se produisent, avec des règles précises.
+                    </p>
+                    <div class="badge badge-info">Prévention des Risques</div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-icon orange">⚡</div>
+                    <h3>Productivité Accrue</h3>
+                    <p>
+                        Automatisez les tâches répétitives (audit, journalisation, intégration).
+                        Concentrez-vous sur ce qui compte vraiment : votre travail.
+                    </p>
+                    <div class="badge badge-warning">Gain de Temps</div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-icon purple">📊</div>
+                    <h3>Observabilité Totale</h3>
+                    <p>
+                        Visualisez et comprenez ce que fait votre agent. Journalisez 
+                        toutes les actions pour le debugging, l'audit ou l'analyse.
+                    </p>
+                    <div class="badge badge-primary">Transparence</div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-icon teal">🔗</div>
+                    <h3>Intégration Facile</h3>
+                    <p>
+                        Connectez Mistral Vibe à votre écosystème existant (Slack, 
+                        GitHub, CI/CD, bases de données, etc.).
+                    </p>
+                    <div class="badge badge-success">Interopérabilité</div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-icon green">🎨</div>
+                    <h3>Personnalisation Totale</h3>
+                    <p>
+                        Adaptez le comportement de l'agent à vos besoins spécifiques. 
+                        Chaque projet, chaque équipe peut avoir sa propre configuration.
+                    </p>
+                    <div class="badge badge-success">Adaptabilité</div>
+                </div>
+            </div>
+            
+            <div class="success-box">
+                <p>
+                    <strong>💡 Le saviez-vous ?</strong> Les hooks permettent de transformer Mistral Vibe d'un outil <strong>générique</strong> 
+                    en un assistant <strong>spécialisé</strong> pour votre domaine, vos workflows, et vos contraintes.
+                    Vous créez essentiellement <strong>votre propre version personnalisée</strong> de l'agent, sans avoir à maintenir un fork.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Pour Qui ? -->
+    <section class="section" style="background: var(--bg-secondary);">
+        <div class="container">
+            <h2>👥 Pour Qui sont Faits les Hooks ?</h2>
+            
+            <p>
+                Les hooks ne sont pas réservés aux experts. Ils s'adressent à tous ceux qui veulent 
+                <strong>reprendre le contrôle</strong> sur leur expérience avec Mistral Vibe.
+            </p>
+            
+            <div class="card-grid">
+                <div class="card">
+                    <div class="card-icon blue">👨‍💻</div>
+                    <h3>Développeurs</h3>
+                    <p>
+                        <strong>Pour vous si :</strong>
+                    </p>
+                    <ul>
+                        <li>Vous voulez intégrer Mistral Vibe dans vos workflows existants</li>
+                        <li>Vous devez ajouter des fonctionnalités spécifiques à votre domaine</li>
+                        <li>Vous voulez automatiser des tâches avec l'IA</li>
+                        <li>Vous avez besoin de valider ou transformer les données</li>
+                    </ul>
+                    <p>
+                        <strong>Niveau requis :</strong> Intermédiaire (comprendre JSON et les processus)<br>
+                        <strong>Temps estimé :</strong> 1-2 heures pour les premiers hooks
+                    </p>
+                </div>
+                
+                <div class="card">
+                    <div class="card-icon green">👩‍🚀</div>
+                    <h3>Ops / DevOps</h3>
+                    <p>
+                        <strong>Pour vous si :</strong>
+                    </p>
+                    <ul>
+                        <li>Vous devez sécuriser l'accès à l'IA dans votre organisation</li>
+                        <li>Vous voulez auditer toutes les actions pour la conformité</li>
+                        <li>Vous devez intégrer Mistral Vibe dans votre pipeline CI/CD</li>
+                        <li>Vous voulez limiter les risques liés à l'utilisation de l'IA</li>
+                    </ul>
+                    <p>
+                        <strong>Niveau requis :</strong> Avancé (scripting, sécurité, réseaux)<br>
+                        <strong>Temps estimé :</strong> 1 journée pour une configuration complète
+                    </p>
+                </div>
+                
+                <div class="card">
+                    <div class="card-icon purple">👨‍💼</div>
+                    <h3>Responsables Sécurité</h3>
+                    <p>
+                        <strong>Pour vous si :</strong>
+                    </p>
+                    <ul>
+                        <li>Vous devez vous conformer à des réglementations strictes</li>
+                        <li>Vous voulez limiter les risques liés à l'utilisation de l'IA</li>
+                        <li>Vous devez auditer les actions de l'IA</li>
+                        <li>Vous voulez appliquer des politiques de sécurité uniformes</li>
+                    </ul>
+                    <p>
+                        <strong>Niveau requis :</strong> Débutant (configuration TOML simple)<br>
+                        <strong>Temps estimé :</strong> 30 minutes pour configurer des règles basiques
+                    </p>
+                </div>
+                
+                <div class="card">
+                    <div class="card-icon orange">👩‍🏫</div>
+                    <h3>Chefs de Projet / Managers</h3>
+                    <p>
+                        <strong>Pour vous si :</strong>
+                    </p>
+                    <ul>
+                        <li>Vous voulez standardiser les workflows de votre équipe</li>
+                        <li>Vous devez assurer la cohérence entre différents projets</li>
+                        <li>Vous voulez ajouter du contexte projet automatique</li>
+                        <li>Vous voulez limiter l'accès à certains outils</li>
+                    </ul>
+                    <p>
+                        <strong>Niveau requis :</strong> Débutant (configuration simple)<br>
+                        <strong>Temps estimé :</strong> 1 heure pour configurer des hooks par projet
+                    </p>
+                </div>
+                
+                <div class="card">
+                    <div class="card-icon teal">🧠</div>
+                    <h3>Utilisateurs Avancés</h3>
+                    <p>
+                        <strong>Pour vous si :</strong>
+                    </p>
+                    <ul>
+                        <li>Vous voulez personnaliser votre expérience</li>
+                        <li>Vous avez des besoins spécifiques non couverts par défaut</li>
+                        <li>Vous aimez bidouiller et optimiser vos outils</li>
+                        <li>Vous voulez automatiser des tâches répétitives</li>
+                    </ul>
+                    <p>
+                        <strong>Niveau requis :</strong> Intermédiaire (création de scripts)<br>
+                        <strong>Temps estimé :</strong> Variable selon la complexité
+                    </p>
+                </div>
+            </div>
+            
+            <div class="info-box">
+                <p>
+                    <strong>💡 Conseil :</strong> La plupart des utilisateurs commencent par des hooks simples (10-20 lignes de code) 
+                    pour résoudre un problème spécifique. Ensuite, ils découvrent tout le potentiel et étendent progressivement 
+                    leur utilisation. <strong>Commencez petit, grandissez rapidement !</strong>
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Patterns Avancés -->
+    <section class="section">
+        <div class="container">
+            <h2>🎨 Patterns Avancés</h2>
+            
+            <div class="card">
+                <h3>🔄 Pattern : Chaînage de Hooks</h3>
+                <p>
+                    Combinez plusieurs hooks pour créer des workflows complexes.
+                </p>
+                <p>
+                    <strong>Exemple :</strong> Validation → Transformation → Audit
+                </p>
+                <div class="code-header">
+                    <span class="dot red"></span>
+                    <span class="dot yellow"></span>
+                    <span class="dot green"></span>
+                    <span>Configuration</span>
+                </div>
+                <pre><code>[[hooks]]
+name = "validate-input"
+type = "pre_tool"
+command = "python3 hooks/validate.py"
+match = "*"
+timeout = 5
+
+[[hooks]]
+name = "transform-input"
+type = "pre_tool"
+command = "python3 hooks/transform.py"
+match = "*"
+timeout = 5
+
+[[hooks]]
+name = "audit-action"
+type = "post_tool"
+command = "python3 hooks/audit.py"
+match = "*"
+timeout = 5</code></pre>
+                <p>
+                    <strong>Flux :</strong> validate-input → transform-input → outil → audit-action
+                </p>
+                <div class="warning-box">
+                    <p>
+                        <strong>⚠️ Attention :</strong> Dans une chaîne de PRE_TOOL hooks, si un hook retourne <code>"deny"</code>,
+                        les hooks suivants <strong>ne sont pas exécutés</strong>.
+                    </p>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h3>🎯 Pattern : Hooks Conditionnels</h3>
+                <p>
+                    Activez ou désactivez des hooks en fonction du contexte.
+                </p>
+                <div class="code-header">
+                    <span class="dot red"></span>
+                    <span class="dot yellow"></span>
+                    <span class="dot green"></span>
+                    <span>hook_conditional.py</span>
+                </div>
+                <pre><code>#!/usr/bin/env python3
+import json
+import sys
+import os
+
+invocation = json.load(sys.stdin)
+
+# Vérifier si on est en environnement de production
+if os.getenv("ENV") == "production":
+    # Appliquer des règles strictes
+    if invocation.get("tool_name") == "bash":
+        print(json.dumps({
+            "decision": "deny",
+            "reason": "Bash désactivé en production"
+        }))
+        sys.exit(0)
+else:
+    # Mode développement, tout est autorisé
+    print(json.dumps({"decision": "allow"}))
+    sys.exit(0)</code></pre>
+            </div>
+            
+            <div class="card">
+                <h3>📊 Pattern : Agrégation de Données</h3>
+                <p>
+                    Collectez et agrégez des données à travers plusieurs appels d'outils.
+                </p>
+                <div class="code-header">
+                    <span class="dot red"></span>
+                    <span class="dot yellow"></span>
+                    <span class="dot green"></span>
+                    <span>hook_aggregate.py</span>
+                </div>
+                <pre><code>#!/usr/bin/env python3
+import json
+import sys
+from collections import defaultdict
+
+# Stockage en mémoire (ou utiliser Redis pour du persistent)
+stats = defaultdict(lambda: {"count": 0, "total_duration": 0})
+
+def main():
+    global stats
+    try:
+        invocation = json.load(sys.stdin)
+        
+        tool_name = invocation.get("tool_name")
+        duration = invocation.get("duration_ms", 0)
+        
+        # Mettre à jour les statistiques
+        stats[tool_name]["count"] += 1
+        stats[tool_name]["total_duration"] += duration
+        
+        # Loguer les stats périodiquement
+        if stats[tool_name]["count"] % 10 == 0:
+            avg_duration = stats[tool_name]["total_duration"] / stats[tool_name]["count"]
+            print(f"Stats: {tool_name} - Count: {stats[tool_name]['count']}, Avg: {avg_duration:.2f}ms", file=sys.stderr)
+        
+        print(json.dumps({"decision": "allow"}))
+        sys.exit(0)
+    except Exception as e:
+        print(json.dumps({"decision": "allow"}))
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main()</code></pre>
+                <div class="info-box">
+                    <p>
+                        <strong>ℹ️ Note :</strong> Pour une agrégation persistante, utilisez une base de données ou Redis.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Debugging Avancé -->
+    <section class="section" style="background: var(--bg-secondary);">
+        <div class="container">
+            <h2>🐛 Debugging Avancé</h2>
+            
+            <div class="card">
+                <h3>🔍 Outils de Debugging</h3>
+                <p>
+                    Voici les outils et techniques pour debugger vos hooks efficacement :
+                </p>
+                
+                <div class="card-grid">
+                    <div class="card">
+                        <h4>1. Logs Mistral Vibe</h4>
+                        <p>
+                            <strong>Commande :</strong> <code>vibe --log-level debug</code>
+                        </p>
+                        <p>
+                            <strong>Ce que vous voyez :</strong>
+                        </p>
+                        <ul>
+                            <li>Chargement des hooks</li>
+                            <li>Exécution des hooks</li>
+                            <li>Erreurs et warnings</li>
+                            <li>Données d'invocation</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="card">
+                        <h4>2. Test Manuel</h4>
+                        <p>
+                            <strong>Tester un hook directement :</strong>
+                        </p>
+                        <pre><code>echo '{"tool_name": "bash", "tool_call_id": "test", "session_id": "test", "transcript_path": "", "cwd": "/tmp", "hook_event_name": "pre_tool", "tool_input": {"command": "ls"}}' | python3 my_hook.py</code></pre>
+                        <p>
+                            <strong>Vérifiez :</strong>
+                        </p>
+                        <ul>
+                            <li>Le hook retourne du JSON valide</li>
+                            <li>Le code de sortie est 0</li>
+                            <li>La réponse a la structure attendue</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="card">
+                        <h4>3. Logging dans le Hook</h4>
+                        <p>
+                            <strong>Exemple avec logging :</strong>
+                        </p>
+                        <pre><code>import logging
+
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+
+invocation = json.load(sys.stdin)
+logging.debug(f"Input: {invocation}")
+
+# ... traitement ...
+
+logging.debug(f"Output: {response}")
+print(json.dumps(response))</code></pre>
+                        <p>
+                            <strong>Redirigez stderr :</strong>
+                        </p>
+                        <pre><code>python3 my_hook.py 2> hook_errors.log</code></pre>
+                    </div>
+                    
+                    <div class="card">
+                        <h4>4. Hook de Debug</h4>
+                        <p>
+                            <strong>Créez un hook qui loggue tout :</strong>
+                        </p>
+                        <pre><code>#!/usr/bin/env python3
+import json
+import sys
+
+invocation = json.load(sys.stdin)
+
+with open("/tmp/hook_debug.log", "a") as f:
+    f.write(json.dumps({
+        "timestamp": "...",
+        "hook": "debug",
+        "input": invocation
+    }) + "\n")
+
+print(json.dumps({"decision": "allow"}))
+sys.exit(0)</code></pre>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h3>📊 Debugging des Performances</h3>
+                <p>
+                    Identifiez les goulots d'étranglement dans vos hooks :
+                </p>
+                
+                <div class="code-header">
+                    <span class="dot red"></span>
+                    <span class="dot yellow"></span>
+                    <span class="dot green"></span>
+                    <span>hook_with_profiling.py</span>
+                </div>
+                <pre><code>#!/usr/bin/env python3
+import json
+import sys
+import time
+
+start_time = time.time()
+
+def main():
+    invocation = json.load(sys.stdin)
+    
+    # Point 1
+    t1 = time.time()
+    
+    # Traitement...
+    
+    # Point 2
+    t2 = time.time()
+    print(f"Phase 1: {t2-t1:.3f}s", file=sys.stderr)
+    
+    # Plus de traitement...
+    
+    # Point 3
+    t3 = time.time()
+    print(f"Phase 2: {t3-t2:.3f}s", file=sys.stderr)
+    
+    print(json.dumps({"decision": "allow"}))
+    
+    total = time.time() - start_time
+    print(f"Total: {total:.3f}s", file=sys.stderr)
+
+if __name__ == "__main__":
+    main()</code></pre>
+                
+                <div class="info-box">
+                    <p>
+                        <strong>ℹ️ Astuce :</strong> Si un hook prend plus de 100ms, envisagez de l'optimiser ou de réduire son champ d'application avec <code>match</code>.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Prochaines Étapes -->
+    <section class="section">
+        <div class="container">
+            <h2>🚀 Prochaines Étapes</h2>
+            
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <div class="feature-card-icon orange">🎯</div>
+                    <h3>Exemples Pratiques</h3>
+                    <p>Inspirez-vous d'exemples concrets prêts à l'emploi.</p>
+                    <a href="examples.html" class="btn btn-primary">🎯 Lire</a>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-card-icon teal">🔗</div>
+                    <h3>Intégration</h3>
+                    <p>Apprenez à intégrer les hooks avec vos outils et workflows.</p>
+                    <a href="integration.html" class="btn btn-primary">🔗 Lire</a>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-card-icon green">⚡</div>
+                    <h3>Exécution</h3>
+                    <p>Approfondissez votre compréhension de l'exécution des hooks.</p>
+                    <a href="execution.html" class="btn btn-primary">⚡ Lire</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-column">
+                    <h4>Documentation</h4>
+                    <ul>
+                        <li><a href="index.html">Accueil</a></li>
+                        <li><a href="architecture.html">Architecture</a></li>
+                        <li><a href="configuration.html">Configuration</a></li>
+                        <li><a href="types.html">Types de Hooks</a></li>
+                        <li><a href="execution.html">Exécution</a></li>
+                        <li><a href="examples.html">Exemples</a></li>
+                        <li><a href="integration.html">Intégration</a></li>
+                        <li><a href="advanced.html">Avancé</a></li>
+                    </ul>
+                </div>
+                <div class="footer-column">
+                    <h4>Concepts Avancés</h4>
+                    <ul>
+                        <li><a href="#">Comparaison</a></li>
+                        <li><a href="#">Pourquoi c'est Révolutionnaire</a></li>
+                        <li><a href="#">Pour Qui</a></li>
+                        <li><a href="#">Patterns Avancés</a></li>
+                        <li><a href="#">Debugging</a></li>
+                    </ul>
+                </div>
+                <div class="footer-column">
+                    <h4>Ressources</h4>
+                    <ul>
+                        <li><a href="https://github.com/rrobbes/mistral-vibe" target="_blank">GitHub</a></li>
+                        <li><a href="https://docs.vibe.mistral.ai/" target="_blank">Doc Officielle</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>Mistral Vibe Hooks Documentation - Projet éducatif rrobbes/mistral-vibe</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        function toggleNav() {
+            document.querySelector('.nav').classList.toggle('active');
+        }
+        document.addEventListener('click', function(event) {
+            const nav = document.querySelector('.nav');
+            const toggle = document.querySelector('.nav-toggle');
+            if (!nav || !toggle) return;
+            if (!nav.contains(event.target) && !toggle.contains(event.target)) {
+                nav.classList.remove('active');
+            }
+        });
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            });
+        });
+    </script>
+</body>
+</html>

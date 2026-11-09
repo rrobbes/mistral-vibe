@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exécution des Hooks - Mistral Vibe</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Fira+Code&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <div class="logo"><div class="logo-icon">V</div><span>Mistral Vibe Hooks</span></div>
+            <button class="nav-toggle" onclick="toggleNav()">☰</button>
+            <nav class="nav">
+                <a href="index.html">Accueil</a>
+                <a href="architecture.html">Architecture</a>
+                <a href="configuration.html">Configuration</a>
+                <a href="types.html">Types de Hooks</a>
+                <a href="execution.html" class="active">Exécution</a>
+                <a href="examples.html">Exemples</a>
+                <a href="integration.html">Intégration</a>
+                <a href="advanced.html">Avancé</a>
+            </nav>
+        </div>
+    </header>
+
+    <section class="hero" style="padding: 2rem 0;">
+        <div class="container">
+            <h1>⚡ Exécution des Hooks</h1>
+            <p style="max-width: 800px; margin: 0 auto;">
+                Comprenez comment les hooks sont exécutés, dans quel ordre, et comment ils interagissent avec le flux principal.
+                Découvrez les mécanismes de timeout, d'erreur, et de chaîne de hooks.
+            </p>
+        </div>
+    </section>
+
+    <!-- Flux d'exécution -->
+    <section class="section">
+        <div class="container">
+            <h2>🌊 Flux d'Exécution Global</h2>
+            
+            <div class="card">
+                <h3>📈 Timeline Complet avec Tous les Hooks</h3>
+                <p>
+                    Voici le flux complet d'une conversation avec tous les hooks activés :
+                </p>
+                
+                <div class="timeline">
+                    <div class="timeline-item">
+                        <div class="timeline-time">Étape 0 : Initialisation</div>
+                        <div class="timeline-content">
+                            <p>
+                                <strong>Action :</strong> L'utilisateur envoie un message
+                            </p>
+                            <p>
+                                <strong>Hooks :</strong> ❌ Aucun hook à ce stade
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <div class="timeline-item">
+                        <div class="timeline-time">Étape 1 : Début du Tour</div>
+                        <div class="timeline-content">
+                            <p>
+                                <strong>Action :</strong> Mistral Vibe prépare le tour de conversation
+                            </p>
+                            <p>
+                                <strong>Hooks :</strong> ✅ <code>POST_AGENT</code> hooks (première exécution)
+                            </p>
+                            <p>
+                                <strong>But :</strong> Injecter du contexte avant que le LLM ne génère sa réponse
+                            </p>
+                            <div class="info-box">
+                                <p>
+                                    <strong>ℹ️ Point clé :</strong> Si un hook POST_AGENT retourne <code>"deny"</code> avec une 
+                                    raison, cette raison est injectée comme message utilisateur et le LLM générera 
+                                    une nouvelle réponse.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="timeline-item">
+                        <div class="timeline-time">Étape 2 : Génération LLM</div>
+                        <div class="timeline-content">
+                            <p>
+                                <strong>Action :</strong> Le LLM génère une réponse (peut inclure des appels d'outils)
+                            </p>
+                            <p>
+                                <strong>Hooks :</strong> ❌ Aucun hook pendant la génération
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <div class="timeline-item">
+                        <div class="timeline-time">Étape 3 : Pour Chaque Appel d'Outil</div>
+                        <div class="timeline-content">
+                            <p>
+                                <strong>Sous-étapes :</strong>
+                            </p>
+                            <ol>
+                                <li>
+                                    <strong>PRE_TOOL</strong> hooks :
+                                    <ul>
+                                        <li>Exécutés dans l'ordre de configuration</li>
+                                        <li>Chaque hook peut :
+                                            <ul>
+                                                <li>✅ <code>"allow"</code> : Continuer (avec éventuelle modification de tool_input)</li>
+                                                <li>❌ <code>"deny"</code> : Bloquer l'exécution et arrêter la chaîne</li>
+                                            </ul>
+                                        </li>
+                                        <li>Si un hook retourne <code>"deny"</code>, les hooks suivants ne sont PAS exécutés</li>
+                                    </ul>
+                                </li>
+                                <li>
+                                    <strong>Exécution de l'outil</strong> :
+                                    <ul>
+                                        <li>L'outil s'exécute avec les arguments éventuellement modifiés</li>
+                                    </ul>
+                                </li>
+                                <li>
+                                    <strong>POST_TOOL</strong> hooks :
+                                    <ul>
+                                        <li>Exécutés dans l'ordre de configuration</li>
+                                        <li>Chaque hook peut :
+                                            <ul>
+                                                <li>✅ <code>"allow"</code> : Continuer (avec éventuel additional_context)</li>
+                                                <li>❌ <code>"deny"</code> : Remplacer la sortie par la reason + additional_context</li>
+                                            </ul>
+                                        </li>
+                                        <li>Les modifications sont <strong>cumulatives</strong> : chaque hook peut ajouter son contexte</li>
+                                    </ul>
+                                </li>
+                            </ol>
+                        </div>
+                    </div>
+                    
+                    <div class="timeline-item">
+                        <div class="timeline-time">Étape 4 : Fin du Tour</div>
+                        <div class="timeline-content">
+                            <p>
+                                <strong>Action :</strong> La réponse finale est préparée et affichée à l'utilisateur
+                            </p>
+                            <p>
+                                <strong>Hooks :</strong> ✅ <code>POST_AGENT</code> hooks (deuxième exécution)
+                            </p>
+                            <p>
+                                <strong>But :</strong> Notifier, auditer, déclencher des actions post-tour
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <div class="timeline-item">
+                        <div class="timeline-time">Étape 5 : Attente Prochaine Requête</div>
+                        <div class="timeline-content">
+                            <p>
+                                <strong>Action :</strong> Mistral Vibe attend la prochaine requête utilisateur
+                            </p>
+                            <p>
+                                <strong>Hooks :</strong> ❌ Aucun hook
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Ordre d'exécution -->
+    <section class="section" style="background: var(--bg-secondary);">
+        <div class="container">
+            <h2>📋 Ordre d'Exécution des Hooks</h2>
+            
+            <div class="card">
+                <h3>🔄 Chaîne de Hooks</h3>
+                <p>
+                    Lorsque plusieurs hooks du même type sont configurés, ils sont exécutés <strong>dans l'ordre de déclaration</strong> 
+                    dans le fichier TOML.
+                </p>
+                
+                <div class="code-header">
+                    <span class="dot red"></span>
+                    <span class="dot yellow"></span>
+                    <span class="dot green"></span>
+                    <span>Exemple : Chaîne de PRE_TOOL hooks</span>
+                </div>
+                <pre><code>[[hooks]]
+name = "hook-1-validate"
+type = "pre_tool"
+command = "python3 hooks/validate.py"
+match = "*"
+
+[[hooks]]
+name = "hook-2-transform"
+type = "pre_tool"
+command = "python3 hooks/transform.py"
+match = "*"
+
+[[hooks]]
+name = "hook-3-audit"
+type = "pre_tool"
+command = "python3 hooks/audit.py"
+match = "*"</code></pre>
+                
+                <p>
+                    <strong>Ordre d'exécution :</strong> <code>hook-1-validate</code> → <code>hook-2-transform</code> → <code>hook-3-audit</code>
+                </p>
+                
+                <div class="flowchart">
+                    <div style="text-align: center; margin-bottom: 1.5rem;">
+                        <h4>Chaîne de PRE_TOOL Hooks</h4>
+                        <p style="color: var(--text-muted); font-size: 0.9rem;">Si un hook retourne "deny", les suivants ne sont PAS exécutés</p>
+                    </div>
+                    
+                    <div class="flowchart-grid">
+                        <div class="flowchart-item">
+                            <strong>Étape 1 : hook-1-validate</strong>
+                            <span>Valide l'appel d'outil</span>
+                        </div>
+                        
+                        <div class="flowchart-item">
+                            <strong>Étape 2 : hook-2-transform</strong>
+                            <span>Transforme les arguments de l'outil</span>
+                        </div>
+                        
+                        <div class="flowchart-item">
+                            <strong>Étape 3 : hook-3-audit</strong>
+                            <span>Journalise l'appel avant exécution</span>
+                        </div>
+                        
+                        <div class="flowchart-item">
+                            <strong>Étape 4 : Exécution</strong>
+                            <span>L'outil s'exécute avec les arguments</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h3>🎯 Comportement par Type de Hook</h3>
+                
+                <div class="card-grid">
+                    <div class="card">
+                        <div class="card-icon blue">🔵</div>
+                        <h4>POST_AGENT</h4>
+                        <p>
+                            <strong>Ordre :</strong> Dans l'ordre de déclaration
+                        </p>
+                        <p>
+                            <strong>Comportement :</strong>
+                            <ul>
+                                <li>Chaque hook est exécuté indépendamment</li>
+                                <li>Si un hook retourne <code>"deny"</code> :
+                                    <ul>
+                                        <li>Un message utilisateur est injecté</li>
+                                        <li>Le LLM régénérera une réponse</li>
+                                        <li>Les hooks suivants sont TOUJOURS exécutés</li>
+                                    </ul>
+                                </li>
+                            </ul>
+                        </p>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-icon red">🔴</div>
+                        <h4>PRE_TOOL</h4>
+                        <p>
+                            <strong>Ordre :</strong> Dans l'ordre de déclaration, filtré par <code>match</code>
+                        </p>
+                        <p>
+                            <strong>Comportement :</strong>
+                            <ul>
+                                <li>Chaque hook est exécuté dans l'ordre</li>
+                                <li>Si un hook retourne <code>"deny"</code> :
+                                    <ul>
+                                        <li>L'exécution de l'outil est <strong>bloquée</strong></li>
+                                        <li>Les hooks suivants <strong>ne sont PAS exécutés</strong></li>
+                                        <li>La raison est retournée comme erreur</li>
+                                    </ul>
+                                </li>
+                                <li>Si un hook retourne <code>"allow"</code> avec <code>tool_input</code> :
+                                    <ul>
+                                        <li>Les arguments sont mis à jour</li>
+                                        <li>Le hook suivant reçoit les arguments modifiés</li>
+                                    </ul>
+                                </li>
+                            </ul>
+                        </p>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-icon green">🟢</div>
+                        <h4>POST_TOOL</h4>
+                        <p>
+                            <strong>Ordre :</strong> Dans l'ordre de déclaration, filtré par <code>match</code>
+                        </p>
+                        <p>
+                            <strong>Comportement :</strong>
+                            <ul>
+                                <li>Chaque hook est exécuté dans l'ordre</li>
+                                <li>Si un hook retourne <code>"deny"</code> :
+                                    <ul>
+                                        <li>La sortie est <strong>remplacée</strong> par la reason</li>
+                                        <li>Les hooks suivants <strong>sont TOUJOURS exécutés</strong></li>
+                                        <li>Chaque hook peut ajouter son contexte</li>
+                                    </ul>
+                                </li>
+                                <li>Si un hook retourne <code>"allow"</code> avec <code>additional_context</code> :
+                                    <ul>
+                                        <li>Le contexte est ajouté à la fin de la sortie</li>
+                                        <li>Le hook suivant reçoit la sortie avec le contexte ajouté</li>
+                                    </ul>
+                                </li>
+                            </ul>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Gestion des Erreurs -->
+    <section class="section">
+        <div class="container">
+            <h2>⚠️ Gestion des Erreurs et Timeouts</h2>
+            
+            <div class="card">
+                <h3>💥 Que se passe-t-il en cas d'erreur ?</h3>
+                <p>
+                    Plusieurs types d'erreurs peuvent survenir pendant l'exécution d'un hook :
+                </p>
+                
+                <div class="card-grid">
+                    <div class="card">
+                        <div class="card-icon red">❌</div>
+                        <h4>Code de Sortie ≠ 0</h4>
+                        <p>
+                            Le processus du hook retourne un code d'erreur non nul.
+                        </p>
+                        <p>
+                            <strong>Comportement :</strong>
+                            <ul>
+                                <li>Le hook est considéré comme <strong>échoué</strong></li>
+                                <li>Si <code>strict=true</code> : tratamiento selon le type</li>
+                                <li>Si <code>strict=false</code> : warning + le hook est ignoré</li>
+                            </ul>
+                        </p>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-icon orange">⏱️</div>
+                        <h4>Timeout</h4>
+                        <p>
+                            Le hook prend plus de temps que le timeout configuré.
+                        </p>
+                        <p>
+                            <strong>Comportement :</strong>
+                            <ul>
+                                <li>Le processus est <strong>tué</strong></li>
+                                <li>Le hook est considéré comme <strong>échoué</strong></li>
+                                <li>Si <code>strict=true</code> : traitement selon le type</li>
+                                <li>Si <code>strict=false</code> : warning + le hook est ignoré</li>
+                            </ul>
+                        </p>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-icon yellow">⚠️</div>
+                        <h4>Sortie Non-JSON</h4>
+                        <p>
+                            Le hook retourne une sortie qui n'est pas du JSON valide.
+                        </p>
+                        <p>
+                            <strong>Comportement :</strong>
+                            <ul>
+                                <li>Le hook est considéré comme <strong>échoué</strong></li>
+                                <li>Si <code>strict=true</code> : traitement selon le type</li>
+                                <li>Si <code>strict=false</code> : warning + le hook est ignoré</li>
+                            </ul>
+                        </p>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-icon red">🚫</div>
+                        <h4>Échec du Démarrage</h4>
+                        <p>
+                            Impossible de démarrer le processus du hook (fichier introuvable, permission, etc.).
+                        </p>
+                        <p>
+                            <strong>Comportement :</strong>
+                            <ul>
+                                <li>Le hook est considéré comme <strong>échoué</strong></li>
+                                <li>Un message d'erreur est affiché</li>
+                                <li>Si <code>strict=true</code> : traitement selon le type</li>
+                                <li>Si <code>strict=false</code> : warning + le hook est ignoré</li>
+                            </ul>
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h3>🛡️ Mode Strict par Type de Hook</h3>
+                <p>
+                    Voici ce qui se passe en mode <code>strict=true</code> pour chaque type de hook :
+                </p>
+                
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Type de Hook</th>
+                            <th>Comportement en strict=true</th>
+                            <th>Effet sur le Flux</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>POST_AGENT</strong></td>
+                            <td>Le hook est considéré comme ayant retourné "deny" avec la raison de l'erreur</td>
+                            <td>Un retry est injecté avec la raison comme message utilisateur</td>
+                        </tr>
+                        <tr>
+                            <td><strong>PRE_TOOL</strong></td>
+                            <td>Le hook retourne "deny" avec la raison de l'erreur</td>
+                            <td>L'exécution de l'outil est bloquée avec la raison comme erreur</td>
+                        </tr>
+                        <tr>
+                            <td><strong>POST_TOOL</strong></td>
+                            <td>La sortie est remplacée par un message vide ou la raison</td>
+                            <td>La sortie de l'outil est effacée ou remplacée</td>
+                        </tr>
+                    </tbody>
+                </table>
+                
+                <div class="warning-box">
+                    <p>
+                        <strong>⚠️ Attention :</strong> En mode strict, une erreur dans un hook <strong>bloque</strong> le flux normal.
+                        <ul>
+                            <li><strong>POST_AGENT :</strong> Crée une boucle de retry</li>
+                            <li><strong>PRE_TOOL :</strong> Bloque l'outil</li>
+                            <li><strong>POST_TOOL :</strong> Efface la sortie</li>
+                        </ul>
+                        Utilisez <code>strict=true</code> uniquement pour des hooks critiques et bien testés.
+                    </p>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h3>⏰ Gestion des Timeouts</h3>
+                <p>
+                    Chaque hook a un timeout configuré (par défaut : 60 secondes). Voici comment ça fonctionne :
+                </p>
+                
+                <div class="flowchart">
+                    <div style="text-align: center; margin-bottom: 1.5rem;">
+                        <h4>Gestion des Timeouts</h4>
+                    </div>
+                    
+                    <div class="flowchart-grid">
+                        <div class="flowchart-item">
+                            <strong>Étape 1 : Début</strong>
+                            <span>Le hook commence son exécution</span>
+                        </div>
+                        
+                        <div class="flowchart-item">
+                            <strong>Étape 2 : Timer Start</strong>
+                            <span>Démarrage du compteur (ex: Timeout = 30s)</span>
+                        </div>
+                        
+                        <div class="flowchart-item">
+                            <strong>Étape 3 : Exécution</strong>
+                            <span>Le hook s'exécute...</span>
+                        </div>
+                        
+                        <div class="flowchart-item">
+                            <strong>Étape 4 : Vérification Timeout</strong>
+                            <span>Le temps limite est-il atteint ?</span>
+                        </div>
+                        
+                        <div class="flowchart-item hook-success">
+                            <strong>✅ Cas : Non (hook termine à temps)</strong>
+                            <span>Récupérer le résultat du hook</span>
+                        </div>
+                        
+                        <div class="flowchart-item hook-error">
+                            <strong>❌ Cas : Oui (timeout dépassé)</strong>
+                            <span>Tuer le processus du hook</span>
+                        </div>
+                        
+                        <div class="flowchart-item hook-error">
+                            <strong>❌ Gestion de l'erreur</strong>
+                            <span>Traiter le timeout comme une erreur</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <p>
+                    <strong>Choix du timeout :</strong>
+                </p>
+                <ul>
+                    <li><code>timeout = 5</code> - Pour des hooks très simples (validation basique)</li>
+                    <li><code>timeout = 15</code> - Pour des hooks moyens (transformation, logging)</li>
+                    <li><code>timeout = 30</code> - Pour des hooks qui font des appels API</li>
+                    <li><code>timeout = 60</code> - Par défaut, pour les hooks complexes</li>
+                </ul>
+                
+                <div class="info-box">
+                    <p>
+                        <strong>ℹ️ Astuce :</strong> Si votre hook fait des appels réseau, prévoyez un timeout plus long 
+                        et gérez les timeouts dans votre code :
+                    </p>
+                    <div class="code-header">
+                        <span class="dot red"></span>
+                        <span class="dot yellow"></span>
+                        <span class="dot green"></span>
+                        <span>Gestion des timeouts en Python</span>
+                    </div>
+                    <pre><code>import json
+import sys
+import requests
+from requests.exceptions import Timeout
+
+try:
+    # Timeout global : 25s (pour laisser 5s de marge)
+    response = requests.get("https://api.example.com", timeout=25)
+    # ... traiter la réponse ...
+    print(json.dumps({"decision": "allow"}))
+except Timeout:
+    # Gérer le timeout proprement
+    print(json.dumps({
+        "decision": "allow",
+        "system_message": "[API timeout - utilisant cache]"
+    }))
+except Exception as e:
+    print(json.dumps({"decision": "allow"}))
+
+sys.exit(0)</code></pre>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Performances -->
+    <section class="section" style="background: var(--bg-secondary);">
+        <div class="container">
+            <h2>⚡ Optimisation des Performances</h2>
+            
+            <div class="card">
+                <h3>🎯 Bonnes Pratiques pour des Hooks Rapides</h3>
+                <p>
+                    Les hooks s'exécutent de manière <strong>asynchrone</strong> mais peuvent ralentir votre workflow.
+                    Voici comment optimiser :
+                </p>
+                
+                <div class="card-grid">
+                    <div class="card">
+                        <div class="card-icon green">✅</div>
+                        <h4>Minimiser le Travail</h4>
+                        <p>
+                            <ul>
+                                <li>Faites le strict minimum dans vos hooks</li>
+                                <li>Évitez les calculs lourds</li>
+                                <li>Déléguez le travail lourd à des systèmes externes</li>
+                            </ul>
+                        </p>
+                        <p><strong>Exemple :</strong> Logger dans un fichier plutôt que dans une base de données</p>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-icon blue">⚡</div>
+                        <h4>Utiliser le Matching</h4>
+                        <p>
+                            <ul>
+                                <li>Utilisez le champ <code>match</code> pour filtrer</li>
+                                <li>Évitez <code>match = "*"</code> si possible</li>
+                                <li>Soyez spécifique dans vos patterns</li>
+                            </ul>
+                        </p>
+                        <p><strong>Exemple :</strong> <code>match = "bash"</code> au lieu de <code>match = "*"</code></p>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-icon orange">🔄</div>
+                        <h4>Asynchrone Interne</h4>
+                        <p>
+                            <ul>
+                                <li>Dans vos hooks, utilisez l'asynchrone si possible</li>
+                                <li>Pour les appels réseau, utilisez <code>aiohttp</code> au lieu de <code>requests</code></li>
+                            </ul>
+                        </p>
+                        <p><strong>Exemple :</strong> Utiliser async/await dans vos hooks Python</p>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-icon purple">📊</div>
+                        <h4>Cachez les Résultats</h4>
+                        <p>
+                            <ul>
+                                <li>Cachez les résultats des appels API</li>
+                                <li>Utilisez un cache local (Redis, fichier, etc.)</li>
+                                <li>Rafraîchissez le cache en arrière-plan</li>
+                            </ul>
+                        </p>
+                        <p><strong>Exemple :</strong> Cachez les appels à des APIs externes</p>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-icon teal">🎯</div>
+                        <h4>Choisir le Bon Type</h4>
+                        <p>
+                            <ul>
+                                <li>Utilisez le type de hook le plus adapté</li>
+                                <li>POST_TOOL est souvent plus rapide que POST_AGENT</li>
+                                <li>PRE_TOOL permet de bloquer tôt</li>
+                            </ul>
+                        </p>
+                        <p><strong>Exemple :</strong> Utilisez PRE_TOOL pour la validation plutôt que POST_AGENT</p>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-icon green">📦</div>
+                        <h4>Langage Approprié</h4>
+                        <p>
+                            <ul>
+                                <li>Utilisez le langage le plus performant</li>
+                                <li>Python pour la simplicité</li>
+                                <li>Bash pour les opérations simples</li>
+                                <li>Rust/Go pour les hooks critiques</li>
+                            </ul>
+                        </p>
+                        <p><strong>Exemple :</strong> Bash pour les hooks simples, Python pour les hooks complexes</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h3>⚠️ À Éviter</h3>
+                <p>
+                    Voici ce qu'il faut éviter pour ne pas ralentir votre workflow :
+                </p>
+                
+                <div class="card-grid">
+                    <div class="card">
+                        <div class="card-icon red">❌</div>
+                        <h4>Appels Bloquants</h4>
+                        <p>
+                            Évitez les appels réseau synchrones longs sans timeout.
+                        </p>
+                        <div class="code-header">
+                            <span class="dot red"></span>
+                            <span class="dot yellow"></span>
+                            <span class="dot green"></span>
+                            <span>❌ À éviter</span>
+                        </div>
+                        <pre><code># ❌ Mauvais : Pas de timeout, bloquant
+response = requests.get("https://api.example.com")</code></pre>
+                        <div class="code-header">
+                            <span class="dot red"></span>
+                            <span class="dot yellow"></span>
+                            <span class="dot green"></span>
+                            <span>✅ À faire</span>
+                        </div>
+                        <pre><code># ✅ Bon : Avec timeout
+response = requests.get("https://api.example.com", timeout=5)</code></pre>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-icon red">❌</div>
+                        <h4>Boucles Infinies</h4>
+                        <p>
+                            Évitez les boucles infinies ou les appels récursifs sans limite.
+                        </p>
+                        <div class="code-header">
+                            <span class="dot red"></span>
+                            <span class="dot yellow"></span>
+                            <span class="dot green"></span>
+                            <span>❌ À éviter</span>
+                        </div>
+                        <pre><code># ❌ Mauvais : Boucle sans limite
+while True:
+    # ... fait quelque chose ...
+    pass</code></pre>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-icon red">❌</div>
+                        <h4>Travail Lourd</h4>
+                        <p>
+                            Évitez les calculs lourds ou le traitement de gros fichiers.
+                        </p>
+                        <div class="code-header">
+                            <span class="dot red"></span>
+                            <span class="dot yellow"></span>
+                            <span class="dot green"></span>
+                            <span>❌ À éviter</span>
+                        </div>
+                        <pre><code># ❌ Mauvais : Lecture de gros fichier
+with open("/var/log/huge.log", "r") as f:
+    content = f.read()  # Peut prendre des secondes</code></pre>
+                        <div class="code-header">
+                            <span class="dot red"></span>
+                            <span class="dot yellow"></span>
+                            <span class="dot green"></span>
+                            <span>✅ À faire</span>
+                        </div>
+                        <pre><code># ✅ Bon : Lecture ligne par ligne
+with open("/var/log/huge.log", "r") as f:
+    for line in f:
+        # Traiter chaque ligne
+        if "error" in line:
+            break  # Arrêter tôt si possible</code></pre>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-icon red">❌</div>
+                        <h4>strict=true Inutile</h4>
+                        <p>
+                            Évitez <code>strict=true</code> pour des hooks non critiques.
+                        </p>
+                        <div class="code-header">
+                            <span class="dot red"></span>
+                            <span class="dot yellow"></span>
+                            <span class="dot green"></span>
+                            <span>❌ À éviter</span>
+                        </div>
+                        <pre><code>[[hooks]]
+name = "audit-log"
+type = "post_tool"
+command = "python3 hooks/log.py"
+strict = true  # ❌ Inutile pour un hook de logging</code></pre>
+                        <div class="code-header">
+                            <span class="dot red"></span>
+                            <span class="dot yellow"></span>
+                            <span class="dot green"></span>
+                            <span>✅ À faire</span>
+                        </div>
+                        <pre><code>[[hooks]]
+name = "audit-log"
+type = "post_tool"
+command = "python3 hooks/log.py"
+strict = false  # ✅ Correct pour un hook de logging</code></pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Prochaines Étapes -->
+    <section class="section">
+        <div class="container">
+            <h2>🚀 Prochaines Étapes</h2>
+            
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <div class="feature-card-icon orange">🎯</div>
+                    <h3>Exemples</h3>
+                    <p>Inspirez-vous d'exemples concrets prêts à l'emploi pour chaque type de hook.</p>
+                    <a href="examples.html" class="btn btn-primary">🎯 Lire</a>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-card-icon teal">🔗</div>
+                    <h3>Intégration</h3>
+                    <p>Apprenez à intégrer les hooks avec vos outils et workflows existants.</p>
+                    <a href="integration.html" class="btn btn-primary">🔗 Lire</a>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-card-icon red">🚀</div>
+                    <h3>Concepts Avancés</h3>
+                    <p>Découvrez les fonctionnalités avancées : strict mode, matching, etc.</p>
+                    <a href="advanced.html" class="btn btn-primary">🚀 Lire</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-column">
+                    <h4>Documentation</h4>
+                    <ul>
+                        <li><a href="index.html">Accueil</a></li>
+                        <li><a href="architecture.html">Architecture</a></li>
+                        <li><a href="configuration.html">Configuration</a></li>
+                        <li><a href="types.html">Types de Hooks</a></li>
+                        <li><a href="execution.html">Exécution</a></li>
+                        <li><a href="examples.html">Exemples</a></li>
+                        <li><a href="integration.html">Intégration</a></li>
+                        <li><a href="advanced.html">Avancé</a></li>
+                    </ul>
+                </div>
+                <div class="footer-column">
+                    <h4>Exécution</h4>
+                    <ul>
+                        <li><a href="#">Flux Global</a></li>
+                        <li><a href="#">Ordre d'Exécution</a></li>
+                        <li><a href="#">Gestion des Erreurs</a></li>
+                        <li><a href="#">Optimisation</a></li>
+                    </ul>
+                </div>
+                <div class="footer-column">
+                    <h4>Ressources</h4>
+                    <ul>
+                        <li><a href="https://github.com/rrobbes/mistral-vibe" target="_blank">GitHub</a></li>
+                        <li><a href="https://docs.vibe.mistral.ai/" target="_blank">Doc Officielle</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>Mistral Vibe Hooks Documentation - Projet éducatif rrobbes/mistral-vibe</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        function toggleNav() {
+            document.querySelector('.nav').classList.toggle('active');
+        }
+        document.addEventListener('click', function(event) {
+            const nav = document.querySelector('.nav');
+            const toggle = document.querySelector('.nav-toggle');
+            if (!nav || !toggle) return;
+            if (!nav.contains(event.target) && !toggle.contains(event.target)) {
+                nav.classList.remove('active');
+            }
+        });
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            });
+        });
+    </script>
+</body>
+</html>
