@@ -1,0 +1,698 @@
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vibe Configuration System</title>
+<style>
+:root {
+  --bg:#0b1020; --panel:#131c31; --panel2:#19243b;
+  --text:#e8edf7; --muted:#9baac2; --accent:#a78bfa;
+  --cyan:#67e8f9; --border:#293752; --green:#86efac;
+}
+* {box-sizing:border-box}
+html {scroll-behavior:smooth}
+body {
+  margin:0; background:var(--bg); color:var(--text);
+  font-family:Inter,system-ui,Arial,sans-serif; line-height:1.65;
+}
+header {
+  padding:65px 8% 55px;
+  background:radial-gradient(ellipse at top right,#423078 0%,transparent 50%),
+             linear-gradient(135deg,#111a30,#0b1020);
+  border-bottom:1px solid var(--border);
+}
+.eyebrow {color:var(--cyan);text-transform:uppercase;letter-spacing:3px;font-size:12px}
+h1 {font-size:clamp(2.3rem,6vw,4.5rem);line-height:1.1;margin:15px 0}
+header p {color:var(--muted);max-width:700px;font-size:1.1rem}
+nav {
+  position:sticky;top:0;z-index:10;background:#0e1628f2;
+  border-bottom:1px solid var(--border);padding:12px 5%;
+  display:flex;gap:8px;overflow-x:auto;backdrop-filter:blur(12px)
+}
+nav a {
+  color:var(--muted);text-decoration:none;padding:7px 12px;
+  border-radius:8px;white-space:nowrap;font-size:13px
+}
+nav a:hover {background:var(--panel2);color:white}
+main {max-width:1150px;margin:auto;padding:35px 24px 100px}
+section {padding:35px 0;scroll-margin-top:75px}
+h2 {font-size:1.8rem;margin-bottom:10px}
+h3 {font-size:1.15rem}
+.intro {color:var(--muted);max-width:800px;margin-bottom:25px}
+.grid {display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:15px}
+.card {
+  background:var(--panel);border:1px solid var(--border);
+  border-radius:14px;padding:20px;transition:.2s
+}
+.card:hover {border-color:var(--accent);transform:translateY(-2px)}
+.card p {color:var(--muted);font-size:.93rem}
+.tag {
+  display:inline-block;background:#33275a;color:#d8caff;
+  border-radius:20px;padding:3px 9px;font-size:11px;margin:3px
+}
+button,.btn {
+  background:#302653;color:#e9ddff;border:1px solid #59458c;
+  padding:9px 14px;border-radius:8px;cursor:pointer;font:inherit;
+}
+button:hover,.btn:hover {background:#493779}
+button.active {background:var(--accent);color:#171126}
+.detail {
+  background:var(--panel2);border:1px solid var(--border);
+  border-radius:12px;padding:20px;margin-top:15px;min-height:90px
+}
+code {
+  background:#202b43;padding:2px 6px;border-radius:5px;
+  color:var(--cyan);font-size:.9em
+}
+pre {
+  background:#080d19;border:1px solid var(--border);
+  padding:17px;border-radius:10px;overflow:auto;color:#c4d5ed
+}
+table {width:100%;border-collapse:collapse;font-size:.9rem}
+th,td {text-align:left;padding:12px;border-bottom:1px solid var(--border)}
+th {color:var(--cyan)}
+td {color:#d3dcec}
+.layer {
+  border:1px solid var(--border);background:var(--panel);
+  border-radius:9px;padding:12px 15px;cursor:pointer;text-align:left;
+  width:100%;color:var(--text);display:flex;justify-content:space-between;
+  align-items:center;margin-bottom:7px
+}
+.layer:hover,.layer.selected {border-color:var(--accent);background:#252344}
+.layer small {color:var(--muted)}
+.stack {max-width:650px}
+.arrow {text-align:center;color:var(--accent);line-height:1.3}
+.tabs {display:flex;gap:7px;flex-wrap:wrap;margin:18px 0}
+input,select {
+  background:#080d19;color:var(--text);border:1px solid var(--border);
+  padding:10px;border-radius:8px;font:inherit
+}
+label {display:block;color:var(--muted);font-size:.85rem;margin:12px 0 5px}
+.callout {
+  border-left:3px solid var(--accent);padding:12px 17px;
+  background:#171a32;border-radius:0 9px 9px 0;color:#d8d9ef
+}
+footer {border-top:1px solid var(--border);padding:30px;text-align:center;color:var(--muted)}
+.muted {color:var(--muted)}
+.small {font-size:.85rem}
+.step {border-left:2px solid var(--accent);padding:5px 0 20px 20px;margin-left:8px}
+.step strong {color:var(--cyan)}
+@media(max-width:600px) {
+ header {padding:45px 6%}
+ main {padding:20px 15px 70px}
+ table {font-size:.78rem}
+ th,td {padding:8px}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="eyebrow">Documentation technique interactive</div>
+  <h1>Vibe Configuration<br>System</h1>
+  <p>
+    Comprendre l'architecture de configuration de Mistral Vibe :
+    couches, stratégies de fusion, validation, modifications à l'exécution
+    et persistance.
+  </p>
+  <span class="tag">Architecture</span>
+  <span class="tag">Python</span>
+  <span class="tag">Pydantic</span>
+  <span class="tag">Configuration</span>
+</header>
+
+<nav>
+  <a href="#overview">Vue d'ensemble</a>
+  <a href="#layers">Couches</a>
+  <a href="#components">Composants</a>
+  <a href="#merge">Fusion</a>
+  <a href="#schema">Schéma</a>
+  <a href="#lifecycle">Cycle de vie</a>
+  <a href="#persistence">Persistance</a>
+  <a href="#principles">Principes</a>
+  <a href="#security">Sécurité</a>
+</nav>
+
+<main>
+
+<section id="overview">
+  <div class="eyebrow">01 — Introduction</div>
+  <h2>Vue d'ensemble</h2>
+  <p class="intro">
+    Le système de configuration de Vibe repose sur une architecture
+    en couches, pilotée par un schéma et fondée sur des snapshots.
+    Chaque couche apporte une configuration partielle. Le résultat
+    est fusionné puis validé avant d'être utilisé.
+  </p>
+  <div class="grid">
+    <div class="card">
+      <h3>01. Couches</h3>
+      <p>Plusieurs sources indépendantes fournissent des dictionnaires
+      de configuration partiels.</p>
+    </div>
+    <div class="card">
+      <h3>02. Builder</h3>
+      <p>Le ConfigBuilder fusionne les couches selon une stratégie
+      définie pour chaque champ et valide le résultat.</p>
+    </div>
+    <div class="card">
+      <h3>03. Snapshot</h3>
+      <p>La configuration finale est un modèle Pydantic gelé :
+      on le remplace plutôt que de le modifier directement.</p>
+    </div>
+    <div class="card">
+      <h3>04. Orchestrator</h3>
+      <p>Le ConfigOrchestrator centralise les modifications,
+      les rechargements et les notifications.</p>
+    </div>
+  </div>
+  <div class="callout" style="margin-top:20px">
+    <strong>Idée centrale :</strong> les couches restent séparées,
+    mais l'application utilise une configuration consolidée et validée.
+  </div>
+</section>
+
+<section id="layers">
+  <div class="eyebrow">02 — Architecture</div>
+  <h2>Les couches de configuration</h2>
+  <p class="intro">
+    L'ordre est défini dans <code>build_default_orchestrator()</code>.
+    Plus une couche est placée bas dans la pile, plus sa priorité est élevée.
+    Attention : cette règle dépend aussi de la stratégie de fusion du champ.
+  </p>
+
+  <div class="grid">
+    <div class="stack" id="layerList"></div>
+    <div>
+      <div class="detail" id="layerDetail">
+        <h3>Sélectionne une couche</h3>
+        <p class="muted">Clique sur une couche à gauche pour découvrir
+        son origine, son rôle et ses possibilités d'écriture.</p>
+      </div>
+      <p class="small muted">La couche DiscoveredConfigLayer existe également,
+      mais elle ne fait pas partie de la pile par défaut.</p>
+    </div>
+  </div>
+</section>
+
+<section id="components">
+  <div class="eyebrow">03 — Organisation interne</div>
+  <h2>Les composants principaux</h2>
+  <p class="intro">Chaque composant possède une responsabilité précise.</p>
+  <div class="grid" id="componentGrid"></div>
+</section>
+
+<section id="merge">
+  <div class="eyebrow">04 — Fusion des configurations</div>
+  <h2>Les stratégies de fusion</h2>
+  <p class="intro">
+    Tous les champs ne sont pas fusionnés de la même manière.
+    Le schéma déclare explicitement une stratégie pour chacun d'eux.
+  </p>
+  <div class="tabs" id="mergeTabs"></div>
+  <div class="detail" id="mergeDetail"></div>
+
+  <h3 style="margin-top:35px">Exemple interactif : DEEP_MERGE</h3>
+  <p class="muted small">
+    Une couche utilisateur active Bash. Une couche projet ajoute un délai
+    et configure Git. Modifie les valeurs pour observer le résultat.
+  </p>
+  <div class="grid">
+    <div class="card">
+      <h3>Couche utilisateur</h3>
+      <label>tools.bash.enabled</label>
+      <select id="enabled">
+        <option value="true">true</option>
+        <option value="false">false</option>
+      </select>
+      <label>tools.bash.timeout</label>
+      <input id="timeout" type="number" value="30" min="1">
+    </div>
+    <div class="card">
+      <h3>Couche projet</h3>
+      <label>tools.bash.timeout</label>
+      <input id="projectTimeout" type="number" value="60" min="1">
+      <label>tools.git.enabled</label>
+      <select id="git">
+        <option value="false">false</option>
+        <option value="true">true</option>
+      </select>
+    </div>
+  </div>
+  <div style="margin-top:15px">
+    <button onclick="updateMerge()">Actualiser la fusion</button>
+  </div>
+  <div class="detail">
+    <h3>Résultat fusionné</h3>
+    <pre id="mergeOutput"></pre>
+    <p class="small muted">Dans cet exemple, la valeur timeout du projet
+    remplace celle de l'utilisateur, tandis que les sous-clés distinctes
+    sont conservées.</p>
+  </div>
+</section>
+
+<section id="schema">
+  <div class="eyebrow">05 — Validation</div>
+  <h2>Schéma et stratégies par champ</h2>
+  <p class="intro">
+    <code>VibeConfigSchema</code> définit les champs de configuration
+    et leur stratégie de fusion. Les marqueurs sont vérifiés dès
+    la définition de la classe.
+  </p>
+  <div class="card">
+    <h3>Quelques exemples de champs</h3>
+    <table>
+      <thead><tr><th>Champ</th><th>Stratégie</th><th>Comportement</th></tr></thead>
+      <tbody>
+        <tr><td>active_model</td><td>REPLACE</td><td>Remplacement</td></tr>
+        <tr><td>providers</td><td>UNION</td><td>Fusion par name</td></tr>
+        <tr><td>models</td><td>DEEP_MERGE</td><td>Fusion récursive</td></tr>
+        <tr><td>tools</td><td>DEEP_MERGE</td><td>Fusion récursive</td></tr>
+        <tr><td>tool_paths</td><td>CONCAT</td><td>Concaténation</td></tr>
+        <tr><td>enabled_tools</td><td>REPLACE</td><td>Remplacement</td></tr>
+        <tr><td>disabled_tools</td><td>CONCAT</td><td>Accumulation</td></tr>
+        <tr><td>mcp_servers</td><td>UNION</td><td>Fusion par name</td></tr>
+        <tr><td>session_logging</td><td>SHALLOW</td><td>Fusion superficielle</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="callout" style="margin-top:18px">
+    <strong>Point intéressant :</strong> enabled_tools utilise REPLACE,
+    tandis que disabled_tools utilise CONCAT. Une couche supérieure peut
+    redéfinir la liste autorisée, mais les exclusions s'accumulent.
+  </div>
+  <h3>ConfigFragment</h3>
+  <p class="muted">
+    Un ConfigFragment regroupe des sous-champs qui déclarent chacun
+    leur propre stratégie. Le document indique que VibeConfigSchema
+    ne l'utilise pas actuellement : il apparaît dans les tests.
+  </p>
+</section>
+
+<section id="lifecycle">
+  <div class="eyebrow">06 — Fonctionnement</div>
+  <h2>Cycle de vie de la configuration</h2>
+  <p class="intro">
+    La configuration est construite au démarrage, puis remplacée
+    lorsqu'une modification est appliquée.
+  </p>
+  <div class="card">
+    <div class="step"><strong>1. Création des couches</strong><br>
+      Les sources utilisateur et projet sont ajoutées si elles sont activées.</div>
+    <div class="step"><strong>2. Migrations</strong><br>
+      <code>migrate_config_layers(layers)</code> applique les migrations.</div>
+    <div class="step"><strong>3. Construction</strong><br>
+      <code>ConfigOrchestrator.create()</code> appelle le builder et produit
+      le premier snapshot.</div>
+    <div class="step"><strong>4. Modification</strong><br>
+      <code>apply_patch()</code> vérifie le patch et prépare une prévisualisation.</div>
+    <div class="step"><strong>5. Écriture</strong><br>
+      Les couches ciblées appliquent leurs opérations.</div>
+    <div class="step"><strong>6. Rechargement</strong><br>
+      Le builder reconstruit la configuration à partir des couches.</div>
+    <div class="step"><strong>7. Notification</strong><br>
+      L'EventBus publie un événement si une écriture a réussi et si des clés
+      ont changé.</div>
+  </div>
+  <div class="callout">
+    Les écritures entre plusieurs couches ne sont pas atomiques.
+    Une erreur d'écriture peut être retournée pour une couche sans annuler
+    les écritures réussies sur les autres.
+  </div>
+</section>
+
+<section id="persistence">
+  <div class="eyebrow">07 — Stockage</div>
+  <h2>Persistance et concurrence</h2>
+  <div class="grid">
+    <div class="card">
+      <h3>Fichiers TOML</h3>
+      <p>Lecture avec <code>tomllib</code>, écriture avec <code>tomli_w</code>.
+      Les opérations de lecture sont exécutées avec
+      <code>asyncio.to_thread</code>.</p>
+    </div>
+    <div class="card">
+      <h3>Écriture atomique</h3>
+      <p>Un fichier temporaire est créé dans le même dossier, écrit,
+      synchronisé puis renommé pour remplacer le fichier cible.</p>
+    </div>
+    <div class="card">
+      <h3>Fingerprints</h3>
+      <p>Les empreintes permettent de détecter les changements concurrents
+      et d'éviter d'écraser silencieusement une modification externe.</p>
+    </div>
+    <div class="card">
+      <h3>Conflits</h3>
+      <p>La stratégie par défaut est CANCEL : une empreinte différente
+      déclenche une erreur de concurrence.</p>
+    </div>
+  </div>
+  <h3>Étapes de l'écriture atomique</h3>
+  <pre>1. Création du fichier temporaire
+2. Sérialisation TOML
+3. flush() et fsync()
+4. Calcul du fingerprint
+5. Renommage atomique vers le fichier cible</pre>
+</section>
+
+<section id="security">
+  <div class="eyebrow">08 — Sécurité</div>
+  <h2>Sécurité et contrôle de confiance</h2>
+
+  <p class="intro">
+    Le système de configuration de Mistral Vibe intègre plusieurs
+    mécanismes destinés à contrôler l'origine des paramètres,
+    protéger les informations sensibles et éviter les modifications
+    non maîtrisées.
+  </p>
+
+  <div class="grid">
+    <div class="card">
+      <span class="tag">Trust management</span>
+      <h3>1. Confiance des configurations projet</h3>
+      <p>
+        Une configuration de projet n'est pas automatiquement considérée
+        comme fiable. Le système vérifie si le dossier appartient au
+        trust store.
+      </p>
+      <p>
+        Si le fichier existe dans un dossier non fiable, la couche
+        ProjectConfigLayer n'est pas utilisée.
+      </p>
+      <button onclick="showSecurity('trust')">En savoir plus</button>
+    </div>
+
+    <div class="card">
+      <span class="tag">Protection des credentials</span>
+      <h3>2. Protection des URL sensibles</h3>
+      <p>
+        AgentProfileLayer retire certains champs protégés, notamment
+        les URL utilisées pour communiquer avec les services Vibe.
+      </p>
+      <p>
+        Cela évite qu'un profil provenant d'un dépôt non fiable
+        redirige les requêtes contenant une clé API vers un serveur
+        contrôlé par un attaquant.
+      </p>
+      <button onclick="showSecurity('urls')">En savoir plus</button>
+    </div>
+
+    <div class="card">
+      <span class="tag">Admin configuration</span>
+      <h3>3. Priorité administrateur</h3>
+      <p>
+        AdminConfigLayer est la couche de priorité la plus élevée.
+        Cette position permet à l'organisation d'imposer certains
+        paramètres de configuration.
+      </p>
+      <p>
+        La priorité de cette couche constitue le mécanisme
+        d'application des paramètres administrateur.
+      </p>
+      <button onclick="showSecurity('admin')">En savoir plus</button>
+    </div>
+
+    <div class="card">
+      <span class="tag">Validation</span>
+      <h3>4. Validation des données</h3>
+      <p>
+        Le ConfigBuilder valide la configuration fusionnée avec
+        le schéma Pydantic. Les erreurs de structure sont transformées
+        en messages compréhensibles.
+      </p>
+      <p>
+        Les couches peuvent également appliquer une validation
+        à travers leur output_schema.
+      </p>
+      <button onclick="showSecurity('validation')">En savoir plus</button>
+    </div>
+
+    <div class="card">
+      <span class="tag">Concurrency control</span>
+      <h3>5. Protection contre les conflits</h3>
+      <p>
+        Les fingerprints permettent de détecter si les données
+        ont changé depuis la création d'un patch.
+      </p>
+      <p>
+        Avec ConflictStrategy.CANCEL, une modification concurrente
+        provoque une erreur plutôt qu'un écrasement silencieux.
+      </p>
+      <button onclick="showSecurity('conflict')">En savoir plus</button>
+    </div>
+
+    <div class="card">
+      <span class="tag">Storage</span>
+      <h3>6. Écriture atomique</h3>
+      <p>
+        Les fichiers TOML sont écrits dans un fichier temporaire,
+        synchronisés puis renommés pour remplacer le fichier cible.
+      </p>
+      <p>
+        Cette procédure réduit le risque de laisser un fichier
+        de configuration partiellement écrit.
+      </p>
+      <button onclick="showSecurity('storage')">En savoir plus</button>
+    </div>
+  </div>
+
+  <div class="detail" id="securityDetail" style="margin-top:22px">
+    <h3>Explorer les mécanismes de sécurité</h3>
+    <p class="muted">
+      Sélectionne une carte pour découvrir son fonctionnement
+      et les composants concernés.
+    </p>
+  </div>
+
+  <h3 style="margin-top:35px">Exemple : configuration projet non fiable</h3>
+  <p class="intro">
+    Imagine qu'un dépôt Git contienne un fichier
+    <code>.vibe/config.toml</code>. Le système doit déterminer
+    si cette configuration peut être utilisée.
+  </p>
+
+  <div class="card">
+    <label for="trustChoice">État du dossier projet</label>
+    <select id="trustChoice" onchange="updateTrust()">
+      <option value="trusted">Dossier présent dans le trust store</option>
+      <option value="untrusted">Dossier non approuvé</option>
+      <option value="missing">Aucun fichier de configuration trouvé</option>
+    </select>
+
+    <div class="detail" id="trustResult">
+      <span class="tag">Dossier fiable</span>
+      <h3>Configuration utilisable</h3>
+      <p>
+        La couche projet peut être chargée, sous réserve des autres
+        validations du système.
+      </p>
+    </div>
+  </div>
+
+  <div class="callout" style="margin-top:22px">
+    <strong>À retenir :</strong> la sécurité repose sur plusieurs
+    mécanismes complémentaires : contrôle de confiance, protection
+    de champs sensibles, validation des données et gestion des conflits.
+    Aucun de ces mécanismes ne doit être considéré isolément comme
+    une garantie de sécurité complète.
+  </div>
+</section>
+
+<section id="principles">
+  <div class="eyebrow">09 — Conclusion</div>
+  <h2>Principes de conception</h2>
+  <div class="grid">
+    <div class="card"><h3>Single source of truth</h3>
+      <p>Un orchestrateur par session, détenu par l'app server.</p></div>
+    <div class="card"><h3>Validation explicite</h3>
+      <p>Chaque champ déclare sa stratégie de fusion.</p></div>
+    <div class="card"><h3>Snapshots immuables</h3>
+      <p>La configuration est remplacée plutôt que modifiée directement.</p></div>
+    <div class="card"><h3>Concurrence optimiste</h3>
+      <p>Les fingerprints détectent les modifications concurrentes.</p></div>
+    <div class="card"><h3>Sécurité</h3>
+      <p>Les couches non fiables sont ignorées et certaines valeurs sensibles
+      sont protégées.</p></div>
+    <div class="card"><h3>Compatibilité</h3>
+      <p>Les migrations et les formats historiques sont pris en charge.</p></div>
+  </div>
+
+  <h3>Fichiers importants du projet</h3>
+  <table>
+    <tr><th>Fichier</th><th>Responsabilité</th></tr>
+    <tr><td>config/layer.py</td><td>Classe ConfigLayer et état des couches</td></tr>
+    <tr><td>config/builder.py</td><td>Fusion et validation</td></tr>
+    <tr><td>config/orchestrator.py</td><td>Modifications et événements</td></tr>
+    <tr><td>config/schema.py</td><td>Schéma générique et marqueurs</td></tr>
+    <tr><td>config/vibe_schema.py</td><td>Schéma principal de Vibe</td></tr>
+    <tr><td>config/patch.py</td><td>Opérations JSON Patch</td></tr>
+    <tr><td>config/fingerprint.py</td><td>Empreintes des données</td></tr>
+    <tr><td>config/event_bus.py</td><td>Notifications</td></tr>
+    <tr><td>utils/merge.py</td><td>Stratégies de fusion</td></tr>
+  </table>
+</section>
+
+
+
+
+
+</main>
+
+<footer>
+  Vibe Configuration System — Documentation technique interactive
+  <br><span class="small">Contenu construit à partir du rapport fourni.</span>
+</footer>
+
+<script>
+const layers = [
+ ["DefaultConfigLayer","default","Valeurs par défaut de VibeConfigSchema.","Lecture seule"],
+ ["GrowthbookLayer","growthbook","Variantes d'expérimentation à distance, traduites en champs de configuration.","Lecture seule"],
+ ["UserConfigLayer","user-toml","Configuration personnelle stockée dans ~/.vibe/config.toml ou VIBE_HOME.","TOML"],
+ ["ProjectConfigLayer","project-toml","Configuration du projet trouvée en remontant depuis le répertoire courant. La confiance dépend du trust store.","TOML si fiable"],
+ ["EnvironmentLayer","environment","Variables d'environnement préfixées par VIBE_.","Lecture seule"],
+ ["OverridesLayer","overrides","Valeurs transmises par les points d'entrée CLI ou ACP.","Mémoire"],
+ ["AgentProfileLayer","agent-profile","Surcharges du profil d'agent actif. Certains champs sensibles sont retirés.","Mémoire"],
+ ["AdminConfigLayer","admin","Configuration administrateur récupérée depuis le serveur Vibe.","Lecture seule"]
+];
+
+const layerList = document.getElementById("layerList");
+layers.forEach((l,i)=>{
+ const b=document.createElement("button");
+ b.className="layer";
+ b.innerHTML=`<span>${i} · ${l[0]}<br><small>${l[1]}</small></span><span>›</span>`;
+ b.onclick=()=>{
+  document.querySelectorAll(".layer").forEach(x=>x.classList.remove("selected"));
+  b.classList.add("selected");
+  document.getElementById("layerDetail").innerHTML=
+   `<span class="tag">Priorité ${i}</span><h3>${l[0]}</h3>
+   <p>${l[2]}</p><p class="muted">Stockage : ${l[3]}</p>`;
+ };
+ layerList.appendChild(b);
+});
+
+const components = [
+ ["ConfigLayer","layer.py","Classe abstraite représentant une couche. Gère la confiance, le chargement, l'application des patches et l'état."],
+ ["ConfigBuilder","builder.py","Parcourt les couches, applique les stratégies de fusion, enregistre les origines et valide le résultat."],
+ ["ConfigOrchestrator","orchestrator.py","Point d'entrée central : création, rechargement, modifications, gestion des couches et abonnements."],
+ ["EventBus","event_bus.py","Canal pub/sub en mémoire qui notifie les abonnés des changements de configuration."],
+ ["VibeConfigSchema","vibe_schema.py","Schéma Pydantic principal décrivant les champs et leurs stratégies de fusion."]
+];
+components.forEach(c=>{
+ const d=document.createElement("div");d.className="card";
+ d.innerHTML=`<span class="tag">${c[1]}</span><h3>${c[0]}</h3><p>${c[2]}</p>`;
+ document.getElementById("componentGrid").appendChild(d);
+});
+
+const strategies = [
+ ["REPLACE","La valeur de la couche supérieure remplace entièrement celle de la couche précédente.","Exemple : active_model."],
+ ["CONCAT","Les listes sont concaténées : les éléments des différentes couches sont conservés.","Exemple : tool_paths, disabled_tools."],
+ ["UNION","Les listes sont fusionnées à partir d'une clé commune. Un élément plus récent remplace l'ancien ayant la même clé.","Exemple : providers, avec merge_key='name'."],
+ ["MERGE","Fusion superficielle de dictionnaires : les clés de la couche supérieure remplacent celles de même nom.","Exemple : certains groupes de configuration."],
+ ["DEEP_MERGE","Fusion récursive des dictionnaires. Les valeurs non dictionnaires sont remplacées.","Exemple : tools et models."],
+ ["CONFLICT","Déclenche une erreur si deux couches fournissent toutes les deux une valeur.","Stratégie disponible, mais non utilisée dans VibeConfigSchema selon le rapport."]
+];
+const tabs=document.getElementById("mergeTabs");
+strategies.forEach((s,i)=>{
+ const b=document.createElement("button");b.textContent=s[0];
+ b.onclick=()=>{
+  document.querySelectorAll("#mergeTabs button").forEach(x=>x.classList.remove("active"));
+  b.classList.add("active");
+  document.getElementById("mergeDetail").innerHTML=
+   `<span class="tag">Stratégie de fusion</span><h3>${s[0]}</h3><p>${s[1]}</p><p class="muted">${s[2]}</p>`;
+ };
+ tabs.appendChild(b);
+});
+tabs.firstChild.click();
+
+function updateMerge(){
+ const userEnabled=document.getElementById("enabled").value==="true";
+ const userTimeout=Number(document.getElementById("timeout").value);
+ const projectTimeout=Number(document.getElementById("projectTimeout").value);
+ const git=document.getElementById("git").value==="true";
+ const result={
+  bash:{enabled:userEnabled,timeout:projectTimeout},
+  git:{enabled:git}
+ };
+ document.getElementById("mergeOutput").textContent=JSON.stringify(result,null,2);
+}
+updateMerge();
+
+
+const securityDetails = {
+  trust: {
+    title: "Vérification de confiance",
+    text: "ProjectConfigLayer recherche le fichier .vibe/config.toml en remontant depuis le répertoire courant. Si le fichier existe, sa confiance est déterminée par TrustedFoldersManager. Une couche non fiable est ignorée lors de la construction de la configuration.",
+    file: "ProjectConfigLayer — layers/"
+  },
+  urls: {
+    title: "Protection des URL",
+    text: "AgentProfileLayer retire les champs vibe_base_url, console_base_url et vibe_code_sessions_base_url. Ces URL sont sensibles car les requêtes correspondantes peuvent transporter une clé API. Un profil non fiable ne doit donc pas pouvoir rediriger ces requêtes.",
+    file: "AgentProfileLayer — layers/"
+  },
+  admin: {
+    title: "Configuration administrateur",
+    text: "AdminConfigLayer se trouve en dernière position de la pile. Sa priorité permet d'imposer les paramètres gérés par l'organisation. Cette couche est en lecture seule du point de vue des écritures locales.",
+    file: "AdminConfigLayer — admin_config.py"
+  },
+  validation: {
+    title: "Validation du schéma",
+    text: "ConfigBuilder fusionne les couches puis appelle schema.validate_merged(). Les stratégies de fusion sont déclarées sur les champs. Les conflits de structure sont remontés sous forme d'erreurs compréhensibles.",
+    file: "ConfigBuilder — builder.py / VibeConfigSchema"
+  },
+  conflict: {
+    title: "Détection des modifications concurrentes",
+    text: "Un patch contient un fingerprint correspondant à l'état de la couche au moment de sa création. Si l'empreinte a changé, ConflictStrategy.CANCEL interrompt l'opération avec une ConcurrencyConflictError.",
+    file: "ConfigLayer — layer.py / fingerprint.py"
+  },
+  storage: {
+    title: "Écriture atomique",
+    text: "Le système écrit d'abord dans un fichier temporaire du même répertoire, effectue flush et fsync, puis remplace le fichier cible par renommage. Cela réduit les risques de corruption en cas d'échec pendant l'écriture.",
+    file: "layers/_base.py"
+  }
+};
+
+function showSecurity(key) {
+  const item = securityDetails[key];
+  document.getElementById("securityDetail").innerHTML = `
+    <span class="tag">Mécanisme de sécurité</span>
+    <h3>${item.title}</h3>
+    <p>${item.text}</p>
+    <p class="small muted">Composant concerné : <code>${item.file}</code></p>
+  `;
+}
+
+function updateTrust() {
+  const choice = document.getElementById("trustChoice").value;
+  const result = document.getElementById("trustResult");
+
+  const states = {
+    trusted: {
+      tag: "Dossier fiable",
+      title: "Configuration utilisable",
+      text: "La couche projet peut être chargée, sous réserve des autres validations du système."
+    },
+    untrusted: {
+      tag: "Dossier non fiable",
+      title: "Configuration ignorée",
+      text: "La couche projet n'est pas chargée. Le builder peut continuer avec les autres couches de configuration."
+    },
+    missing: {
+      tag: "Fichier absent",
+      title: "Pas de configuration projet",
+      text: "En l'absence de fichier projet, le mécanisme de confiance considère la couche comme fiable. Cela ne signifie pas qu'un fichier a été chargé."
+    }
+  };
+
+  const state = states[choice];
+  result.innerHTML = `
+    <span class="tag">${state.tag}</span>
+    <h3>${state.title}</h3>
+    <p>${state.text}</p>
+  `;
+}
+
+</script>
+</body>
+</html>
