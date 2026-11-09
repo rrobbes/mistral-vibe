@@ -395,9 +395,7 @@
                     <p>
                         Le système demande la permission avant toute action à risque.
                     </p>
-                    <p>
-                        C'est comme un vigile qui vérifie avant d'ouvrir une porte.
-                    </p>
+
                 </div>
             </section>
 
@@ -409,43 +407,36 @@
                         <h4>ALWAYS</h4>
                         <p><strong>Explication :</strong> L'outil s'exécute sans demander.</p>
                         <p><em>Exemple :</em> Lire un fichier dans son dossier de projet.</p>
-                        <p><span class="code-ref">vibe/core/tools/models.py:L12-20</span></p>
                     </div>
                     <div class="card">
                         <h4>NEVER</h4>
                         <p><strong>Explication :</strong> L'outil est toujours bloqué.</p>
                         <p><em>Exemple :</em> Désactiver complètement les commandes bash.</p>
-                        <p><span class="code-ref">vibe/core/agent_loop/_loop.py:L3047-3051</span></p>
                     </div>
                     <div class="card">
                         <h4>ASK</h4>
                         <p><strong>Explication :</strong> L'outil demande avant de s'exécuter.</p>
                         <p><em>Exemple :</em> Écrire un fichier ou lancer une commande.</p>
-                        <p><span class="code-ref">vibe/core/agent_loop/_loop.py:L3053-3065</span></p>
                     </div>
                     <div class="card">
                         <h4>allowlist</h4>
                         <p><strong>Explication :</strong> Liste des actions toujours autorisées.</p>
                         <p><em>Exemple :</em> <code>git status</code> ou <code>ls</code> peuvent être autorisés.</p>
-                        <p><span class="code-ref">vibe/core/tools/builtins/bash.py:L80-95</span></p>
                     </div>
                     <div class="card">
                         <h4>denylist</h4>
                         <p><strong>Explication :</strong> Liste des actions toujours bloquées.</p>
                         <p><em>Exemple :</em> <code>sudo</code> ou <code>rm -rf /</code> sont bloqués.</p>
-                        <p><span class="code-ref">vibe/core/tools/builtins/bash.py:L98-110</span></p>
                     </div>
                     <div class="card">
                         <h4>Fichiers sensibles</h4>
                         <p><strong>Explication :</strong> Fichiers avec des secrets. Toujours une demande.</p>
                         <p><em>Exemple :</em> <code>.env</code> ou <code>.ssh/</code>.</p>
-                        <p><span class="code-ref">vibe/core/tools/utils.py:L210-218</span></p>
                     </div>
                     <div class="card">
                         <h4>Règles temporaires/permanentes</h4>
                         <p><strong>Explication :</strong> Autoriser une fois, pour la session, ou toujours.</p>
                         <p><em>Exemple :</em> Cliquer sur « Always allow » dans la fenêtre.</p>
-                        <p><span class="code-ref">vibe/cli/textual_ui/widgets/approval_app.py:L42-47</span></p>
                     </div>
                     <div class="card">
                         <h4>Workspace</h4>
@@ -457,7 +448,6 @@
                         <h4>Permissions vs isolation</h4>
                         <p><strong>Explication :</strong> Demander la permission vs bloquer techniquement.</p>
                         <p><em>Exemple :</em> Pas de cage technique. Juste un vigile.</p>
-                        <p><span class="code-ref">non vérifié hors tests</span></p>
                     </div>
                 </div>
             </section>
@@ -468,7 +458,8 @@
                 
                 <!-- DIAGRAMME PLEINE LARGEUR -->
                 <div class="mermaid-full">
-                    <pre class="mermaid">flowchart TB
+                    <pre class="mermaid">%%{init: {'flowchart': {'nodeSpacing': 40, 'rankSpacing': 80}}}%%
+flowchart TB
     A[Outil appelé] --> B{Permission globale?}
     B -->|NEVER| C[Bloqué]
     B -->|ALWAYS| D{Fichier sensible?}
@@ -484,6 +475,7 @@
     style F fill:#06d6a0,stroke:#048f68,color:#333</pre>
                 </div>
                 <p style="text-align: center; margin-top: -15px; margin-bottom: 20px;"><em>Rouge = bloqué, Orange = demande, Vert = autorisé</em></p>
+                <p><strong>Les scenarios ci-dessous</strong> illustrent chaque cas de figure du diagramme.</p>
 
                 <div class="scenario">
                     <h4>Lecture dans le workspace</h4>
@@ -608,56 +600,48 @@
                         <p>Présente les trois niveaux de permission : TOUJOURS autoriser, JAMAIS autoriser, DEMANDER.</p>
                         <p>Explique aussi les listes d'autorisation et de refus, et les fichiers sensibles.</p>
                         <p class="a-retenir">À retenir : Les fichiers sensibles demandent toujours confirmation.</p>
-                        <div class="read-more"><a href="../configuration/permissions/01-niveaux-et-modes.md">Lire la page</a></div>
                     </div>
                     <div class="summary-card">
                         <h4>Déroulement et scénarios</h4>
                         <p>Montre comment le système décide d'autoriser ou non une action.</p>
                         <p>Détaille tous les cas possibles : lecture, écriture, fichiers sensibles, commandes dangereuses.</p>
                         <p class="a-retenir">À retenir : En cas de refus, l'agent continue son travail.</p>
-                        <div class="read-more"><a href="../configuration/permissions/02-deroulement-et-scenarios.md">Lire la page</a></div>
                     </div>
                     <div class="summary-card">
                         <h4>Fichiers utilisateur</h4>
                         <p>Explique comment configurer les permissions dans le fichier <code>config.toml</code>.</p>
                         <p>Décrit les 4 options de la fenêtre d'approbation : une fois, pour la session, toujours, refuser.</p>
                         <p class="a-retenir">À retenir : « Toujours autoriser » écrit la règle dans config.toml.</p>
-                        <div class="read-more"><a href="../configuration/permissions/03-fichiers-utilisateur.md">Lire la page</a></div>
                     </div>
                     <div class="summary-card">
                         <h4>Fichiers et modules</h4>
                         <p>Montre tous les fichiers du code qui gèrent les permissions.</p>
                         <p>Organisés en couches : interface, application, outils, stockage, configuration.</p>
                         <p class="a-retenir">À retenir : Tous les outils (plugins, MCP) passent par le même système.</p>
-                        <div class="read-more"><a href="../configuration/permissions/04-fichiers-et-modules.md">Lire la page</a></div>
                     </div>
                     <div class="summary-card">
                         <h4>Sécurité et isolation</h4>
                         <p>Liste les 7 protections intégrées : fichiers sensibles, limites du workspace, analyse des commandes.</p>
                         <p>Confirme qu'il n'y a pas d'isolation technique (sandbox) au niveau du système.</p>
                         <p class="a-retenir">À retenir : Vibe protège en demandant, pas en enfermant.</p>
-                        <div class="read-more"><a href="../configuration/permissions/05-securite-et-sandbox.md">Lire la page</a></div>
                     </div>
                     <div class="summary-card">
                         <h4>Cas limites</h4>
                         <p>Analyse 9 cas compliqués : chemins avec <code>..</code>, liens symboliques, commandes enchaînées.</p>
                         <p>Pour chaque cas, explique ce qui se passe vraiment dans le code.</p>
                         <p class="a-retenir">À retenir : La liste de refus prime toujours sur la liste d'autorisation.</p>
-                        <div class="read-more"><a href="../configuration/permissions/06-edge-cases.md">Lire la page</a></div>
                     </div>
                     <div class="summary-card">
                         <h4>ADR et contrat des outils</h4>
                         <p>Liste tous les documents ADR liés aux permissions.</p>
                         <p>Explique en détail le contrat des outils (ADR 0004) que tous doivent respecter.</p>
                         <p class="a-retenir">À retenir : ADR 0004 est le document central pour comprendre les permissions.</p>
-                        <div class="read-more"><a href="../configuration/permissions/07-adr-et-contrat-des-outils.md">Lire la page</a></div>
                     </div>
                     <div class="summary-card">
                         <h4>Tests et qualité</h4>
                         <p>Présente les tests qui vérifient que les permissions fonctionnent.</p>
                         <p>Identifie les cas qui ne sont pas encore testés.</p>
                         <p class="a-retenir">À retenir : La couverture de tests est bonne mais peut être améliorée.</p>
-                        <div class="read-more"><a href="../configuration/permissions/08-tests-et-qualite.md">Lire la page</a></div>
                     </div>
                 </div>
             </section>
