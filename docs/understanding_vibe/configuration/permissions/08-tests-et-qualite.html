@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tests et qualité - Mistral Vibe</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+</head>
+<body>
+    <nav>
+        <div class="nav-container">
+            <a href="index.html" class="nav-title">Permissions Vibe</a>
+            <button class="nav-toggle" onclick="toggleMobileNav()" aria-label="Menu">☰</button>
+            <div class="nav-links" id="navLinks">
+                <a href="index.html">Accueil</a>
+                <a href="01-niveaux-et-modes.html">Niveaux & Modes</a>
+                <a href="02-deroulement-et-scenarios.html">Déroulement</a>
+                <a href="03-fichiers-utilisateur.html">Fichiers</a>
+                <a href="04-fichiers-et-modules.html">Modules</a>
+                <a href="05-securite-et-sandbox.html">Sécurité</a>
+                <a href="06-edge-cases.html">Edge Cases</a>
+                <a href="07-adr-et-contrat-des-outils.html">ADR & Contrat</a>
+                <a href="08-tests-et-qualite.html" class="active">Tests</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="page-container">
+        <main class="main-content">
+        <h1>Tests et qualité</h1>
+
+        <section>
+            <h2>Couverture des tests</h2>
+
+            <h3>Tests unitaires et d'intégration</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Fichier de test</th>
+                        <th>Couverture</th>
+                        <th>Description</th>
+                        <th>Source</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>tests/app_server/test_approval_permissions.py</code></td>
+                        <td>Permissions d'approbation</td>
+                        <td>Tests des path scopes, validation des grants, intégration app-server</td>
+                        <td><code>tests/app_server/test_approval_permissions.py</code></td>
+                    </tr>
+                    <tr>
+                        <td><code>tests/session/test_session_permissions.py</code></td>
+                        <td>Permissions de session</td>
+                        <td>Tests de la restriction des permissions des logs de session (owner-only)</td>
+                        <td><code>tests/session/test_session_permissions.py</code></td>
+                    </tr>
+                    <tr>
+                        <td><code>tests/agent_loop/test_agent_override_resolve_permission.py</code></td>
+                        <td>resolve_permission</td>
+                        <td>Vérification des mécanismes de résolution des permissions par outil</td>
+                        <td><code>tests/agent_loop/test_agent_override_resolve_permission.py</code></td>
+                    </tr>
+                    <tr>
+                        <td><code>tests/agent_loop/test_agent_tool_call.py</code></td>
+                        <td>Appels d'outils</td>
+                        <td>Tests des appels d'outils avec vérification des permissions</td>
+                        <td><code>tests/agent_loop/test_agent_tool_call.py</code></td>
+                    </tr>
+                    <tr>
+                        <td><code>tests/agent_loop/test_approve_always_permanent.py</code></td>
+                        <td>Always allow</td>
+                        <td>Tests des approbations permanentes</td>
+                        <td><code>tests/agent_loop/test_approve_always_permanent.py</code></td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>Tests des outils builtins</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Fichier de test</th>
+                        <th>Outil testé</th>
+                        <th>Couverture</th>
+                        <th>Source</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>tests/tools/test_bash.py</code></td>
+                        <td><code>bash</code></td>
+                        <td>Analyse des commandes, permissions, allowlist/denylist</td>
+                        <td><code>tests/tools/test_bash.py</code></td>
+                    </tr>
+                    <tr>
+                        <td><code>tests/tools/test_windows_shell.py</code></td>
+                        <td><code>windows_shell</code></td>
+                        <td>Analyse des commandes Windows, permissions</td>
+                        <td><code>tests/tools/test_windows_shell.py</code></td>
+                    </tr>
+                    <tr>
+                        <td><code>tests/tools/test_edit.py</code></td>
+                        <td><code>edit</code></td>
+                        <td>Permission d'édition, modification de fichiers</td>
+                        <td><code>tests/tools/test_edit.py</code></td>
+                    </tr>
+                    <tr>
+                        <td><code>tests/tools/test_read_file.py</code></td>
+                        <td><code>read_file</code></td>
+                        <td>Permission de lecture, accès aux fichiers</td>
+                        <td><code>tests/tools/test_read_file.py</code></td>
+                    </tr>
+                    <tr>
+                        <td><code>tests/tools/test_write_file.py</code></td>
+                        <td><code>write_file</code></td>
+                        <td>Permission d'écriture, création de fichiers</td>
+                        <td><code>tests/tools/test_write_file.py</code></td>
+                    </tr>
+                    <tr>
+                        <td><code>tests/tools/test_grep.py</code></td>
+                        <td><code>grep</code></td>
+                        <td>Permission de recherche dans les fichiers</td>
+                        <td><code>tests/tools/test_grep.py</code></td>
+                    </tr>
+                    <tr>
+                        <td><code>tests/tools/test_mcp.py</code></td>
+                        <td>MCP tools</td>
+                        <td>Intégration des outils MCP, permissions</td>
+                        <td><code>tests/tools/test_mcp.py</code></td>
+                    </tr>
+                    <tr>
+                        <td><code>tests/tools/test_websearch.py</code></td>
+                        <td><code>web_search</code></td>
+                        <td>Permission de recherche web</td>
+                        <td><code>tests/tools/test_websearch.py</code></td>
+                    </tr>
+                    <tr>
+                        <td><code>tests/tools/test_webfetch.py</code></td>
+                        <td><code>web_fetch</code></td>
+                        <td>Permission de récupération URL</td>
+                        <td><code>tests/tools/test_webfetch.py</code></td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section>
+            <h2>Exemples de tests</h2>
+
+            <h3>Test de resolve_permission pour bash</h3>
+            <p><strong>Source :</strong> <code>tests/agent_loop/test_agent_override_resolve_permission.py:L1-100</code></p>
+            <pre><code>class TestPlanAgentResolvePermission:
+    """Plan agent overrides write_file/edit to NEVER with allowlist=[plans/*]"""
+    
+    def test_write_file_to_non_plan_path_denied_in_plan_mode(self) -> None:
+        config = build_test_vibe_config()
+        agent = build_test_agent_loop(config=config, agent_name=BuiltinAgentName.PLAN)
+        
+        tool = agent.tool_manager.get("write_file")
+        from vibe.core.tools.builtins.write_file import WriteFileArgs
+        
+        args = WriteFileArgs(file_path="/some/random/file.py", content="hello")
+        ctx = tool.resolve_permission(args)
+        
+        # Avec plan agent override: permission should be NEVER
+        assert ctx is not None
+        assert ctx.permission == ToolPermission.NEVER
+
+    def test_write_file_to_plan_path_allowed_in_plan_mode(self) -> None:
+        config = build_test_vibe_config()
+        agent = build_test_agent_loop(config=config, agent_name=BuiltinAgentName.PLAN)
+        
+        tool = agent.tool_manager.get("write_file")
+        from vibe.core.tools.builtins.write_file import WriteFileArgs
+        
+        plan_path = str(PLANS_DIR.path / "my-plan.md")
+        args = WriteFileArgs(file_path=plan_path, content="# Plan")
+        
+        ctx = tool.resolve_permission(args)
+        
+        # Plan path is in the allowlist, so should be ALWAYS
+        assert ctx is not None
+        assert ctx.permission == ToolPermission.ALWAYS
+</code></pre>
+            <p><strong>Ce que ce test vérifie :</strong></p>
+            <ul>
+                <li>L'agent <code>PLAN</code> surcharge <code>write_file</code> avec <code>permission = NEVER</code> et <code>allowlist = ["plans/*"]</code></li>
+                <li>Les chemins <strong>hors</strong> de <code>plans/</code> → <code>NEVER</code></li>
+                <li>Les chemins <strong>dans</strong> <code>plans/</code> → <code>ALWAYS</code></li>
+            </ul>
+
+            <h3>Test des permissions de session</h3>
+            <p><strong>Source :</strong> <code>tests/session/test_session_permissions.py:L1-100</code></p>
+            <pre><code>def test_start_restrict_session_log_permissions_runs_once_per_process(
+    session_config: SessionLoggingConfig, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The session-config build starts the sweep per session; only the first wins."""
+    started: list[object] = []
+    
+    class RecordingThread:
+        def __init__(self, *, args: tuple[object, ...], **_unused: object) -> None:
+            self._args = args
+        
+        def start(self) -> None:
+            started.append(self._args[0])
+    
+    monkeypatch.setattr(session_permissions, "_STARTED", False)
+    monkeypatch.setattr(session_permissions, "Thread", RecordingThread)
+    
+    start_restrict_session_log_permissions(session_config)
+    start_restrict_session_log_permissions(session_config)
+    
+    assert started == [session_config]
+</code></pre>
+            <p><strong>Ce que ce test vérifie :</strong></p>
+            <ul>
+                <li>Le sweep de restriction des permissions du session log ne s'exécute <strong>qu'une seule fois par processus</strong></li>
+                <li>C'est un test du <strong>mécanisme de sécurité</strong> des logs de session (pas des permissions des outils)</li>
+            </ul>
+
+            <h3>Test des approbations permanentes</h3>
+            <p><strong>Source :</strong> <code>tests/agent_loop/test_approve_always_permanent.py</code></p>
+            <p>Ce fichier teste le mécanisme "Always allow" :</p>
+            <ul>
+                <li>Vérification que les règles sont <strong>persistées</strong> dans la configuration</li>
+                <li>Vérification que les règles sont <strong>appliquées</strong> aux appels suivants</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>Points à améliorer</h2>
+
+            <h3>Couverture manquante identifiée</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Edge case</th>
+                        <th>Test existant</th>
+                        <th>Statut</th>
+                        <th>Recommandation</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Chemins avec ".."</td>
+                        <td>❌ Non</td>
+                        <td>Non testé</td>
+                        <td>Ajouter des tests dans <code>test_bash.py</code> ou <code>test_read_file.py</code></td>
+                    </tr>
+                    <tr>
+                        <td>Liens symboliques</td>
+                        <td>❌ Non</td>
+                        <td>Non testé</td>
+                        <td>Ajouter des tests pour les liens vers /etc/passwd</td>
+                    </tr>
+                    <tr>
+                        <td>Substitutions $(...)</td>
+                        <td>❌ Non</td>
+                        <td>Non testé</td>
+                        <td>Ajouter des tests pour les command substitutions</td>
+                    </tr>
+                    <tr>
+                        <td>Commandes non analysables</td>
+                        <td>❌ Non</td>
+                        <td>Non testé</td>
+                        <td>Ajouter des tests pour les function_definition</td>
+                    </tr>
+                    <tr>
+                        <td>Motifs sensibles + ALWAYS</td>
+                        <td>❌ Non</td>
+                        <td>Non testé</td>
+                        <td>Vérifier que les motifs sensibles l'emportent</td>
+                    </tr>
+                    <tr>
+                        <td>Conflits allowlist/denylist</td>
+                        <td>❌ Non</td>
+                        <td>Non testé</td>
+                        <td>Vérifier que denylist l'emporte</td>
+                    </tr>
+                    <tr>
+                        <td>Denylist standalone</td>
+                        <td>❌ Non</td>
+                        <td>Non testé</td>
+                        <td>Tester <code>python</code> vs <code>python script.py</code></td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>Complexité du code</h3>
+            <div class="callout warning">
+                <p><strong>Points identifiés dans le code :</strong></p>
+                <ul>
+                    <li><code>_shell_permission_analysis.py</code> : Analyse syntaxique complexe avec tree-sitter</li>
+                    <li><code>bash.py:resolve_permission()</code> : Logique complexe avec de nombreuses conditions</li>
+                    <li><code>_loop.py:_should_execute_tool()</code> : Multiple chemins de décision</li>
+                </ul>
+                <p><strong>Recommandation :</strong></p>
+                <ul>
+                    <li>Ajouter plus de tests unitaires pour couvrir tous les chemins</li>
+                    <li>Documenter les cas limites dans le code</li>
+                    <li>Simplifier la logique si possible</li>
+                </ul>
+            </div>
+        </section>
+
+        <section>
+            <h2>Outils de qualité utilisés</h2>
+
+            <h3>Linting et formatting</h3>
+            <ul>
+                <li><strong>Ruff</strong> : Linter Python utilisé dans le projet</li>
+                <li><strong>Configuration</strong> : Voir <code>pyproject.toml</code> pour les règles Ruff</li>
+            </ul>
+
+            <h3>Vérification des types</h3>
+            <ul>
+                <li><strong>Pyright</strong> : Vérificateur de types statique</li>
+                <li><strong>Configuration</strong> : Voir <code>pyproject.toml</code> pour la configuration Pyright</li>
+            </ul>
+
+            <h3>Tests</h3>
+            <ul>
+                <li><strong>Pytest</strong> : Framework de test principal</li>
+                <li><strong>Pytest-xdist</strong> : Exécution parallèle des tests</li>
+                <li><strong>Configuration</strong> : Voir <code>pyproject.toml</code> pour les options pytest</li>
+            </ul>
+
+            <p><strong>Commandes utiles :</strong></p>
+            <pre><code># Exécuter tous les tests
+uv run pytest
+
+# Exécuter les tests des permissions
+uv run pytest tests/agent_loop/test_agent_override_resolve_permission.py
+uv run pytest tests/app_server/test_approval_permissions.py
+
+# Exécuter les tests d'un outil spécifique
+uv run pytest tests/tools/test_bash.py
+
+# Vérification des types
+uv run pyright
+
+# Linting
+uv run ruff check --fix .
+</code></pre>
+        </section>
+
+        <section>
+            <h2>Recommandations pour les développeurs</h2>
+
+            <h3>Pour les mainteneurs du système de permissions</h3>
+            <ol>
+                <li><strong>Ajouter des tests pour les edge cases</strong> :
+                    <ul>
+                        <li>Chemins relatifs avec <code>..</code></li>
+                        <li>Liens symboliques</li>
+                        <li>Substitutions de commandes</li>
+                        <li>Conflits allowlist/denylist</li>
+                    </ul>
+                </li>
+                <li><strong>Améliorer la documentation</strong> :
+                    <ul>
+                        <li>Documenter les comportements spécifiques dans le code</li>
+                        <li>Ajouter des exemples concrets dans les docstrings</li>
+                    </ul>
+                </li>
+                <li><strong>Simplifier la logique</strong> :
+                    <ul>
+                        <li>Réduire la complexité cyclomatique dans <code>bash.py:resolve_permission()</code></li>
+                        <li>Extraire des fonctions utilitaires pour les vérifications communes</li>
+                    </ul>
+                </li>
+                <li><strong>Améliorer l'analyse syntaxique</strong> :
+                    <ul>
+                        <li>Ajouter plus de motifs dangereux dans la denylist par défaut</li>
+                        <li>Améliorer la détection des commandes malveillantes</li>
+                    </ul>
+                </li>
+            </ol>
+
+            <h3>Pour les développeurs d'outils personnalisés</h3>
+            <ol>
+                <li><strong>Toujours implémenter resolve_permission()</strong> :
+                    <pre><code>def resolve_permission(self, args: MyToolArgs) -> PermissionContext | None:
+    # Vérifier les chemins
+    if not is_path_within_workdir(args.path, self.workspace):
+        return PermissionContext(
+            permission=ToolPermission.ASK,
+            required_permissions=[...
+        ]
+    # Vérifier les motifs sensibles
+    if matches_sensitive_pattern(args.path, self.config.sensitive_patterns):
+        return PermissionContext(
+            permission=ToolPermission.ASK,
+            required_permissions=[...
+        ]
+    return None  # Utilise la permission de la config
+</code></pre>
+                </li>
+                <li><strong>Utiliser les fonctions utilitaires</strong> :
+                    <ul>
+                        <li><code>resolve_file_tool_permission()</code> pour les outils basés sur des fichiers</li>
+                        <li><code>is_path_within_workdir()</code> pour vérifier les limites</li>
+                        <li><code>matches_sensitive_pattern()</code> pour les fichiers sensibles</li>
+                    </ul>
+                </li>
+                <li><strong>Tester les permissions</strong> :
+                    <ul>
+                        <li>Vérifier que <code>resolve_permission()</code> retourne les bons contextes</li>
+                        <li>Tester avec différents niveaux de permission (ALWAYS, NEVER, ASK)</li>
+                        <li>Tester les edge cases (chemins relatifs, liens symboliques, etc.)</li>
+                    </ul>
+                </li>
+                <li><strong>Documenter les permissions</strong> :
+                    <ul>
+                        <li>Documenter la permission par défaut dans la docstring</li>
+                        <li>Documenter les comportements spécifiques (allowlist, denylist, etc.)</li>
+                    </ul>
+                </li>
+            </ol>
+
+            <h3>Pour les utilisateurs</h3>
+            <ol>
+                <li><strong>Configurer correctement les permissions</strong> :
+                    <ul>
+                        <li>Utiliser <code>ALWAYS</code> pour les outils sûrs</li>
+                        <li>Utiliser <code>ASK</code> pour les outils à risque</li>
+                        <li>Utiliser <code>NEVER</code> pour les outils dangereux</li>
+                        <li>Configurer les allowlists/denylists de manière appropriée</li>
+                    </ul>
+                </li>
+                <li><strong>Ne pas désactiver les protections</strong> :
+                    <ul>
+                        <li>Ne pas utiliser <code>bypass_tool_permissions = true</code></li>
+                        <li>Ne pas vider les denylists par défaut</li>
+                        <li>Ne pas autoriser <code>sudo</code> sans restriction</li>
+                    </ul>
+                </li>
+                <li><strong>Utiliser le scratchpad</strong> :
+                    <ul>
+                        <li>Pour les fichiers temporaires</li>
+                        <li>Pour les fichiers sensibles (les fichiers dans le scratchpad sont <strong>toujours autorisés</strong>)</li>
+                    </ul>
+                </li>
+                <li><strong>Vérifier les configurations</strong> :
+                    <ul>
+                        <li>Auditer régulièrement <code>config.toml</code></li>
+                        <li>Vérifier que les allowlists/denylists sont correctes</li>
+                        <li>Supprimer les règles permanentes inutiles</li>
+                    </ul>
+                </li>
+            </ol>
+        </section>
+
+        <section>
+            <h2>Conclusion</h2>
+            <p>
+                Le système de permissions de Mistral Vibe a une <strong>bonne couverture de tests</strong>, 
+                mais il reste des <strong>edge cases non testés</strong> :
+            </p>
+            <ul>
+                <li>Chemins avec <code>..</code></li>
+                <li>Liens symboliques</li>
+                <li>Substitutions de commandes</li>
+                <li>Conflits allowlist/denylist</li>
+                <li>Motifs sensibles avec ALWAYS</li>
+            </ul>
+            <div class="callout note">
+                <p><strong>Recommandation principale :</strong> Ajouter des tests pour ces edge cases et améliorer la documentation des comportements spécifiques.</p>
+            </div>
+        </section>
+        </main>
+    </div>
+
+    <div class="nav-bottom">
+        <a href="07-adr-et-contrat-des-outils.html">← Précédent : ADR et contrat des outils</a>
+    </div>
+
+    <script>
+        // Navigation mobile
+        function toggleMobileNav() {
+            const navLinks = document.getElementById('navLinks');
+            navLinks.classList.toggle('mobile-open');
+        }
+
+        // Initialisation
+        document.addEventListener('DOMContentLoaded', function() {
+            mermaid.initialize({
+                startOnLoad: false,
+                securityLevel: 'loose',
+                theme: window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'default'
+            });
+        });
+    </script>
+</body>
+</html>

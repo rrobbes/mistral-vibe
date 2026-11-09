@@ -1,0 +1,1003 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fichiers et modules internes - Mistral Vibe</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+</head>
+<body>
+    <nav>
+        <div class="nav-container">
+            <a href="index.html" class="nav-title">Permissions Vibe</a>
+            <button class="nav-toggle" onclick="toggleMobileNav()" aria-label="Menu">☰</button>
+            <div class="nav-links" id="navLinks">
+                <a href="index.html">Accueil</a>
+                <a href="01-niveaux-et-modes.html">Niveaux & Modes</a>
+                <a href="02-deroulement-et-scenarios.html">Déroulement</a>
+                <a href="03-fichiers-utilisateur.html">Fichiers</a>
+                <a href="04-fichiers-et-modules.html" class="active">Modules</a>
+                <a href="05-securite-et-sandbox.html">Sécurité</a>
+                <a href="06-edge-cases.html">Edge Cases</a>
+                <a href="07-adr-et-contrat-des-outils.html">ADR & Contrat</a>
+                <a href="08-tests-et-qualite.html">Tests</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="page-container">
+        <main class="main-content">
+        <h1>Fichiers et modules internes</h1>
+
+        <section id="architecture">
+            <h2>Architecture en couches</h2>
+            <p>
+                Le système de permissions est distribué selon plusieurs couches de l'architecture de Mistral Vibe :
+            </p>
+
+            <div class="mermaid-container">
+                <div class="mermaid-wrapper">
+                    <pre class="mermaid">
+flowchart TB
+    subgraph Interface["Couche Interface"]
+        A1[UI Textual]
+        A2[ACP]
+    end
+
+    subgraph App["Couche Application"]
+        B1[App Server]
+        B2[Agent Loop]
+        B3[Request Broker]
+    end
+
+    subgraph Core["Couche Core"]
+        C1[Tool Manager]
+        C2[BaseTool]
+        C3[Outils builtins]
+        C4[PermissionStore]
+        C5[Workspace]
+    end
+
+    subgraph Config["Couche Configuration"]
+        D1[VibeConfigSchema]
+        D2[TrustedFoldersManager]
+    end
+
+    A1 -->|callback/respond| B1
+    A2 -->|callback/respond| B1
+    B1 -->|valide| B2
+    B2 -->|utilise| C1
+    B2 -->|utilise| C4
+    C1 -->|gère| C2
+    C1 -->|gère| C3
+    C2 -->|hérite| C3
+    C2 -->|utilise| C5
+    C4 -->|stocke règles| B2
+    B2 -->|lit| D1
+    D1 -->|charge| D2
+                    </pre>
+                </div>
+                <figcaption>
+                    <strong>Comment lire ce diagramme :</strong> Les flèches montrent les dépendances entre couches. L'Interface (UI/ACP) communique avec l'App Server qui valide via l'Agent Loop. Le Core contient la logique métier, et la Configuration fournit les paramètres.
+                </figcaption>
+                <button class="mermaid-fullscreen-btn" onclick="openFullscreenMermaid(this)">Agrandir</button>
+            </div>
+        </section>
+
+        <section>
+            <h2>Fichiers principaux et leurs rôles</h2>
+
+            <h3>📁 Bibliothèque centrale des permissions</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Chemin</th>
+                        <th>Rôle</th>
+                        <th>Composants clés</th>
+                        <th>Source</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>vibe/permissions.py</code></td>
+                        <td><strong>Bibliothèque centrale</strong> pour les motifs de chemins et matching</td>
+                        <td><code>PathGrantScope</code>, <code>PermissionScope</code>, <code>RequiredPermission</code>, <code>path_grant_pattern()</code>, <code>path_pattern_matches()</code>, <code>path_grant_pattern_matches()</code></td>
+                        <td><code>vibe/permissions.py:L1-100</code></td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="callout note">
+                <p><strong>Détails :</strong></p>
+                <ul>
+                    <li>Définit les énumérations de base pour les permissions de chemins</li>
+                    <li>Fournit des fonctions utilitaires pour le matching de motifs</li>
+                    <li>Utilisé par tous les outils pour valider les permissions de chemins</li>
+                </ul>
+            </div>
+
+            <h3>📁 Modèles de données pour les permissions</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Chemin</th>
+                        <th>Rôle</th>
+                        <th>Composants clés</th>
+                        <th>Source</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>vibe/core/tools/models.py</code></td>
+                        <td><strong>Modèles Pydantic</strong> pour les permissions des outils</td>
+                        <td><code>ToolPermission</code> (ALWAYS/NVER/ASK), <code>ToolPermissionError</code>, <code>PermissionContext</code>, <code>ApprovedRule</code>, <code>RequiredPermission</code></td>
+                        <td><code>vibe/core/tools/models.py:L1-38</code></td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="callout note">
+                <p><strong>Détails :</strong></p>
+                <ul>
+                    <li><code>ToolPermissionError</code> : Exception levée pour les échecs d'autorisation (ADR 0004 recommande de l'utiliser)</li>
+                    <li><code>PermissionContext</code> : Contexte retourné par <code>Tool.resolve_permission()</code>, contient <code>permission</code> + <code>required_permissions</code> + <code>reason</code></li>
+                    <li><code>ApprovedRule</code> : Règle de permission accordée, stockée dans <code>PermissionStore</code></li>
+                </ul>
+            </div>
+
+            <h3>📁 Stockage et gestion des permissions</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Chemin</th>
+                        <th>Rôle</th>
+                        <th>Composants clés</th>
+                        <th>Source</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>vibe/core/tools/permissions.py</code></td>
+                        <td><strong>Storage des permissions de session</strong></td>
+                        <td><code>PermissionStore</code>, méthodes <code>covers()</code>, <code>add_rule()</code>, <code>set_tool_permission()</code>, <code>get_tool_permission()</code>, <code>reset()</code></td>
+                        <td><code>vibe/core/tools/permissions.py:L16-56</code></td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="callout note">
+                <p><strong>Détails :</strong></p>
+                <ul>
+                    <li><code>PermissionStore._rules</code> : Liste des règles accordées pour la session (<code>list[ApprovedRule]</code>)</li>
+                    <li><code>PermissionStore._tool_permissions</code> : Permissions globales par outil pour la session (<code>dict[str, ToolPermission]</code>)</li>
+                    <li><code>PermissionStore.lock</code> : Verrou asyncio pour la thread-safety</li>
+                    <li><code>PermissionStore.covers(tool_name, rp)</code> : Vérifie si une <code>RequiredPermission</code> est couverte par une règle existante</li>
+                </ul>
+            </div>
+
+            <h3>📁 Classe de base pour tous les outils</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Chemin</th>
+                        <th>Rôle</th>
+                        <th>Composants clés</th>
+                        <th>Source</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>vibe/core/tools/base.py</code></td>
+                        <td><strong>Classe abstraite BaseTool</strong></td>
+                        <td>Méthode abstraite <code>resolve_permission(args) -> PermissionContext | None</code>, <code>BaseToolConfig</code>, <code>InvokeContext</code>, <code>ToolError</code>, <code>CancellableToolResult</code>, <code>ToolInfo</code></td>
+                        <td><code>vibe/core/tools/base.py:L1-487</code></td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="callout note">
+                <p><strong>Détails :</strong></p>
+                <ul>
+                    <li><strong>Toute classe d'outil doit hériter de <code>BaseTool[ToolArgs, ToolResult, ToolConfig, ToolState]</code></strong></li>
+                    <li><code>resolve_permission()</code> : Méthode à implémenter par chaque outil pour définir des permissions spécifiques</li>
+                    <li><code>BaseToolConfig</code> : Contient <code>permission: ToolPermission</code>, <code>allowlist: list[str]</code>, <code>denylist: list[str]</code>, <code>sensitive_patterns: list[str]</code></li>
+                    <li><code>InvokeContext</code> : Contexte passé à l'outil lors de l'invocation, inclut <code>permission_store: PermissionStore | None</code></li>
+                </ul>
+            </div>
+
+            <h3>📁 Gestionnaire des outils</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Chemin</th>
+                        <th>Rôle</th>
+                        <th>Composants clés</th>
+                        <th>Source</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>vibe/core/tools/manager.py</code></td>
+                        <td><strong>Gestion centralisée</strong> des outils (builtin, plugins, MCP, connectors)</td>
+                        <td><code>ToolManager</code>, <code>integrate_mcp()</code>, <code>integrate_connectors()</code>, <code>get_tool_config()</code>, <code>get()</code>, <code>available_tools</code>, <code>registered_tools</code></td>
+                        <td><code>vibe/core/tools/manager.py:L1-795</code></td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="callout note">
+                <p><strong>Détails :</strong></p>
+                <ul>
+                    <li><code>ToolManager.__init__()</code> : Initialise avec <code>permission_getter</code> optionnel (typiquement <code>PermissionStore.get_tool_permission</code>)</li>
+                    <li><code>get_tool_config(tool_name, default_permission=ToolPermission.ASK)</code> : Merge config par défaut + overrides utilisateur + override de permission</li>
+                    <li><code>integrate_mcp()</code> : Découvre et enregistre les outils MCP (<code>vibe/core/tools/manager.py:L560-580</code>)</li>
+                    <li><code>integrate_connectors()</code> : Découvre et enregistre les outils connectors (<code>vibe/core/tools/manager.py:L582-600</code>)</li>
+                    <li><strong>Tous les outils (builtin, plugins, MCP, connectors) passent par le même système de permission</strong></li>
+                </ul>
+            </div>
+
+            <h3>📁 Fonctions utilitaires pour les outils</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Chemin</th>
+                        <th>Rôle</th>
+                        <th>Composants clés</th>
+                        <th>Source</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>vibe/core/tools/utils.py</code></td>
+                        <td><strong>Fonctions utilitaires</strong> pour la résolution des permissions</td>
+                        <td><code>resolve_file_tool_permission()</code>, <code>resolve_path_permission()</code>, <code>is_path_within_workdir()</code>, <code>matches_sensitive_pattern()</code>, <code>ambient_workspace()</code></td>
+                        <td><code>vibe/core/tools/utils.py:L1-250</code></td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="callout note">
+                <p><strong>Détails :</strong></p>
+                <ul>
+                    <li><code>resolve_file_tool_permission(path_str, ...)</code> : Résout les permissions pour les outils basés sur des fichiers (<code>read_file</code>, <code>write_file</code>, <code>edit</code>, <code>grep</code>)
+                        <ul>
+                            <li>Vérifie scratchpad → toujours ALWAYS</li>
+                            <li>Vérifie allowlist/denylist</li>
+                            <li>Détecte motifs sensibles</li>
+                            <li>Vérifie limites du workspace</li>
+                        </ul>
+                    </li>
+                    <li><code>is_path_within_workdir(path_str, workspace)</code> : Vérifie si un chemin est dans le workspace autorisé</li>
+                </ul>
+            </div>
+
+            <h3>🛠 Outils builtins (implémentations concrètes)</h3>
+
+            <h4>Outils de fichier</h4>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Chemin</th>
+                        <th>Rôle</th>
+                        <th>Permission par défaut</th>
+                        <th>Méthode <code>resolve_permission()</code></th>
+                        <th>Source</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>vibe/core/tools/builtins/read_file.py</code></td>
+                        <td>Lecture de fichiers</td>
+                        <td>Non définie explicitement (dépend de config)</td>
+                        <td>Appelle <code>resolve_file_tool_permission()</code></td>
+                        <td><code>vibe/core/tools/builtins/read_file.py:L100-115</code></td>
+                    </tr>
+                    <tr>
+                        <td><code>vibe/core/tools/builtins/write_file.py</code></td>
+                        <td>Écriture de fichiers</td>
+                        <td>Non définie explicitement (dépend de config)</td>
+                        <td>Appelle <code>resolve_file_tool_permission()</code></td>
+                        <td><code>vibe/core/tools/builtins/write_file.py:L95-109</code></td>
+                    </tr>
+                    <tr>
+                        <td><code>vibe/core/tools/builtins/edit.py</code></td>
+                        <td>Édition de fichiers</td>
+                        <td>Non définie explicitement (dépend de config)</td>
+                        <td>Appelle <code>resolve_file_tool_permission()</code></td>
+                        <td><code>vibe/core/tools/builtins/edit.py:L88-96</code></td>
+                    </tr>
+                    <tr>
+                        <td><code>vibe/core/tools/builtins/grep.py</code></td>
+                        <td>Recherche dans les fichiers</td>
+                        <td>Non définie explicitement (dépend de config)</td>
+                        <td>Appelle <code>resolve_file_tool_permission()</code></td>
+                        <td><code>vibe/core/tools/builtins/grep.py:L191-199</code></td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="callout warning">
+                <p><strong>Note :</strong> Aucun outil builtin n'a de permission par défaut <strong>hardcodée</strong>. Tous dépendent de la configuration. Dans la pratique, <code>read_file</code> est souvent configuré avec <code>permission = "always"</code> et <code>write_file</code> avec <code>permission = "ask"</code>.</p>
+            </div>
+
+            <h4>Outils shell</h4>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Chemin</th>
+                        <th>Rôle</th>
+                        <th>Permission par défaut</th>
+                        <th>Méthode <code>resolve_permission()</code></th>
+                        <th>Source</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>vibe/core/tools/builtins/bash.py</code></td>
+                        <td>Exécution shell POSIX</td>
+                        <td>Non définie explicitement (dépend de config)</td>
+                        <td>Analyse syntaxique complète avec tree-sitter</td>
+                        <td><code>vibe/core/tools/builtins/bash.py:L684-739</code></td>
+                    </tr>
+                    <tr>
+                        <td><code>vibe/core/tools/builtins/git_bash.py</code></td>
+                        <td>Exécution git dans bash</td>
+                        <td>Non définie explicitement (dépend de config)</td>
+                        <td>Spécifique à git</td>
+                        <td><code>vibe/core/tools/builtins/git_bash.py:L211-250</code></td>
+                    </tr>
+                    <tr>
+                        <td><code>vibe/core/tools/builtins/experimental_bash.py</code></td>
+                        <td>Bash expérimental</td>
+                        <td>Non définie explicitement (dépend de config)</td>
+                        <td>Analyse avancée</td>
+                        <td><code>vibe/core/tools/builtins/experimental_bash.py:L1834-1900</code></td>
+                    </tr>
+                    <tr>
+                        <td><code>vibe/core/tools/builtins/windows_shell.py</code></td>
+                        <td>Exécution shell Windows</td>
+                        <td>Non définie explicitement (dépend de config)</td>
+                        <td>Analyse pour PowerShell/cmd</td>
+                        <td><code>vibe/core/tools/builtins/windows_shell.py:L914-1050</code></td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="callout note">
+                <p><strong>Détails bash.py :</strong></p>
+                <ul>
+                    <li>Utilise <code>tree-sitter</code> pour l'analyse syntaxique (<code>_shell_permission_analysis.py</code>)</li>
+                    <li>Vérifie :
+                        <ul>
+                            <li>Guardrails (git repository, options guardrails)</li>
+                            <li>Chemins en dehors du workspace</li>
+                            <li>Allowlist/Denylist</li>
+                            <li>Commandes sensibles (sudo, etc.)</li>
+                            <li>Commandes enchaînées (&&, |, ;, eval, exec)</li>
+                            <li>Substitutions de commandes ($(...))</li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+            <p><strong>Source :</strong> <code>vibe/core/tools/builtins/bash.py:L684-739</code>, <code>vibe/core/tools/builtins/_shell_permission_analysis.py:L1-150</code></p>
+
+            <h4>Outils réseau</h4>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Chemin</th>
+                        <th>Rôle</th>
+                        <th>Permission par défaut</th>
+                        <th>Méthode <code>resolve_permission()</code></th>
+                        <th>Source</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>vibe/core/tools/builtins/web_fetch.py</code></td>
+                        <td>Récupération URL</td>
+                        <td>Non définie explicitement (dépend de config)</td>
+                        <td>Vérifie l'origin de l'URL</td>
+                        <td><code>vibe/core/tools/builtins/web_fetch.py:L105-130</code></td>
+                    </tr>
+                    <tr>
+                        <td><code>vibe/core/tools/builtins/web_search.py</code></td>
+                        <td>Recherche web</td>
+                        <td>Non définie explicitement (dépend de config)</td>
+                        <td>À vérifier</td>
+                        <td><code>vibe/core/tools/builtins/web_search.py</code></td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="callout note">
+                <p><strong>Détails web_fetch.py :</strong></p>
+                <ul>
+                    <li>Si <code>config.permission == ALWAYS</code> → retourne <code>PermissionContext(permission=ALWAYS)</code></li>
+                    <li>Si <code>config.permission == NEVER</code> → retourne <code>PermissionContext(permission=NEVER)</code></li>
+                    <li>Sinon → ajoute <code>RequiredPermission(scope=URL_PATTERN, invocation_pattern=origin, session_pattern=origin, label=f"fetching from {origin}")</code></li>
+                </ul>
+            </div>
+            <p><strong>Source :</strong> <code>vibe/core/tools/builtins/web_fetch.py:L105-130</code></p>
+
+            <h4>Autres outils</h4>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Chemin</th>
+                        <th>Rôle</th>
+                        <th>Permission par défaut</th>
+                        <th>Méthode <code>resolve_permission()</code></th>
+                        <th>Source</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>vibe/core/tools/builtins/skill.py</code></td>
+                        <td>Gestion des skills</td>
+                        <td>Non définie explicitement (dépend de config)</td>
+                        <td>Implémentation spécifique</td>
+                        <td><code>vibe/core/tools/builtins/skill.py:L172-180</code></td>
+                    </tr>
+                    <tr>
+                        <td><code>vibe/core/tools/builtins/task.py</code></td>
+                        <td>Gestion des tâches</td>
+                        <td>Non définie explicitement (dépend de config)</td>
+                        <td>Implémentation spécifique</td>
+                        <td><code>vibe/core/tools/builtins/task.py:L77-85</code></td>
+                    </tr>
+                    <tr>
+                        <td><code>vibe/core/tools/builtins/ask_user_question.py</code></td>
+                        <td>Questions utilisateur</td>
+                        <td>Non définie explicitement (dépend de config)</td>
+                        <td>Implémentation spécifique</td>
+                        <td><code>vibe/core/tools/builtins/ask_user_question.py</code></td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>📁 Analyse des commandes shell</h3>
+
+            <h4>Politiques de commandes shell</h4>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Chemin</th>
+                        <th>Rôle</th>
+                        <th>Composants clés</th>
+                        <th>Source</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>vibe/core/tools/builtins/_shell_command_policy.py</code></td>
+                        <td><strong>Politiques de commandes shell</strong></td>
+                        <td><code>analyze_shell_command_policy()</code>, <code>git_repository_requires_approval()</code>, <code>git_repository_identity()</code>, <code>has_option_guardrails()</code>, <code>path_candidates()</code></td>
+                        <td><code>vibe/core/tools/builtins/_shell_command_policy.py:L1-150</code></td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="callout note">
+                <p><strong>Détails :</strong></p>
+                <ul>
+                    <li>Détecte les commandes git dans un repository</li>
+                    <li>Vérifie les options dangereuses (--force, etc.)</li>
+                    <li>Identifie les chemins candidats dans les commandes</li>
+                </ul>
+            </div>
+
+            <h4>Analyse syntaxique des commandes shell</h4>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Chemin</th>
+                        <th>Rôle</th>
+                        <th>Composants clés</th>
+                        <th>Source</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>vibe/core/tools/builtins/_shell_permission_analysis.py</code></td>
+                        <td><strong>Analyse syntaxique</strong> des commandes shell</td>
+                        <td><code>ShellPermissionAnalysis</code>, <code>analyze_shell_command()</code>, détection des nœuds dynamiques, compounds, redirections</td>
+                        <td><code>vibe/core/tools/builtins/_shell_permission_analysis.py:L1-150</code></td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="callout note">
+                <p><strong>Détails :</strong></p>
+                <ul>
+                    <li>Utilise <code>tree-sitter</code> avec la grammaire Bash</li>
+                    <li>Détecte :
+                        <ul>
+                            <li>Commandes imbriquées (eval, exec)</li>
+                            <li>Substitutions de commandes ($(...))</li>
+                            <li>Expansions de variables</li>
+                            <li>Boucles et conditions</li>
+                            <li>Redirections de fichiers</li>
+                            <li>Nœuds "non fidèles" (function_definition, etc.)</li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+
+            <h3>📁 Boucle de l'agent (Agent Loop)</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Chemin</th>
+                        <th>Rôle</th>
+                        <th>Composants clés</th>
+                        <th>Source</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>vibe/core/agent_loop/_loop.py</code></td>
+                        <td><strong>Boucle principale</strong> de l'agent</td>
+                        <td><code>AgentLoop</code>, <code>_should_execute_tool()</code>, <code>_ask_approval()</code>, <code>resolve_approval_request()</code>, <code>set_tool_permission()</code>, <code>approve_always()</code></td>
+                        <td><code>vibe/core/agent_loop/_loop.py:L1-163212</code></td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="callout note">
+                <p><strong>Méthodes clés pour les permissions :</strong></p>
+                <ul>
+                    <li><code>_should_execute_tool(tool, args, tool_call_id) -> ToolDecision</code> (L3027-3070) : <strong>Point central</strong> de la décision de permission
+                        <ul>
+                            <li>Vérifie <code>bypass_tool_permissions</code></li>
+                            <li>Appelle <code>tool.resolve_permission(args)</code></li>
+                            <li>Gère ALWAYS/NVER/ASK</li>
+                            <li>Vérifie si les permissions requises sont couvertes</li>
+                        </ul>
+                    </li>
+                    <li><code>_ask_approval(tool_name, args, tool_call_id, required_permissions) -> ToolDecision</code> (L3068-3095) : Demande d'approbation à l'utilisateur</li>
+                    <li><code>resolve_approval_request(request_id, response, feedback)</code> (L1147-1148) : Résout une demande d'approbation</li>
+                    <li><code>set_tool_permission(tool_name, permission, save_permanently=False)</code> (L1158-1166) : Définit la permission globale pour un outil</li>
+                    <li><code>approve_always(tool_name, required_permissions, save_permanently=False)</code> (L1174-1195) : Gère les approbations "Always allow"</li>
+                </ul>
+            </div>
+            <div class="callout note">
+                <p><strong>Types utilisés :</strong></p>
+                <ul>
+                    <li><code>ToolExecutionResponse</code> (SKIP, EXECUTE) (L249-251)</li>
+                    <li><code>ApprovalSource</code> (CONFIG, SMART, USER, BYPASS, NEVER) (L254-260)</li>
+                    <li><code>ToolDecision</code> (verdict, approval_type, feedback, approval_source) (L267-270)</li>
+                </ul>
+            </div>
+
+            <h3>📁 Gestion des requêtes d'interaction</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Chemin</th>
+                        <th>Rôle</th>
+                        <th>Composants clés</th>
+                        <th>Source</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>vibe/core/agent_loop/_request_broker.py</code></td>
+                        <td><strong>Gestion des requêtes d'interaction</strong></td>
+                        <td><code>InteractionRequestBroker</code>, <code>request_approval()</code>, <code>request_user_input()</code>, <code>resolve_approval()</code>, <code>resolve_user_input()</code></td>
+                        <td><code>vibe/core/agent_loop/_request_broker.py:L1-100</code></td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="callout note">
+                <p><strong>Méthodes clés :</strong></p>
+                <ul>
+                    <li><code>request_approval(tool_name, args, tool_call_id, required_permissions) -> tuple[ApprovalResponse, str | None]</code> (L41-70) : Crée un callback de permission et attend la réponse</li>
+                    <li><code>resolve_approval(request_id, response, feedback)</code> (L89-92) : Résout le Future avec la réponse utilisateur</li>
+                </ul>
+            </div>
+
+            <h3>📁 App Server</h3>
+
+            <h4>Gestion des tours et callbacks</h4>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Chemin</th>
+                        <th>Rôle</th>
+                        <th>Composants clés</th>
+                        <th>Source</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>vibe/app_server/_turns.py</code></td>
+                        <td><strong>Gestion des tours et callbacks</strong></td>
+                        <td><code>_handle_approval_request()</code>, <code>_open_callback()</code>, <code>_request_user_input()</code></td>
+                        <td><code>vibe/app_server/_turns.py:L885-900</code></td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="callout note">
+                <p><strong>Méthodes clés :</strong></p>
+                <ul>
+                    <li><code>_handle_approval_request(client, request)</code> (L885-895) : Ouvre un callback d'approbation dans l'UI</li>
+                    <li><code>_open_callback(event, detail, title)</code> (L901-920) : Affiche le callback à l'utilisateur</li>
+                    <li><code>action_reject()</code> dans <code>approval_app.py</code> (L253) : Gère le refus (Esc ou n)</li>
+                </ul>
+            </div>
+
+            <h4>Gestion des sessions</h4>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Chemin</th>
+                        <th>Rôle</th>
+                        <th>Composants clés</th>
+                        <th>Source</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>vibe/app_server/session.py</code></td>
+                        <td><strong>Gestion des sessions</strong></td>
+                        <td><code>respond_to_callback()</code>, <code>deny_callback()</code></td>
+                        <td><code>vibe/app_server/session.py:L713-735</code></td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="callout note">
+                <p><strong>Méthodes clés :</strong></p>
+                <ul>
+                    <li><code>respond_to_callback(callback_id, output)</code> (L713-722) : Envoie la réponse du callback au backend</li>
+                    <li><code>deny_callback(callback, feedback)</code> (L724-735) : Méthode utilitaire pour refuser un callback</li>
+                </ul>
+            </div>
+
+            <h3>📁 Configuration</h3>
+
+            <h4>Schéma de configuration global</h4>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Chemin</th>
+                        <th>Rôle</th>
+                        <th>Composants clés</th>
+                        <th>Source</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>vibe/core/config/vibe_schema.py</code></td>
+                        <td><strong>Schéma de configuration global</strong></td>
+                        <td><code>VibeConfigSchema</code>, <code>tools: dict</code>, <code>bypass_tool_permissions: bool</code></td>
+                        <td><code>vibe/core/config/vibe_schema.py:L414-440, L630</code></td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="callout note">
+                <p><strong>Détails :</strong></p>
+                <ul>
+                    <li><code>tools: Annotated[dict[str, dict[str, Any]], WithDeepMerge(), BeforeValidator(_normalize_tool_configs)]</code> : Configuration par outil</li>
+                    <li><code>bypass_tool_permissions: Annotated[bool, WithReplaceMerge()] = False</code> : Contourne toutes les vérifications de permission</li>
+                </ul>
+            </div>
+
+            <h4>Modèles de configuration</h4>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Chemin</th>
+                        <th>Rôle</th>
+                        <th>Composants clés</th>
+                        <th>Source</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>vibe/core/config/models.py</code></td>
+                        <td><strong>Modèles de configuration</strong></td>
+                        <td><code>BaseToolConfig</code> (hérité par tous les outils)</td>
+                        <td><code>vibe/core/config/models.py:L1-100</code></td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="callout note">
+                <p><strong>Détails :</strong> <code>BaseToolConfig</code> : Contient <code>permission: ToolPermission</code>, <code>allowlist: list[str]</code>, <code>denylist: list[str]</code>, <code>sensitive_patterns: list[str]</code></p>
+            </div>
+
+            <h4>Gestion des dossiers de confiance</h4>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Chemin</th>
+                        <th>Rôle</th>
+                        <th>Composants clés</th>
+                        <th>Source</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>vibe/core/trusted_folders.py</code></td>
+                        <td><strong>Gestion des dossiers de confiance</strong></td>
+                        <td><code>TrustedFoldersManager</code>, <code>WorkspaceTrustStatus</code>, <code>WorkspaceTrustDecision</code>, <code>trusted_folders_manager</code> (singleton)</td>
+                        <td><code>vibe/core/trusted_folders.py:L1-345</code></td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="callout note">
+                <p><strong>Détails :</strong></p>
+                <ul>
+                    <li>Gère la confiance des <strong>dossiers workspace</strong> (pas les permissions des outils)</li>
+                    <li>Stocke les données dans <code>~/.vibe/trusted_folders.toml</code></li>
+                    <li>Fournit <code>is_trusted(path)</code>, <code>trust_status(path)</code>, <code>add_trusted(path)</code>, <code>add_untrusted(path)</code>, <code>trust_for_session(path)</code></li>
+                </ul>
+            </div>
+
+            <h3>📁 Interface utilisateur (Textual TUI)</h3>
+
+            <h4>Widget d'approbation</h4>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Chemin</th>
+                        <th>Rôle</th>
+                        <th>Composants clés</th>
+                        <th>Source</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>vibe/cli/textual_ui/widgets/approval_app.py</code></td>
+                        <td><strong>Widget d'approbation</strong></td>
+                        <td><code>ApprovalApp</code>, <code>ApprovalGranted</code>, <code>ApprovalGrantedAlwaysTool</code>, <code>ApprovalGrantedAlwaysPermanent</code>, <code>ApprovalRejected</code>, <code>action_reject()</code></td>
+                        <td><code>vibe/cli/textual_ui/widgets/approval_app.py:L1-320</code></td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="callout note">
+                <p><strong>Détails :</strong></p>
+                <ul>
+                    <li><strong>Bindings</strong> :
+                        <ul>
+                            <li><code>1</code> ou <code>y</code> → Approuve une fois (<code>action_select_1()</code>)</li>
+                            <li><code>2</code> → Approuve pour la session (<code>action_select_2()</code>)</li>
+                            <li><code>3</code> → Approuve définitivement (<code>action_select_3()</code>)</li>
+                            <li><code>4</code> ou <code>n</code> ou <code>Esc</code> → Refuse (<code>action_reject()</code> ou <code>action_select_4()</code>)</li>
+                        </ul>
+                    </li>
+                    <li><strong>Options</strong> :
+                        <ul>
+                            <li>"Allow once"</li>
+                            <li>"Allow for remainder of this session"</li>
+                            <li>"Always allow"</li>
+                            <li>"Deny"</li>
+                        </ul>
+                    </li>
+                    <li><strong>Messages postés</strong> :
+                        <ul>
+                            <li><code>ApprovalGranted</code> → Approuve une fois</li>
+                            <li><code>ApprovalGrantedAlwaysTool</code> → Approuve pour la session</li>
+                            <li><code>ApprovalGrantedAlwaysPermanent</code> → Approuve définitivement</li>
+                            <li><code>ApprovalRejected</code> → Refuse</li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+
+            <h4>Application principale Textual</h4>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Chemin</th>
+                        <th>Rôle</th>
+                        <th>Composants clés</th>
+                        <th>Source</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>vibe/cli/textual_ui/app.py</code></td>
+                        <td><strong>Application principale Textual</strong></td>
+                        <td>Handlers des messages d'approbation</td>
+                        <td><code>vibe/cli/textual_ui/app.py:L2126-2150</code></td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="callout note">
+                <p><strong>Méthodes clés :</strong></p>
+                <ul>
+                    <li><code>on_approval_app_approval_granted(message)</code> (L2128-2130) → <code>_respond_to_approval(APPROVE)</code></li>
+                    <li><code>on_approval_app_approval_granted_always_tool(message)</code> (L2131-2135) → <code>_respond_to_approval(APPROVE_FOR_SESSION)</code></li>
+                    <li><code>on_approval_app_approval_granted_always_permanent(message)</code> (L2138-2142) → <code>_respond_to_approval(APPROVE_PERMANENTLY)</code></li>
+                    <li><code>on_approval_app_approval_rejected(message)</code> (L2145-2150) → <code>_respond_to_approval(DENY)</code> + logging télémetry</li>
+                    <li><code>_respond_to_approval(decision, feedback, path_scope)</code> (L3123-3133) → Transmet la réponse au serveur</li>
+                </ul>
+            </div>
+
+            <h3>📁 Types et modèles publics</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Chemin</th>
+                        <th>Rôle</th>
+                        <th>Composants clés</th>
+                        <th>Source</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>vibe/core/types.py</code></td>
+                        <td><strong>Types publics</strong></td>
+                        <td><code>ApprovalResponse</code> (YES, NO), <code>ToolExecutionResponse</code> (SKIP, EXECUTE), <code>ApprovalSource</code> (CONFIG, SMART, USER, BYPASS, NEVER)</td>
+                        <td><code>vibe/core/types.py:L278-280</code></td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="callout note">
+                <p><strong>Détails :</strong></p>
+                <ul>
+                    <li><code>ApprovalResponse</code> : Réponse utilisateur aux callbacks (YES="y", NO="n")</li>
+                    <li><code>ToolExecutionResponse</code> : Décision finale pour l'exécution d'un outil (SKIP, EXECUTE)</li>
+                    <li><code>ApprovalSource</code> : Source de la décision de permission (CONFIG, SMART, USER, BYPASS, NEVER)</li>
+                </ul>
+            </div>
+
+            <h3>📁 Workspace</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Chemin</th>
+                        <th>Rôle</th>
+                        <th>Composants clés</th>
+                        <th>Source</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>vibe/core/workspace.py</code></td>
+                        <td><strong>Gestion du workspace</strong></td>
+                        <td><code>Workspace</code>, <code>for_session()</code>, <code>allows()</code></td>
+                        <td><code>vibe/core/workspace.py:L1-100</code></td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="callout note">
+                <p><strong>Détails :</strong></p>
+                <ul>
+                    <li>Définit les racines de confiance pour le workspace</li>
+                    <li><code>for_session(cwd, project_roots)</code> : Crée un workspace pour une session</li>
+                    <li><code>allows(path)</code> : Vérifie si un chemin est autorisé dans le workspace</li>
+                </ul>
+            </div>
+        </section>
+
+        <section>
+            <h2>Corrections apportées par rapport au fichier original</h2>
+
+            <h3>❌ Erreurs corrigées</h3>
+            <ol>
+                <li><strong>Fichiers inexistants supprimés</strong> :
+                    <ul>
+                        <li><code>vibe/app_server/_unified_permissions.py</code> → <strong>N'existe pas</strong> dans le code actuel</li>
+                        <li><code>vibe/app_server/_approval_permissions.py</code> → <strong>N'existe pas</strong></li>
+                        <li><code>vibe/app_server/_provided_tools.py</code> → <strong>N'existe pas</strong></li>
+                        <li>Ces fichiers semblent être des artefacts d'une ancienne version ou de la partie Rust</li>
+                    </ul>
+                </li>
+                <li><strong>Chemins corrigés</strong> :
+                    <ul>
+                        <li><code>vibe/core/agent/loop.py</code> → <strong>Corrigé en</strong> <code>vibe/core/agent_loop/_loop.py</code></li>
+                    </ul>
+                </li>
+                <li><strong>Structure clarifiée</strong> :
+                    <ul>
+                        <li>Distinction claire entre :
+                            <ul>
+                                <li><strong>Permissions des outils</strong> (gérées par <code>PermissionStore</code>, <code>ToolPermission</code>, etc.)</li>
+                                <li><strong>Confiance workspace</strong> (gérée par <code>TrustedFoldersManager</code>)</li>
+                            </ul>
+                        </li>
+                        <li>Ces deux systèmes sont <strong>indépendants</strong></li>
+                    </ul>
+                </li>
+                <li><strong>Permissions par défaut clarifiées</strong> :
+                    <ul>
+                        <li>Aucun outil builtin n'a de permission par défaut <strong>hardcodée</strong> dans le code</li>
+                        <li>Les permissions par défaut dépendent de la configuration (<code>config.toml</code>)</li>
+                    </ul>
+                </li>
+                <li><strong>Flux de permission précis</strong> :
+                    <ul>
+                        <li>Le flux réel passe par <code>AgentLoop._should_execute_tool()</code> → <code>tool.resolve_permission()</code> → vérification dans <code>PermissionStore</code></li>
+                        <li>Pas de <code>UnifiedPermissionResolver</code> dans le code Python actuel (peut exister dans la partie Rust)</li>
+                    </ul>
+                </li>
+            </ol>
+
+            <h3>⚠️ Non vérifié</h3>
+            <ol>
+                <li><strong>Intégration avec Rust Runtime</strong> : Les fichiers <code>_unified_permissions.py</code>, <code>_approval_permissions.py</code> mentionnés dans le code original n'existent pas dans le code Python. Ils peuvent exister dans la partie Rust du projet (<code>vibe/cli-rust/</code> ou <code>harness/</code>). <strong>Non vérifié</strong> car hors scope (seulement code Python demandé).</li>
+                <li><strong>Persistence des permissions permanentes</strong> : Le mécanisme exact de persistance via <code>ConfigOrchestrator</code> n'a pas été vérifié en détail. La méthode <code>set_field_or_warn()</code> est appelée, mais le chemin exact de sauvegarde dans le fichier n'a pas été confirmé.</li>
+            </ol>
+        </section>
+        </main>
+    </div>
+
+    <div class="nav-bottom">
+        <a href="03-fichiers-utilisateur.html">← Précédent : Fichiers utilisateur</a>
+        <a href="05-securite-et-sandbox.html">Suivant : Sécurité et sandbox →</a>
+    </div>
+
+    <!-- Modal pour plein écran -->
+    <div class="mermaid-modal" id="mermaidModal">
+        <div class="mermaid-modal-content">
+            <button class="mermaid-modal-close" onclick="closeFullscreenMermaid()">&times;</button>
+            <div id="mermaidModalContent"></div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration Mermaid
+        mermaid.initialize({
+            startOnLoad: false,
+            securityLevel: 'loose',
+            theme: window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'default'
+        });
+
+        // Re-render sur changement de thème
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
+            mermaid.initialize({
+                startOnLoad: false,
+                securityLevel: 'loose',
+                theme: e.matches ? 'dark' : 'default'
+            });
+            renderAllMermaid();
+        });
+
+        // Rendre tous les diagrammes
+        function renderAllMermaid() {
+            const diagrams = document.querySelectorAll('.mermaid');
+            diagrams.forEach(d => {
+                try {
+                    const content = d.textContent;
+                    d.innerHTML = content;
+                    mermaid.init(undefined, d);
+                } catch (e) {
+                    console.error('Erreur Mermaid:', e);
+                    d.innerHTML = '<p style="color: red;">Erreur d\'affichage du diagramme</p>';
+                }
+            });
+        }
+
+        // Navigation mobile
+        function toggleMobileNav() {
+            const navLinks = document.getElementById('navLinks');
+            navLinks.classList.toggle('mobile-open');
+        }
+
+        // Gestion du plein écran
+        function openFullscreenMermaid(button) {
+            const container = button.closest('.mermaid-container');
+            const mermaidElement = container.querySelector('.mermaid');
+            const modal = document.getElementById('mermaidModal');
+            const modalContent = document.getElementById('mermaidModalContent');
+            
+            modalContent.innerHTML = '<div class="mermaid">' + mermaidElement.textContent + '</div>';
+            modal.classList.add('active');
+            
+            mermaid.initialize({
+                startOnLoad: false,
+                securityLevel: 'loose',
+                theme: window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'default'
+            });
+            mermaid.init(undefined, modalContent.querySelector('.mermaid'));
+        }
+
+        function closeFullscreenMermaid() {
+            document.getElementById('mermaidModal').classList.remove('active');
+        }
+
+        // Fermer avec Échap
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeFullscreenMermaid();
+            }
+        });
+
+        // Initialisation
+        document.addEventListener('DOMContentLoaded', function() {
+            renderAllMermaid();
+        });
+    </script>
+</body>
+</html>
