@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Système d'outils - Mistral Vibe</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="layout">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="logo">
+                <span class="logo-icon">🛠️</span>
+                <span class="logo-text">Tools</span>
+            </div>
+            <nav class="nav">
+                <div class="nav-section">
+                    <span class="nav-section-title">Documentation</span>
+                    <a href="#overview" class="nav-link active">Vue d'ensemble</a>
+                    <a href="#architecture" class="nav-link">Architecture</a>
+                    <a href="#streaming" class="nav-link">⚡ Générateur async</a>
+                    <a href="#discovery" class="nav-link">🔍 Découverte</a>
+                    <a href="#permissions" class="nav-link">🛡️ Permissions</a>
+                    <a href="#prompts" class="nav-link">📝 Prompts .md</a>
+                    <a href="#extras" class="nav-link">📸 Checkpoints & UI</a>
+                    <a href="#components" class="nav-link">Composants</a>
+                    <a href="#flow" class="nav-link">Flux d'exécution</a>
+                </div>
+                <div class="nav-section">
+                    <span class="nav-section-title">Qualité</span>
+                    <a href="#tests" class="nav-link">🧪 Tests</a>
+                    <a href="#quality" class="nav-link">✅ Qualité du code</a>
+                    <a href="#diagram" class="nav-link">🔗 Relations</a>
+                </div>
+            </nav>
+            <div class="sidebar-footer">
+                <span>vibe/core/tools/</span>
+            </div>
+        </aside>
+
+        <!-- Main content -->
+        <main class="main">
+            <header class="header">
+                <h1>Système d'outils de Mistral Vibe</h1>
+                <p class="subtitle">Documentation vérifiée du répertoire <code>vibe/core/tools/</code></p>
+                <div class="meta">
+                    <span class="meta-tag">Version 2.0 (révisée)</span>
+                    <span class="meta-tag">2026-11-02</span>
+                    <span class="meta-tag">44 fichiers Python</span>
+                    <span class="meta-tag">14 556 lignes de code</span>
+                    <span class="meta-tag">19 classes d'outils (15 principaux)</span>
+                    <span class="meta-tag">883 fonctions de test</span>
+                </div>
+            </header>
+
+            <!-- Overview -->
+            <section id="overview" class="section">
+                <h2>📌 Vue d'ensemble</h2>
+                <div class="callout">
+                    <p><strong>Ce répertoire implémente le système qui transforme les instructions de l'IA en actions concrètes</strong> : lecture/écriture de fichiers, exécution de commandes shell, appels à des APIs externes — avec un contrôle d'accès granulaire.</p>
+                </div>
+                <p>Sans ce système, Mistral Vibe serait un simple chat sans capacité d'action. Les outils sont le <strong>pont entre le raisonnement de l'IA et l'environnement d'exécution</strong>.</p>
+
+                <h3>Structure du répertoire (12 fichiers racine)</h3>
+                <div class="tree">
+                    <pre><code>vibe/core/tools/
+├── base.py              # ⭐ BaseTool : classe abstraite mère
+├── manager.py           # 🎯 ToolManager : découverte, registre, get()
+├── models.py            # 🔐 ToolPermission (ALWAYS/NEVER/ASK), PermissionContext
+├── permissions.py       # 🛡️ PermissionStore + wildcard_match
+├── io_port.py           # 🔌 ToolIOPort (Protocol) : read/write/run_shell
+├── ui.py                # 🎨 ToolUIData, ToolCallDisplay, ToolResultDisplay
+├── utils.py             # 🛠️ resolve_tool_path, DEFAULT_SENSITIVE_PATTERNS
+├── terminal_runtime.py  # ⏱️ TerminalRuntime
+├── arity.py             # 📐 build_session_pattern
+├── remote.py            # 🌐 MCPTool
+├── mcp_sampling.py      # 🎲 MCPSamplingHandler
+├── mcp_settings.py      # ⚙️ Config serveurs MCP
+│
+├── builtins/            # 🛠️ 17 .py → 15 outils principaux + 4 sous-outils + prompts/
+├── connectors/          # 🔌 connector_registry.py (3 fichiers)
+└── mcp/                 # 🌐 registry, pool, tools... (7 fichiers)</code></pre>
+                </div>
+            </section>
+
+            <!-- Architecture -->
+            <section id="architecture" class="section">
+                <h2>🏗️ Architecture</h2>
+
+                <div class="card-grid">
+                    <div class="card">
+                        <div class="card-icon">🧬</div>
+                        <h3>BaseTool[A, R, C, S]</h3>
+                        <p>Classe mère générique avec <strong>4 paramètres de type</strong> :</p>
+                        <ul>
+                            <li><code>ToolArgs</code> : args validés par Pydantic (ex: <code>ReadFileArgs</code>)</li>
+                            <li><code>ToolResult</code> : résultat yieldé (ex: <code>ReadFileResult</code>)</li>
+                            <li><code>ToolConfig</code> : config (permission, allowlist, denylist)</li>
+                            <li><code>ToolState</code> : état persistant entre appels</li>
+                        </ul>
+                        <div class="code-block">
+                            <code>run(args, ctx) -&gt; AsyncGenerator[ToolStreamEvent | ToolResult]</code><br>
+                            <code>get_name() : ReadFile → "read_file"</code>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-icon">🎯</div>
+                        <h3>ToolManager</h3>
+                        <p>Le registre central :</p>
+                        <ul>
+                            <li><code>available_tools</code> → <code>dict[str, type[BaseTool]]</code></li>
+                            <li><code>get(name)</code> → instance lazily créée et cachée</li>
+                            <li><code>get_tool_config(name)</code> → config effective</li>
+                            <li>Découverte multi-sources + sélection par <code>selection_priority</code></li>
+                        </ul>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-icon">🛡️</div>
+                        <h3>PermissionStore</h3>
+                        <p>3 niveaux de permission :</p>
+                        <div class="permission-levels">
+                            <span class="perm perm-always">ALWAYS</span>
+                            <span class="perm perm-never">NEVER</span>
+                            <span class="perm perm-ask">ASK</span>
+                        </div>
+                        <ul>
+                            <li><code>allowlist</code> / <code>denylist</code> : préfixes de commandes</li>
+                            <li><code>sensitive_patterns</code> : fichiers sensibles (<code>**/.env</code>)</li>
+                            <li><code>ApprovedRule</code> : règles de session avec wildcards (<code>"git status *"</code>)</li>
+                            <li><code>Workspace</code> : restriction aux dossiers de confiance</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Streaming -->
+            <section id="streaming" class="section">
+                <h2>⚡ Générateur asynchrone (streaming)</h2>
+                <p>Chaque <code>run()</code> est un <code>AsyncGenerator</code> qui yield des valeurs une par une. <code>invoke()</code> valide les args (Pydantic) puis consomme ce générateur.</p>
+
+                <h3>Deux types de yield</h3>
+                <table class="table">
+                    <thead>
+                        <tr><th>Type</th><th>Classe (types.py)</th><th>Quand ?</th><th>Exemple</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>ToolStreamEvent</code></td>
+                            <td><code>tool_name, message, tool_call_id</code></td>
+                            <td>Pendant l'exécution</td>
+                            <td><code>"Discovered AGENTS.md"</code></td>
+                        </tr>
+                        <tr>
+                            <td><code>ToolResult</code></td>
+                            <td>spécifique à l'outil (ex: <code>ReadFileResult</code>)</td>
+                            <td>Une seule fois, à la fin</td>
+                            <td><code>ReadFileResult(content=..., num_lines=42)</code></td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="diagram-container">
+                    <pre class="mermaid">
+sequenceDiagram
+    participant A as Agent
+    participant T as Invoke
+    participant R as Run
+    A->>T: invoke
+    T->>R: run
+    R-->>T: yield event
+    T-->>A: event
+    R-->>T: yield result
+    T-->>A: result
+</pre>
+                </div>
+            </section>
+
+            <!-- Discovery -->
+            <section id="discovery" class="section">
+                <h2>🔍 Découverte des outils — pas à pas</h2>
+                <ol>
+                    <li><strong>Chemins de recherche</strong> (<code>_compute_search_paths</code>) :
+                        <ul>
+                            <li><code>DEFAULT_TOOL_DIR</code> = <code>VIBE_ROOT/core/tools/builtins</code></li>
+                            <li><code>config.tool_paths</code> (depuis <code>vibe_schema.py</code>)</li>
+                            <li><code>harness_files.project_tools_dirs</code> = <code>.vibe/tools/</code> par projet</li>
+                            <li><code>harness_files.user_tools_dirs</code> = <code>~/.vibe/tools/</code></li>
+                        </ul>
+                    </li>
+                    <li><strong>Scan</strong> : chaque dossier → <code>glob("*.py")</code>, ignore les fichiers <code>_*</code>, charge le module, extrait les classes <code>BaseTool[...]</code></li>
+                    <li><strong>Sélection</strong> : si même nom, <code>selection_priority</code> (défaut 0) décide</li>
+                    <li><strong>Registre</strong> : <code>available_tools</code> → <code>{"read_file": ReadFile, ...}</code></li>
+                    <li><strong>Instanciation</strong> : <code>get(name)</code> → <code>from_config()</code> + cache</li>
+                </ol>
+            </section>
+
+            <!-- Permissions -->
+            <section id="permissions" class="section">
+                <h2>🛡️ Permissions — règles réelles de Bash</h2>
+                <p>Les listes par défaut dans <code>bash.py</code> (<code>_get_default_allowlist</code>, <code>_get_default_denylist</code>) :</p>
+
+                <h3>Allowlist (→ ALWAYS)</h3>
+                <div class="code-block">
+                    <code>cd, echo, git diff, git log, git status, tree, whoami<br>+ ~30 commandes read-only : ls, cat, grep, pwd, find, head, wc, diff, du, file, stat...</code>
+                </div>
+
+                <h3>Denylist (→ NEVER)</h3>
+                <div class="code-block">
+                    <code>vim, nano, vi, emacs, bash -i, sh -i, tmux, screen, gdb, pdb, passwd<br>denylist_standalone : python, python3, ipython (seuls)</code>
+                </div>
+
+                <h3>Sensitive patterns (fichiers → ASK même si ALWAYS)</h3>
+                <div class="code-block">
+                    <code>**/.env, **/.env.*, **/.envrc, ...</code>
+                </div>
+
+                <table class="table">
+                    <thead><tr><th>Commande</th><th>Verdict</th><th>Pourquoi</th></tr></thead>
+                    <tbody>
+                        <tr><td><code>git status</code></td><td><span class="perm perm-always">ALWAYS</span></td><td>dans allowlist</td></tr>
+                        <tr><td><code>ls -la</code></td><td><span class="perm perm-always">ALWAYS</span></td><td><code>ls</code> est read-only</td></tr>
+                        <tr><td><code>cat .env</code></td><td><span class="perm perm-ask">ASK</span></td><td><code>cat</code> allowlist MAIS <code>.env</code> = sensitive</td></tr>
+                        <tr><td><code>vim file.txt</code></td><td><span class="perm perm-never">NEVER</span></td><td><code>vim</code> dans denylist</td></tr>
+                        <tr><td><code>python</code> (seul)</td><td><span class="perm perm-never">NEVER</span></td><td>denylist_standalone</td></tr>
+                        <tr><td><code>python script.py</code></td><td><span class="perm perm-ask">ASK</span></td><td>pas standalone, pas allowlist</td></tr>
+                    </tbody>
+                </table>
+
+                <div class="diagram-container">
+                    <pre class="mermaid">
+flowchart TD
+    A[Appel] --> B{resolve}
+    B -->|None| C[Config]
+    B -->|Ctx| D{permission}
+    C --> D
+    D -->|ALWAYS| E[Auto]
+    D -->|NEVER| F[Refuse]
+    D -->|ASK| G{Store}
+    G -->|Oui| E
+    G -->|Non| H[Confirm]
+    H -->|Oui| E
+    H -->|Non| F
+</pre>
+                </div>
+            </section>
+
+            <!-- Prompts -->
+            <section id="prompts" class="section">
+                <h2>📝 Système de prompts (17 fichiers .md)</h2>
+                <p>Chaque outil builtin a un <code>.md</code> dans <code>builtins/prompts/</code> qui décrit son usage pour le LLM. Chargé via <code>get_tool_prompt()</code> (caché avec <code>functools.cache</code>) :</p>
+                <div class="code-block">
+                    <code>prompt_path = class_path.parent / "prompts" / f"{class_path.stem}.md"<br>return read_safe(prompt_path).text</code>
+                </div>
+                <p>La description envoyée au LLM = ce .md (ou <code>description</code> ClassVar si pas de .md).</p>
+            </section>
+
+            <!-- Checkpoints & UI -->
+            <section id="extras" class="section">
+                <h2>📸 Checkpoints & 🎨 UI</h2>
+                <div class="card-grid">
+                    <div class="card">
+                        <div class="card-icon">📸</div>
+                        <h3>Snapshots</h3>
+                        <p><code>get_file_snapshot(args)</code> appelé <strong>avant</strong> <code>run()</code> : capture le contenu du fichier pour permettre le <strong>rewind/undo</strong>.</p>
+                    </div>
+                    <div class="card">
+                        <div class="card-icon">🗂️</div>
+                        <h3>InvokeContext</h3>
+                        <p>Contexte passé à chaque <code>run()</code> : <code>tool_call_id</code>, <code>session_id</code>, <code>scratchpad_dir</code>, <code>permission_store</code>, <code>tool_io</code>, <code>interaction_requests</code>...</p>
+                    </div>
+                    <div class="card">
+                        <div class="card-icon">🎨</div>
+                        <h3>ToolUIData</h3>
+                        <p>3 méthodes d'affichage TUI par outil :</p>
+                        <ul>
+                            <li><code>format_call_display()</code> → "Reading README.md"</li>
+                            <li><code>get_result_display()</code> → "Read 42 lines"</li>
+                            <li><code>get_status_text()</code> → "Reading file"</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Components -->
+            <section id="components" class="section">
+                <h2>📦 Composants principaux</h2>
+                <table class="table">
+                    <thead>
+                        <tr><th>Fichier</th><th>Rôle</th><th>Importance</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td><code>base.py</code></td><td><code>BaseTool</code>, <code>InvokeContext</code>, snapshots (~490 lignes)</td><td>⭐⭐⭐⭐⭐</td></tr>
+                        <tr><td><code>manager.py</code></td><td><code>ToolManager</code>, découverte, registre (~800 lignes)</td><td>⭐⭐⭐⭐⭐</td></tr>
+                        <tr><td><code>permissions.py</code></td><td><code>PermissionStore</code>, <code>wildcard_match</code></td><td>⭐⭐⭐⭐⭐</td></tr>
+                        <tr><td><code>models.py</code></td><td><code>ToolPermission</code>, <code>PermissionContext</code></td><td>⭐⭐⭐⭐</td></tr>
+                        <tr><td><code>io_port.py</code></td><td><code>ToolIOPort</code> Protocol : read/write/shell</td><td>⭐⭐⭐⭐</td></tr>
+                        <tr><td><code>ui.py</code></td><td><code>ToolUIData</code>, affichage TUI</td><td>⭐⭐⭐</td></tr>
+                        <tr><td><code>utils.py</code></td><td><code>resolve_tool_path</code>, sensitive patterns</td><td>⭐⭐⭐</td></tr>
+                        <tr><td><code>terminal_runtime.py</code></td><td>Exécution commandes terminal</td><td>⭐⭐⭐</td></tr>
+                        <tr><td><code>arity.py</code></td><td><code>build_session_pattern</code></td><td>⭐⭐⭐</td></tr>
+                        <tr><td><code>remote.py</code></td><td><code>MCPTool</code></td><td>⭐⭐⭐</td></tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <!-- Flow -->
+            <section id="flow" class="section">
+                <h2>🔧 Flux d'exécution</h2>
+                <div class="diagram-container">
+                    <pre class="mermaid">
+flowchart TD
+    A[Agent] --> B[Get]
+    B --> C[Validate]
+    C --> D[Permission]
+    D -->|ALWAYS| E[Run]
+    D -->|ASK| F{User}
+    D -->|NEVER| G[Refuse]
+    F -->|Oui| E
+    F -->|Non| G
+    E --> H[Event]
+    H --> I[Result]
+    I --> J[UI]
+</pre>
+                </div>
+            </section>
+
+            <!-- Tests -->
+            <section id="tests" class="section">
+                <h2>🧪 Tests (mesurés le 2026-11-02)</h2>
+                <div class="stats-grid">
+                    <div class="stat">
+                        <div class="stat-value">33</div>
+                        <div class="stat-label">Fichiers de test</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value">883</div>
+                        <div class="stat-label">Fonctions def test_</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value">16 737</div>
+                        <div class="stat-label">Lignes de test</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value">82,5%</div>
+                        <div class="stat-label">Fichiers source testés (33/40)</div>
+                    </div>
+                </div>
+                <div class="callout">
+                    <p><strong>Méthode :</strong> ratio de couverture en <em>fichiers</em> (pas en lignes). Le projet n'utilise pas <code>coverage.py</code>. Les 883 <code>def test_</code> ne comptent pas les cas <code>@pytest.mark.parametrize</code>.</p>
+                </div>
+                <div class="tree">
+                    <pre><code>tests/
+├── core/tools/          # 7 fichiers (unitaires)
+│   └── builtins/        # 4 fichiers : test_read, test_write, test_edit...
+└── tools/               # 26 fichiers (intégration)
+    ├── test_bash.py              # 151 fonctions
+    ├── test_granular_permissions.py  # 83 fonctions
+    ├── test_connectors.py        # 83 fonctions
+    ├── test_mcp.py               # 89 fonctions
+    └── ...</code></pre>
+                </div>
+            </section>
+
+            <!-- Quality -->
+            <section id="quality" class="section">
+                <h2>✅ Qualité du code</h2>
+                <div class="tools-grid">
+                    <div class="tool-card"><h3>Pyright</h3><p>Typage statique strict</p><span class="version">&ge;1.1.403</span></div>
+                    <div class="tool-card"><h3>Ruff</h3><p>Lint + format (line-length=88, py312)</p><span class="version">&ge;0.15.18</span></div>
+                    <div class="tool-card"><h3>Typos</h3><p>Fautes de frappe</p><span class="version">&ge;1.34.0</span></div>
+                    <div class="tool-card"><h3>Pre-commit</h3><p>Hooks git</p><span class="version">&ge;4.2.0</span></div>
+                </div>
+                <h3>CI/CD — 4 jobs GitHub Actions</h3>
+                <ol>
+                    <li><strong>pre-commit</strong> : <code>pre-commit run --all-files</code></li>
+                    <li><strong>tests</strong> : <code>pytest --ignore tests/snapshots</code> + 3 retries <code>--lf</code></li>
+                    <li><strong>build-install-smoke</strong> : build wheel + install + smoke Linux/macOS/Windows</li>
+                    <li><strong>snapshot-tests</strong> : <code>pytest tests/snapshots</code> + upload rapport</li>
+                </ol>
+            </section>
+
+            <!-- Diagram -->
+            <section id="diagram" class="section">
+                <h2>🔗 Relations entre entités</h2>
+                <div class="diagram-container">
+                    <pre class="mermaid">
+classDiagram
+    class BaseTool {
+        +run
+        +invoke
+        +getName
+    }
+    class ToolManager {
+        +get
+        +available
+    }
+    class PermissionStore {
+        +covers
+        +addRule
+    }
+    class ToolIOPort {
+        +readLines
+        +runShell
+    }
+    ToolManager --> BaseTool
+    BaseTool --> PermissionStore
+    BaseTool --> ToolIOPort
+</pre>
+                </div>
+            </section>
+
+            <!-- Key points -->
+            <section class="section">
+                <h2>💡 Points clés à retenir</h2>
+                <div class="key-points">
+                    <div class="key-point"><span class="key-number">1</span> Tout outil hérite de <code>BaseTool[A,R,C,S]</code> — 4 génériques</div>
+                    <div class="key-point"><span class="key-number">2</span> <code>run()</code> = <code>AsyncGenerator</code> : yield <code>ToolStreamEvent</code> puis <code>ToolResult</code></div>
+                    <div class="key-point"><span class="key-number">3</span> <code>ToolManager.get(name)</code> instancie lazily ; <code>available_tools</code> liste tout</div>
+                    <div class="key-point"><span class="key-number">4</span> Permissions : <code>ALWAYS/NEVER/ASK</code> + règles session wildcard + sensitive files</div>
+                    <div class="key-point"><span class="key-number">5</span> Découverte multi-sources : builtins + tool_paths + .vibe/tools/ + ~/.vibe/tools/</div>
+                    <div class="key-point"><span class="key-number">6</span> Prompts .md dans <code>builtins/prompts/</code> = description LLM de chaque outil</div>
+                    <div class="key-point"><span class="key-number">7</span> Qualité : Pyright + Ruff + pre-commit + CI 4 jobs multi-OS</div>
+                </div>
+            </section>
+
+            <footer class="footer">
+                <p>Document révisé et vérifié contre le code source — Mistral Vibe, 2026-11-02</p>
+                <p><code>docs/understanding_vibe/tools/</code></p>
+            </footer>
+        </main>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
