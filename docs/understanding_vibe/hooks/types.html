@@ -1,0 +1,1213 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Types de Hooks - Mistral Vibe</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Fira+Code&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <div class="logo"><div class="logo-icon">V</div><span>Mistral Vibe Hooks</span></div>
+            <button class="nav-toggle" onclick="toggleNav()">☰</button>
+            <nav class="nav">
+                <a href="index.html">Accueil</a>
+                <a href="architecture.html">Architecture</a>
+                <a href="configuration.html">Configuration</a>
+                <a href="types.html" class="active">Types de Hooks</a>
+                <a href="execution.html">Exécution</a>
+                <a href="examples.html">Exemples</a>
+                <a href="integration.html">Intégration</a>
+                <a href="advanced.html">Avancé</a>
+            </nav>
+        </div>
+    </header>
+
+    <section class="hero" style="padding: 2rem 0;">
+        <div class="container">
+            <h1>🏷️ Les 3 Types de Hooks</h1>
+            <p style="max-width: 800px; margin: 0 auto;">
+                Mistral Vibe propose <strong>3 types de hooks</strong> distincts, chacun avec une finalité précise.
+                Découvrez quand et comment utiliser chaque type pour répondre à vos besoins.
+            </p>
+        </div>
+    </section>
+
+    <!-- Introduction -->
+    <section class="section">
+        <div class="container">
+            <h2>📚 Introduction aux Types de Hooks</h2>
+            
+            <div class="card">
+                <h3>🎯 Pourquoi 3 Types ?</h3>
+                <p>
+                    Les 3 types de hooks correspondent aux <strong>3 moments clés</strong> du cycle de vie de Mistral Vibe :
+                </p>
+                
+                <div class="flowchart" style="margin: 2rem 0;">
+                    <div style="text-align: center; margin-bottom: 2rem;">
+                        <h3>Timeline du Cycle de Vie</h3>
+                    </div>
+                    
+                    <div class="flowchart-grid">
+                        <div class="flowchart-item" style="background: rgba(139, 92, 246, 0.2); border: 1px solid var(--secondary-color);">
+                            <strong>🔵 POST_AGENT</strong><br>
+                            <span style="color: var(--text-muted); font-size: 0.85rem;">Après le tour LLM</span>
+                        </div>
+                        <div class="flowchart-arrow">→</div>
+                        <div class="flowchart-item" style="background: rgba(245, 158, 11, 0.2); border: 1px solid var(--warning-color);">
+                            <strong>🟠 LLM Génère Réponse</strong><br>
+                            <span style="color: var(--text-muted); font-size: 0.85rem;">"J'appelle un outil"</span>
+                        </div>
+                        <div class="flowchart-arrow">→</div>
+                        <div class="flowchart-item" style="background: rgba(239, 68, 68, 0.2); border: 1px solid var(--error-color);">
+                            <strong>🔴 PRE_TOOL</strong><br>
+                            <span style="color: var(--text-muted); font-size: 0.85rem;">Avant l'exécution</span>
+                        </div>
+                    </div>
+                    
+                    <div style="text-align: center; margin: 1rem 0; color: var(--primary-light);">↓</div>
+                    
+                    <div class="flowchart-grid">
+                        <div class="flowchart-item" style="background: rgba(20, 184, 166, 0.2); border: 1px solid #14b8a6;">
+                            <strong>🔵 Exécution de l'outil</strong><br>
+                            <span style="color: var(--text-muted); font-size: 0.85rem;">tool()</span>
+                        </div>
+                        <div class="flowchart-arrow">→</div>
+                        <div class="flowchart-item" style="background: rgba(16, 185, 129, 0.2); border: 1px solid var(--success-color);">
+                            <strong>🟢 POST_TOOL</strong><br>
+                            <span style="color: var(--text-muted); font-size: 0.85rem;">Après l'exécution</span>
+                        </div>
+                        <div class="flowchart-arrow">→</div>
+                        <div class="flowchart-item">
+                            <strong>Réponse à l'Utilisateur</strong><br>
+                            <span style="color: var(--text-muted); font-size: 0.85rem;">Affichage du résultat</span>
+                        </div>
+                    </div>
+                    
+                    <div style="text-align: center; margin: 1rem 0; color: var(--primary-light);">↓</div>
+                    
+                    <div class="flowchart-grid">
+                        <div class="flowchart-item" style="background: rgba(139, 92, 246, 0.2); border: 1px solid var(--secondary-color);">
+                            <strong>🔵 POST_AGENT</strong><br>
+                            <span style="color: var(--text-muted); font-size: 0.85rem;">Après le tour complet</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <p>
+                    <strong>Résumé :</strong>
+                </p>
+                <ol>
+                    <li><strong>POST_AGENT</strong> : Avant que l'utilisateur ne fasse une nouvelle requête (début du tour)</li>
+                    <li>LLM génère une réponse (peut inclure des appels d'outils)</li>
+                    <li><strong>PRE_TOOL</strong> : Avant chaque appel d'outil</li>
+                    <li>L'outil s'exécute</li>
+                    <li><strong>POST_TOOL</strong> : Après chaque appel d'outil</li>
+                    <li>Réponse finale à l'utilisateur</li>
+                    <li><strong>POST_AGENT</strong> : Après le tour complet</li>
+                </ol>
+            </div>
+            
+            <div class="card">
+                <h3>📊 Comparaison Rapide</h3>
+                
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Type</th>
+                            <th>Quand</th>
+                            <th>Peut Bloquer</th>
+                            <th>Peut Modifier</th>
+                            <th>Use Case Principal</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>POST_AGENT</strong></td>
+                            <td>Après un tour complet</td>
+                            <td>✅ Oui (retry)</td>
+                            <td>✅ Oui (contexte)</td>
+                            <td>Intégration, audit, contexte global</td>
+                        </tr>
+                        <tr>
+                            <td><strong>PRE_TOOL</strong></td>
+                            <td>Avant un appel d'outil</td>
+                            <td>✅ Oui (deny)</td>
+                            <td>✅ Oui (tool_input)</td>
+                            <td>Sécurité, validation, modification</td>
+                        </tr>
+                        <tr>
+                            <td><strong>POST_TOOL</strong></td>
+                            <td>Après un appel d'outil</td>
+                            <td>✅ Oui (remplacement)</td>
+                            <td>✅ Oui (sortie)</td>
+                            <td>Transformation, audit, intégration</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- POST_AGENT -->
+    <section class="section" style="background: var(--bg-secondary);">
+        <div class="container">
+            <h2>🔵 POST_AGENT Hooks</h2>
+            
+            <div class="card">
+                <h3>📖 Définition</h3>
+                <p>
+                    Les hooks <strong>POST_AGENT</strong> sont exécutés <strong>après chaque tour complet</strong> de conversation.
+                    Un "tour" correspond à :
+                </p>
+                <ol>
+                    <li>L'utilisateur envoie un message</li>
+                    <li>Le LLM génère une réponse</li>
+                    <li>Les outils éventuels sont exécutés</li>
+                    <li>La réponse finale est affichée</li>
+                </ol>
+                
+                <div class="info-box">
+                    <p>
+                        <strong>⚠️ Point important :</strong> Les hooks POST_AGENT s'exécutent <strong>2 fois par tour</strong> :
+                        <ol>
+                            <li><strong>Avant</strong> que le LLM ne génère sa réponse (pour éventuellement injecter du contexte)</li>
+                            <li><strong>Après</strong> que le tour soit complet</li>
+                        </ol>
+                    </p>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h3>🎯 Cas d'Usage</h3>
+                <p>
+                    Les hooks POST_AGENT sont parfaits pour :
+                </p>
+                
+                <div class="card-grid">
+                    <div class="card">
+                        <div class="card-icon purple">🔄</div>
+                        <h4>Intégration Externe</h4>
+                        <p>
+                            Notifier des systèmes externes (Slack, Discord, email, etc.) qu'une action a été effectuée.
+                        </p>
+                        <p><strong>Exemple :</strong> "Envoyer une notification Slack après chaque requête"
+                        </p>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-icon blue">📊</div>
+                        <h4>Audit Global</h4>
+                        <p>
+                            Journaliser toutes les conversations ou actions à un niveau global.
+                        </p>
+                        <p><strong>Exemple :</strong> "Écrire un log complet de la session dans un fichier central"
+                        </p>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-icon green">🧠</div>
+                        <h4>Enrichissement du Contexte</h4>
+                        <p>
+                            Ajouter automatiquement des informations contextuelles (date, utilisateur, projet, etc.).
+                        </p>
+                        <p><strong>Exemple :</strong> "Injecter la date du jour et le nom de l'utilisateur dans le contexte"
+                        </p>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-icon orange">⚡</div>
+                        <h4>Automatisation Post-Tour</h4>
+                        <p>
+                            Déclencher des actions automatiques après chaque interaction.
+                        </p>
+                        <p><strong>Exemple :</strong> "Sauvegarder automatiquement les fichiers modifiés"
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h3>📥 Données Reçues (PostAgentInvocation)</h3>
+                <p>
+                    Le hook POST_AGENT reçoit une structure <code>PostAgentInvocation</code> contenant :
+                </p>
+                
+                <div class="code-header">
+                    <span class="dot red"></span>
+                    <span class="dot yellow"></span>
+                    <span class="dot green"></span>
+                    <span>Structure PostAgentInvocation</span>
+                </div>
+                <pre><code>{
+  "hook_event_name": "post_agent",
+  "session_id": "session_abc123",
+  "transcript_path": "/home/user/.vibe/sessions/session_abc123/transcript.json",
+  "cwd": "/home/user/project",
+  "parent_session_id": null
+}</code></pre>
+                
+                <p>
+                    <strong>Champs disponibles :</strong>
+                </p>
+                <ul>
+                    <li><code>session_id</code> - ID unique de la session</li>
+                    <li><code>transcript_path</code> - Chemin vers le fichier de transcript</li>
+                    <li><code>cwd</code> - Répertoire de travail courant</li>
+                    <li><code>parent_session_id</code> - ID de la session parente (si applicable)</li>
+                </ul>
+                
+                <div class="warning-box">
+                    <p>
+                        <strong>⚠️ Limitation :</strong> Les hooks POST_AGENT n'ont <strong>pas accès</strong> :
+                        <ul>
+                            <li>À la requête utilisateur</li>
+                            <li>À la réponse du LLM</li>
+                            <li>Aux résultats des outils</li>
+                        </ul>
+                        Si vous avez besoin de ces informations, utilisez plutôt PRE_TOOL ou POST_TOOL.
+                    </p>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h3>📤 Réponses Possibles</h3>
+                <p>
+                    Un hook POST_AGENT peut retourner différentes réponses selon ce qu'il veut faire :
+                </p>
+                
+                <div class="card-grid">
+                    <div class="card">
+                        <h4>✅ Allow (Par défaut)</h4>
+                        <p>
+                            Le tour continue normalement. Vous pouvez optionnellement ajouter un message système.
+                        </p>
+                        <div class="code-header">
+                            <span class="dot red"></span>
+                            <span class="dot yellow"></span>
+                            <span class="dot green"></span>
+                            <span>Allow simple</span>
+                        </div>
+                        <pre><code>{
+  "decision": "allow"
+}</code></pre>
+                        <div class="code-header">
+                            <span class="dot red"></span>
+                            <span class="dot yellow"></span>
+                            <span class="dot green"></span>
+                            <span>Allow avec message</span>
+                        </div>
+                        <pre><code>{
+  "decision": "allow",
+  "system_message": "Contexte ajouté : Aujourd'hui est le 2 nov. 2024"
+}</code></pre>
+                    </div>
+                    
+                    <div class="card">
+                        <h4>❌ Deny (Injecter un Retry)</h4>
+                        <p>
+                            Le hook peut <strong>injecter un message utilisateur</strong> pour déclencher un retry.
+                            Utile pour demander des clarifications ou corriger une requête.
+                        </p>
+                        <p>
+                            <strong>Nombre de retries maximum : 3 par hook par tour</strong>
+                        </p>
+                        <div class="code-header">
+                            <span class="dot red"></span>
+                            <span class="dot yellow"></span>
+                            <span class="dot green"></span>
+                            <span>Deny avec message de retry</span>
+                        </div>
+                        <pre><code>{
+  "decision": "deny",
+  "reason": "Veuillez préciser le chemin du fichier"
+}</code></pre>
+                        <p>
+                            <strong>Résultat :</strong> L'agent recevra le message "Veuillez préciser le chemin du fichier" comme s'il venait de l'utilisateur, et générera une nouvelle réponse.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h3>🎯 Exemples Concrets</h3>
+                
+                <div class="card-grid">
+                    <div class="card">
+                        <h4>📊 Audit : Journaliser dans un fichier</h4>
+                        <div class="code-header">
+                            <span class="dot red"></span>
+                            <span class="dot yellow"></span>
+                            <span class="dot green"></span>
+                            <span>hook_post_agent_audit.py</span>
+                        </div>
+                        <pre><code>#!/usr/bin/env python3
+import json
+import sys
+from datetime import datetime
+from pathlib import Path
+
+invocation = json.load(sys.stdin)
+
+# Journaliser dans un fichier
+log_file = Path("~/vibe_audit.log").expanduser()
+log_entry = {
+    "timestamp": datetime.now().isoformat(),
+    "hook": "post_agent_audit",
+    "session_id": invocation.get("session_id"),
+    "cwd": invocation.get("cwd")
+}
+
+log_file.write_text(
+    json.dumps(log_entry) + "\n",
+    append=True
+)
+
+print(json.dumps({"decision": "allow"}))
+sys.exit(0)</code></pre>
+                    </div>
+                    
+                    <div class="card">
+                        <h4>💬 Contexte : Ajouter des infos utilisateur</h4>
+                        <div class="code-header">
+                            <span class="dot red"></span>
+                            <span class="dot yellow"></span>
+                            <span class="dot green"></span>
+                            <span>hook_post_agent_context.py</span>
+                        </div>
+                        <pre><code>#!/usr/bin/env python3
+import json
+import sys
+import socket
+from datetime import datetime
+
+invocation = json.load(sys.stdin)
+
+# Construire un message de contexte
+context = f"""
+--- Contexte Automatique ---
+Date : {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+Machine : {socket.gethostname()}
+Session : {invocation.get('session_id', 'unknown')}
+Répertoire : {invocation.get('cwd', 'unknown')}
+"""
+
+print(json.dumps({
+    "decision": "allow",
+    "system_message": context
+}))
+sys.exit(0)</code></pre>
+                    </div>
+                    
+                    <div class="card">
+                        <h4>🔗 Intégration : Notifier Slack</h4>
+                        <div class="code-header">
+                            <span class="dot red"></span>
+                            <span class="dot yellow"></span>
+                            <span class="dot green"></span>
+                            <span>hook_post_agent_slack.py</span>
+                        </div>
+                        <pre><code>#!/usr/bin/env python3
+import json
+import sys
+import requests
+import os
+
+invocation = json.load(sys.stdin)
+
+webhook_url = os.getenv("SLACK_WEBHOOK_URL")
+if not webhook_url:
+    print(json.dumps({"decision": "allow"}))
+    sys.exit(0)
+
+message = {
+    "text": f"✅ Mistral Vibe a terminé un tour (Session: {invocation.get('session_id')})"
+}
+
+try:
+    requests.post(webhook_url, json=message, timeout=5)
+except:
+    pass  # Ne pas bloquer l'agent
+
+print(json.dumps({"decision": "allow"}))
+sys.exit(0)</code></pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- PRE_TOOL -->
+    <section class="section">
+        <div class="container">
+            <h2>🔴 PRE_TOOL Hooks</h2>
+            
+            <div class="card">
+                <h3>📖 Définition</h3>
+                <p>
+                    Les hooks <strong>PRE_TOOL</strong> sont exécutés <strong>avant chaque appel d'outil</strong>.
+                    Ils permettent de :
+                </p>
+                <ul>
+                    <li><strong>Valider</strong> que l'appel d'outil est autorisé</li>
+                    <li><strong>Modifier</strong> les arguments de l'outil avant exécution</li>
+                    <li><strong>Bloquer</strong> complètement l'exécution de l'outil</li>
+                </ul>
+                
+                <div class="success-box">
+                    <p>
+                        <strong>✨ Point clé :</strong> Les hooks PRE_TOOL sont <strong>séquentiels et bloquants</strong>. 
+                        Si un hook retourne <code>"deny"</code>, les hooks suivants ne sont PAS exécutés.
+                    </p>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h3>🎯 Cas d'Usage</h3>
+                <p>
+                    Les hooks PRE_TOOL sont parfaits pour :
+                </p>
+                
+                <div class="card-grid">
+                    <div class="card">
+                        <div class="card-icon red">🔒</div>
+                        <h4>Sécurité</h4>
+                        <p>
+                            Bloquer l'exécution d'outils ou de commandes dangereuses.
+                        </p>
+                        <p><strong>Exemple :</strong> "Empêcher l'exécution de rm -rf"
+                        </p>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-icon orange">✅</div>
+                        <h4>Validation</h4>
+                        <p>
+                            Valider que les arguments respectent vos règles métier.
+                        </p>
+                        <p><strong>Exemple :</strong> "Vérifier que les paths sont valides"
+                        </p>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-icon blue">🔄</div>
+                        <h4>Transformation</h4>
+                        <p>
+                            Modifier les arguments avant exécution.
+                        </p>
+                        <p><strong>Exemple :</strong> "Ajouter automatiquement des flags à une commande"
+                        </p>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-icon green">📝</div>
+                        <h4>Audit Préventif</h4>
+                        <p>
+                            Journaliser avant l'exécution pour l'audit.
+                        </p>
+                        <p><strong>Exemple :</strong> "Logger qu'un outil va être exécuté"
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h3>📥 Données Reçues (PreToolInvocation)</h3>
+                <p>
+                    Le hook PRE_TOOL reçoit une structure <code>PreToolInvocation</code> contenant :
+                </p>
+                
+                <div class="code-header">
+                    <span class="dot red"></span>
+                    <span class="dot yellow"></span>
+                    <span class="dot green"></span>
+                    <span>Structure PreToolInvocation</span>
+                </div>
+                <pre><code>{
+  "hook_event_name": "pre_tool",
+  "session_id": "session_abc123",
+  "transcript_path": "/home/user/.vibe/sessions/session_abc123/transcript.json",
+  "cwd": "/home/user/project",
+  "parent_session_id": null,
+  "tool_name": "bash",
+  "tool_call_id": "call_xyz789",
+  "tool_input": {
+    "command": "ls -la"
+  }
+}</code></pre>
+                
+                <p>
+                    <strong>Champs disponibles :</strong>
+                </p>
+                <ul>
+                    <li><code>tool_name</code> - Nom de l'outil qui va être appelé</li>
+                    <li><code>tool_call_id</code> - ID unique de cet appel d'outil</li>
+                    <li><code>tool_input</code> - Arguments passés à l'outil (dict)</li>
+                    <li>+ Tous les champs <code>HookSessionContext</code></li>
+                </ul>
+            </div>
+            
+            <div class="card">
+                <h3>📤 Réponses Possibles</h3>
+                <p>
+                    Un hook PRE_TOOL peut retourner différentes réponses :
+                </p>
+                
+                <div class="card-grid">
+                    <div class="card">
+                        <h4>✅ Allow (Autoriser)</h4>
+                        <p>
+                            L'outil peut être exécuté. Vous pouvez optionnellement modifier les arguments.
+                        </p>
+                        <div class="code-header">
+                            <span class="dot red"></span>
+                            <span class="dot yellow"></span>
+                            <span class="dot green"></span>
+                            <span>Allow simple</span>
+                        </div>
+                        <pre><code>{
+  "decision": "allow"
+}</code></pre>
+                        <div class="code-header">
+                            <span class="dot red"></span>
+                            <span class="dot yellow"></span>
+                            <span class="dot green"></span>
+                            <span>Allow avec modification</span>
+                        </div>
+                        <pre><code>{
+  "decision": "allow",
+  "hook_specific_output": {
+    "tool_input": {
+      "command": "ls -la --color=always"
+    }
+  }
+}</code></pre>
+                        <p>
+                            <strong>Effet :</strong> L'outil sera appelé avec <code>command = "ls -la --color=always"</code> au lieu de <code>"ls -la"</code>.
+                        </p>
+                    </div>
+                    
+                    <div class="card">
+                        <h4>❌ Deny (Bloquer)</h4>
+                        <p>
+                            L'outil est bloqué et ne sera PAS exécuté. La raison est retournée comme erreur.
+                        </p>
+                        <div class="code-header">
+                            <span class="dot red"></span>
+                            <span class="dot yellow"></span>
+                            <span class="dot green"></span>
+                            <span>Deny avec raison</span>
+                        </div>
+                        <pre><code>{
+  "decision": "deny",
+  "reason": "Commande 'rm -rf' interdite"
+}</code></pre>
+                        <p>
+                            <strong>Effet :</strong> L'utilisateur verra l'erreur "Commande 'rm -rf' interdite" et l'outil ne sera pas exécuté.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h3>🎯 Exemples Concrets</h3>
+                
+                <div class="card-grid">
+                    <div class="card">
+                        <h4>🔒 Sécurité : Bloquer rm -rf</h4>
+                        <div class="code-header">
+                            <span class="dot red"></span>
+                            <span class="dot yellow"></span>
+                            <span class="dot green"></span>
+                            <span>hook_pre_tool_block_rm_rf.py</span>
+                        </div>
+                        <pre><code>#!/usr/bin/env python3
+import json
+import sys
+
+invocation = json.load(sys.stdin)
+
+# Vérifier si c'est un appel bash
+if invocation.get("tool_name") == "bash":
+    command = invocation.get("tool_input", {}).get("command", "")
+    
+    # Bloquer les commandes dangereuses
+    dangerous = ["rm -rf", "rm -r", ":(){ :|:& };:"]
+    if any(d in command for d in dangerous):
+        print(json.dumps({
+            "decision": "deny",
+            "reason": f"Commande dangereuse détectée : {command[:30]}"
+        }))
+        sys.exit(0)
+
+# Autoriser par défaut
+print(json.dumps({"decision": "allow"}))
+sys.exit(0)</code></pre>
+                    </div>
+                    
+                    <div class="card">
+                        <h4>✅ Validation : Vérifier les paths</h4>
+                        <div class="code-header">
+                            <span class="dot red"></span>
+                            <span class="dot yellow"></span>
+                            <span class="dot green"></span>
+                            <span>hook_pre_tool_validate_paths.py</span>
+                        </div>
+                        <pre><code>#!/usr/bin/env python3
+import json
+import sys
+from pathlib import Path
+
+invocation = json.load(sys.stdin)
+
+# Vérifier read_file et write_file
+if invocation.get("tool_name") in ["read_file", "write_file"]:
+    path = invocation.get("tool_input", {}).get("path", "")
+    
+    # Bloquer l'accès en dehors du répertoire de travail
+    cwd = invocation.get("cwd", "/")
+    full_path = Path(path).resolve()
+    cwd_path = Path(cwd).resolve()
+    
+    if not str(full_path).startswith(str(cwd_path)):
+        print(json.dumps({
+            "decision": "deny",
+            "reason": f"Accès interdit en dehors de {cwd}"
+        }))
+        sys.exit(0)
+
+print(json.dumps({"decision": "allow"}))
+sys.exit(0)</code></pre>
+                    </div>
+                    
+                    <div class="card">
+                        <h4>🔄 Transformation : Ajouter --color=always</h4>
+                        <div class="code-header">
+                            <span class="dot red"></span>
+                            <span class="dot yellow"></span>
+                            <span class="dot green"></span>
+                            <span>hook_pre_tool_add_colors.py</span>
+                        </div>
+                        <pre><code>#!/usr/bin/env python3
+import json
+import sys
+
+invocation = json.load(sys.stdin)
+
+# Ajouter --color=always aux commandes ls
+if invocation.get("tool_name") == "bash":
+    command = invocation.get("tool_input", {}).get("command", "")
+    
+    if command.strip().startswith("ls"):
+        # Ajouter --color=always si pas déjà présent
+        if "--color" not in command:
+            new_command = command.replace("ls", "ls --color=always")
+            print(json.dumps({
+                "decision": "allow",
+                "hook_specific_output": {
+                    "tool_input": {"command": new_command}
+                }
+            }))
+            sys.exit(0)
+
+print(json.dumps({"decision": "allow"}))
+sys.exit(0)</code></pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- POST_TOOL -->
+    <section class="section" style="background: var(--bg-secondary);">
+        <div class="container">
+            <h2>🟢 POST_TOOL Hooks</h2>
+            
+            <div class="card">
+                <h3>📖 Définition</h3>
+                <p>
+                    Les hooks <strong>POST_TOOL</strong> sont exécutés <strong>après chaque appel d'outil</strong>.
+                    Ils permettent de :
+                </p>
+                <ul>
+                    <li><strong>Transformer</strong> la sortie de l'outil avant qu'elle ne soit envoyée au LLM</li>
+                    <li><strong>Journaliser</strong> les résultats des outils</li>
+                    <li><strong>Remplacer</strong> complètement la sortie</li>
+                    <li><strong>Ajouter du contexte</strong> à la sortie</li>
+                </ul>
+                
+                <div class="success-box">
+                    <p>
+                        <strong>✨ Point clé :</strong> Les hooks POST_TOOL peuvent <strong>modifier la sortie visible par le LLM</strong>.
+                        Cela permet de :
+                        <ul>
+                            <li>Nettoyer des données sensibles</li>
+                            <li>Formater les sorties</li>
+                            <li>Ajouter des métadonnées</li>
+                            <li>Remplacer complètement le résultat</li>
+                        </ul>
+                    </p>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h3>🎯 Cas d'Usage</h3>
+                <p>
+                    Les hooks POST_TOOL sont parfaits pour :
+                </p>
+                
+                <div class="card-grid">
+                    <div class="card">
+                        <div class="card-icon green">🔄</div>
+                        <h4>Transformation</h4>
+                        <p>
+                            Modifier la sortie avant qu'elle ne soit vue par le LLM.
+                        </p>
+                        <p><strong>Exemple :</strong> "Ajouter un timestamp à toutes les sorties"
+                        </p>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-icon blue">📊</div>
+                        <h4>Audit</h4>
+                        <p>
+                            Journaliser les résultats des outils.
+                        </p>
+                        <p><strong>Exemple :</strong> "Logger le résultat de chaque appel d'outil"
+                        </p>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-icon orange">🔒</div>
+                        <h4>Nettoyage</h4>
+                        <p>
+                            Nettoyer ou filtrer des données sensibles.
+                        </p>
+                        <p><strong>Exemple :</strong> "Masquer les mots de passe dans les sorties"
+                        </p>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-icon purple">🔗</div>
+                        <h4>Intégration</h4>
+                        <p>
+                            Déclencher des actions basées sur les résultats.
+                        </p>
+                        <p><strong>Exemple :</strong> "Envoyer une notification si un outil échoue"
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h3>📥 Données Reçues (PostToolInvocation)</h3>
+                <p>
+                    Le hook POST_TOOL reçoit une structure <code>PostToolInvocation</code> contenant :
+                </p>
+                
+                <div class="code-header">
+                    <span class="dot red"></span>
+                    <span class="dot yellow"></span>
+                    <span class="dot green"></span>
+                    <span>Structure PostToolInvocation</span>
+                </div>
+                <pre><code>{
+  "hook_event_name": "post_tool",
+  "session_id": "session_abc123",
+  "transcript_path": "/home/user/.vibe/sessions/session_abc123/transcript.json",
+  "cwd": "/home/user/project",
+  "parent_session_id": null,
+  "tool_name": "read_file",
+  "tool_call_id": "call_xyz789",
+  "tool_input": {
+    "path": "/home/user/file.txt"
+  },
+  "tool_status": "success",
+  "tool_output": {
+    "content": "Contenu du fichier...",
+    "path": "/home/user/file.txt"
+  },
+  "tool_output_text": "Contenu du fichier...",
+  "tool_error": null,
+  "duration_ms": 125.5
+}</code></pre>
+                
+                <p>
+                    <strong>Champs disponibles :</strong>
+                </p>
+                <ul>
+                    <li><code>tool_name</code> - Nom de l'outil qui a été appelé</li>
+                    <li><code>tool_call_id</code> - ID unique de cet appel d'outil</li>
+                    <li><code>tool_input</code> - Arguments passés à l'outil</li>
+                    <li><code>tool_status</code> - <code>"success"</code>, <code>"failure"</code>, ou <code>"cancelled"</code></li>
+                    <li><code>tool_output</code> - Résultat structuré de l'outil (dict ou None)</li>
+                    <li><code>tool_output_text</code> - Texte brut de la sortie (ce qui sera envoyé au LLM)</li>
+                    <li><code>tool_error</code> - Message d'erreur si <code>tool_status == "failure"</code></li>
+                    <li><code>duration_ms</code> - Durée d'exécution en millisecondes</li>
+                </ul>
+            </div>
+            
+            <div class="card">
+                <h3>📤 Réponses Possibles</h3>
+                <p>
+                    Un hook POST_TOOL peut retourner différentes réponses :
+                </p>
+                
+                <div class="card-grid">
+                    <div class="card">
+                        <h4>✅ Allow (Autoriser)</h4>
+                        <p>
+                            La sortie est acceptée telle quelle. Vous pouvez optionnellement ajouter du contexte.
+                        </p>
+                        <div class="code-header">
+                            <span class="dot red"></span>
+                            <span class="dot yellow"></span>
+                            <span class="dot green"></span>
+                            <span>Allow simple</span>
+                        </div>
+                        <pre><code>{
+  "decision": "allow"
+}</code></pre>
+                        <div class="code-header">
+                            <span class="dot red"></span>
+                            <span class="dot yellow"></span>
+                            <span class="dot green"></span>
+                            <span>Allow avec contexte ajouté</span>
+                        </div>
+                        <pre><code>{
+  "decision": "allow",
+  "hook_specific_output": {
+    "additional_context": "\n[Fichier lu avec succès]"
+  }
+}</code></pre>
+                        <p>
+                            <strong>Effet :</strong> Le texte "[Fichier lu avec succès]" sera <strong>ajouté</strong> à la fin de la sortie.
+                        </p>
+                    </div>
+                    
+                    <div class="card">
+                        <h4>❌ Deny (Remplacer)</h4>
+                        <p>
+                            La sortie est <strong>remplacée</strong> par la raison. Le champ <code>additional_context</code> 
+                            permet d'ajouter du texte après la raison.
+                        </p>
+                        <div class="code-header">
+                            <span class="dot red"></span>
+                            <span class="dot yellow"></span>
+                            <span class="dot green"></span>
+                            <span>Deny avec remplacement</span>
+                        </div>
+                        <pre><code>{
+  "decision": "deny",
+  "reason": "[Contenu masqué pour raisons de sécurité]",
+  "hook_specific_output": {
+    "additional_context": "\nLe fichier contenait des informations sensibles."
+  }
+}</code></pre>
+                        <p>
+                            <strong>Effet :</strong> La sortie sera remplacée par :<br>
+                            <code>[Contenu masqué pour raisons de sécurité]\nLe fichier contenait des informations sensibles.</code>
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h3>🎯 Exemples Concrets</h3>
+                
+                <div class="card-grid">
+                    <div class="card">
+                        <h4>🔄 Transformation : Ajouter timestamp</h4>
+                        <div class="code-header">
+                            <span class="dot red"></span>
+                            <span class="dot yellow"></span>
+                            <span class="dot green"></span>
+                            <span>hook_post_tool_add_timestamp.py</span>
+                        </div>
+                        <pre><code>#!/usr/bin/env python3
+import json
+import sys
+from datetime import datetime
+
+invocation = json.load(sys.stdin)
+
+# Ajouter un timestamp à la sortie
+timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+additional = f"\n---\n[Generé le {timestamp}]"
+
+print(json.dumps({
+    "decision": "allow",
+    "hook_specific_output": {
+        "additional_context": additional
+    }
+}))
+sys.exit(0)</code></pre>
+                    </div>
+                    
+                    <div class="card">
+                        <h4>🔒 Sécurité : Masquer les secrets</h4>
+                        <div class="code-header">
+                            <span class="dot red"></span>
+                            <span class="dot yellow"></span>
+                            <span class="dot green"></span>
+                            <span>hook_post_tool_mask_secrets.py</span>
+                        </div>
+                        <pre><code>#!/usr/bin/env python3
+import json
+import sys
+import re
+
+invocation = json.load(sys.stdin)
+
+# Masquer les mots de passe et tokens
+output_text = invocation.get("tool_output_text", "")
+secrets = ["password", "secret", "token", "api_key"]
+
+for secret in secrets:
+    output_text = re.sub(
+        rf'{secret}\s*[=:]\s*[\"\']?([^\s\"\']+)[\"\']?',
+        f'{secret}=[MASKED]',
+        output_text,
+        flags=re.IGNORECASE
+    )
+
+print(json.dumps({
+    "decision": "deny",
+    "reason": output_text,
+    "hook_specific_output": {
+        "additional_context": "\n[Secrets masqués]"
+    }
+}))
+sys.exit(0)</code></pre>
+                    </div>
+                    
+                    <div class="card">
+                        <h4>📊 Audit : Journaliser les erreurs</h4>
+                        <div class="code-header">
+                            <span class="dot red"></span>
+                            <span class="dot yellow"></span>
+                            <span class="dot green"></span>
+                            <span>hook_post_tool_log_errors.py</span>
+                        </div>
+                        <pre><code>#!/usr/bin/env python3
+import json
+import sys
+from pathlib import Path
+from datetime import datetime
+
+invocation = json.load(sys.stdin)
+
+# Ne logger que les erreurs
+if invocation.get("tool_status") == "failure":
+    log_file = Path("~/vibe_errors.log").expanduser()
+    log_entry = {
+        "timestamp": datetime.now().isoformat(),
+        "session_id": invocation.get("session_id"),
+        "tool_name": invocation.get("tool_name"),
+        "tool_error": invocation.get("tool_error"),
+        "tool_input": invocation.get("tool_input")
+    }
+    log_file.write_text(
+        json.dumps(log_entry) + "\n",
+        append=True
+    )
+
+# Toujours retourner allow
+print(json.dumps({"decision": "allow"}))
+sys.exit(0)</code></pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Résumé Comparatif -->
+    <section class="section">
+        <div class="container">
+            <h2>📊 Résumé Comparatif des 3 Types</h2>
+            
+            <div class="card">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Critère</th>
+                            <th>POST_AGENT</th>
+                            <th>PRE_TOOL</th>
+                            <th>POST_TOOL</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Quand</strong></td>
+                            <td>Après un tour complet</td>
+                            <td>Avant un appel d'outil</td>
+                            <td>Après un appel d'outil</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Fréquence</strong></td>
+                            <td>2x par tour (avant/après LLM)</td>
+                            <td>1x par outil appelé</td>
+                            <td>1x par outil appelé</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Peut bloquer</strong></td>
+                            <td>✅ Oui (retry)</td>
+                            <td>✅ Oui (deny)</td>
+                            <td>✅ Oui (remplacement)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Peut modifier input</strong></td>
+                            <td>❌ Non</td>
+                            <td>✅ Oui (tool_input)</td>
+                            <td>❌ Non</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Peut modifier output</strong></td>
+                            <td>❌ Non</td>
+                            <td>❌ Non</td>
+                            <td>✅ Oui (additional_context)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Accès à la requête LLM</strong></td>
+                            <td>❌ Non</td>
+                            <td>❌ Non</td>
+                            <td>❌ Non</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Accès à tool_input</strong></td>
+                            <td>❌ Non</td>
+                            <td>✅ Oui</td>
+                            <td>✅ Oui</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Accès à tool_output</strong></td>
+                            <td>❌ Non</td>
+                            <td>❌ Non</td>
+                            <td>✅ Oui</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Use case principal</strong></td>
+                            <td>Intégration, contexte global</td>
+                            <td>Sécurité, validation, modification</td>
+                            <td>Transformation, audit, nettoyage</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Use case secondaire</strong></td>
+                            <td>Audit global, notification</td>
+                            <td>Audit préventif</td>
+                            <td>Intégration basée sur résultat</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="success-box">
+                <p>
+                    <strong>💡 Conseil pour bien choisir :</strong>
+                    <ul>
+                        <li><strong>POST_AGENT</strong> : "Je veux faire quelque chose <em>après chaque conversation</em>"</li>
+                        <li><strong>PRE_TOOL</strong> : "Je veux <em>valider ou modifier avant</em> qu'un outil ne s'exécute"</li>
+                        <li><strong>POST_TOOL</strong> : "Je veux <em>transformer ou auditer après</em> qu'un outil s'est exécuté"</li>
+                    </ul>
+                    Un même use case peut nécessiter plusieurs types de hooks !
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Prochaines Étapes -->
+    <section class="section" style="background: var(--bg-secondary);">
+        <div class="container">
+            <h2>🚀 Prochaines Étapes</h2>
+            
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <div class="feature-card-icon green">⚡</div>
+                    <h3>Exécution</h3>
+                    <p>Comprenez comment les hooks sont exécutés et leurs impacts sur le flux.</p>
+                    <a href="execution.html" class="btn btn-primary">⚡ Lire</a>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-card-icon orange">🎯</div>
+                    <h3>Exemples</h3>
+                    <p>Inspirez-vous d'exemples concrets prêts à l'emploi pour chaque type.</p>
+                    <a href="examples.html" class="btn btn-primary">🎯 Lire</a>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-card-icon teal">🔗</div>
+                    <h3>Intégration</h3>
+                    <p>Apprenez à intégrer les hooks avec vos outils et workflows existants.</p>
+                    <a href="integration.html" class="btn btn-primary">🔗 Lire</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-column">
+                    <h4>Documentation</h4>
+                    <ul>
+                        <li><a href="index.html">Accueil</a></li>
+                        <li><a href="architecture.html">Architecture</a></li>
+                        <li><a href="configuration.html">Configuration</a></li>
+                        <li><a href="types.html">Types de Hooks</a></li>
+                        <li><a href="execution.html">Exécution</a></li>
+                        <li><a href="examples.html">Exemples</a></li>
+                        <li><a href="integration.html">Intégration</a></li>
+                        <li><a href="advanced.html">Avancé</a></li>
+                    </ul>
+                </div>
+                <div class="footer-column">
+                    <h4>Types de Hooks</h4>
+                    <ul>
+                        <li><a href="#">POST_AGENT</a></li>
+                        <li><a href="#">PRE_TOOL</a></li>
+                        <li><a href="#">POST_TOOL</a></li>
+                        <li><a href="#">Comparaison</a></li>
+                    </ul>
+                </div>
+                <div class="footer-column">
+                    <h4>Ressources</h4>
+                    <ul>
+                        <li><a href="https://github.com/rrobbes/mistral-vibe" target="_blank">GitHub</a></li>
+                        <li><a href="https://docs.vibe.mistral.ai/" target="_blank">Doc Officielle</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>Mistral Vibe Hooks Documentation - Projet éducatif rrobbes/mistral-vibe</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        function toggleNav() {
+            document.querySelector('.nav').classList.toggle('active');
+        }
+        document.addEventListener('click', function(event) {
+            const nav = document.querySelector('.nav');
+            const toggle = document.querySelector('.nav-toggle');
+            if (!nav || !toggle) return;
+            if (!nav.contains(event.target) && !toggle.contains(event.target)) {
+                nav.classList.remove('active');
+            }
+        });
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            });
+        });
+    </script>
+</body>
+</html>

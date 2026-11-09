@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Intégration des Hooks - Mistral Vibe</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Fira+Code&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <div class="logo"><div class="logo-icon">V</div><span>Mistral Vibe Hooks</span></div>
+            <button class="nav-toggle" onclick="toggleNav()">☰</button>
+            <nav class="nav">
+                <a href="index.html">Accueil</a>
+                <a href="architecture.html">Architecture</a>
+                <a href="configuration.html">Configuration</a>
+                <a href="types.html">Types de Hooks</a>
+                <a href="execution.html">Exécution</a>
+                <a href="examples.html">Exemples</a>
+                <a href="integration.html" class="active">Intégration</a>
+                <a href="advanced.html">Avancé</a>
+            </nav>
+        </div>
+    </header>
+
+    <section class="hero" style="padding: 2rem 0;">
+        <div class="container">
+            <h1>🔗 Intégration des Hooks</h1>
+            <p style="max-width: 800px; margin: 0 auto;">
+                Découvrez comment intégrer les hooks de Mistral Vibe avec vos <strong>outils existants</strong>, 
+                vos <strong>workflows</strong> et vos <strong>systèmes internes</strong>.
+                Cette page vous montre comment connecter Mistral Vibe à votre écosystème technique.
+            </p>
+        </div>
+    </section>
+
+    <!-- Introduction -->
+    <section class="section">
+        <div class="container">
+            <h2>📋 Introduction à l'Intégration</h2>
+            
+            <div class="card">
+                <h3>🎯 Pourquoi Intégrer les Hooks ?</h3>
+                <p>
+                    Les hooks ne sont pas seulement un mécanisme d'extension, ce sont aussi des <strong>points de connexion</strong> 
+                    entre Mistral Vibe et votre environnement technique. Voici pourquoi l'intégration est cruciale :
+                </p>
+                
+                <div class="card-grid">
+                    <div class="card">
+                        <div class="card-icon purple">🔗</div>
+                        <h4>Connecter vos Outils</h4>
+                        <p>
+                            Reliez Mistral Vibe à vos systèmes internes : Slack, GitHub, CI/CD, bases de données, APIs.
+                        </p>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-icon blue">📊</div>
+                        <h4>Centraliser la Gestion</h4>
+                        <p>
+                            Intégrez les actions de l'IA dans vos systèmes de monitoring, logging et audit existants.
+                        </p>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-icon green">⚡</div>
+                        <h4>Automatiser les Workflows</h4>
+                        <p>
+                            Déclenchez automatiquement des actions externes en réponse aux événements de l'agent.
+                        </p>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-icon orange">🛡️</div>
+                        <h4>Appliquer vos Politiques</h4>
+                        <p>
+                            Faites respecter vos règles de sécurité, de conformité et de qualité à travers les hooks.
+                        </p>
+                    </div>
+                </div>
+                
+                <div class="info-box">
+                    <p>
+                        <strong>ℹ️ Point clé :</strong> L'intégration via hooks permet une <strong>séparation claire</strong> 
+                        entre Mistral Vibe et vos systèmes. Vous gardez le contrôle total tout en bénéficiant 
+                        des capacités de l'IA.
+                    </p>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h3>🏗️ Principes d'Intégration</h3>
+                <p>
+                    Pour une intégration réussie, suivez ces principes fondamentaux :
+                </p>
+                
+                <ol>
+                    <li>
+                        <strong>Découplage :</strong> Vos hooks doivent être des processus indépendants qui communiquent via JSON.
+                    </li>
+                    <li>
+                        <strong>Idempotence :</strong> Un hook doit pouvoir être exécuté plusieurs fois sans effet de bord.
+                    </li>
+                    <li>
+                        <strong>Résilience :</strong> Un hook ne doit pas bloquer l'agent en cas d'erreur (sauf si <code>strict=true</code>).
+                    </li>
+                    <li>
+                        <strong>Performance :</strong> Optimisez vos hooks pour qu'ils s'exécutent rapidement.
+                    </li>
+                    <li>
+                        <strong>Sécurité :</strong> Ne exposez pas de données sensibles dans les logs ou les réponses.
+                    </li>
+                </ol>
+            </div>
+        </div>
+    </section>
+
+    <!-- 6 Cas d'Usage Principaux -->
+    <section class="section" style="background: var(--bg-secondary);">
+        <div class="container">
+            <h2>✨ Les 6 Cas d'Usage d'Intégration</h2>
+            
+            <p>
+                Les hooks vous permettent d'implémenter des <strong>stratégies transverses</strong> qui s'appliquent 
+                systématiquement à toutes vos interactions avec l'agent.
+            </p>
+            
+            <div class="card-grid">
+                <div class="card">
+                    <div class="card-icon orange">🔒</div>
+                    <h3>1️⃣ Sécurité & Contrôle d'Accès</h3>
+                    <p>
+                        <strong>Intégration avec :</strong> Systèmes de sécurité, politiques internes, lists noires.
+                    </p>
+                    <p>
+                        <strong>Exemple :</strong> Hooks PRE_TOOL qui valident les appels avant exécution.
+                    </p>
+                    <div class="code-header">
+                        <span class="dot red"></span>
+                        <span class="dot yellow"></span>
+                        <span class="dot green"></span>
+                        <span>hook_pre_tool_security.py</span>
+                    </div>
+                    <pre><code>#!/usr/bin/env python3
+import json
+import sys
+
+invocation = json.load(sys.stdin)
+
+if invocation.get("tool_name") == "bash":
+    command = invocation.get("tool_input", {}).get("command", "")
+    dangerous_commands = ["rm -rf", "chmod -R", ":(){ :|:& };:"]
+    if any(dangerous in command for dangerous in dangerous_commands):
+        print(json.dumps({
+            "decision": "deny",
+            "reason": f"Commande dangereuse détectée : {command[:50]}"
+        }))
+        sys.exit(0)
+
+print(json.dumps({"decision": "allow"}))
+sys.exit(0)</code></pre>
+                </div>
+                
+                <div class="card">
+                    <div class="card-icon green">🔄</div>
+                    <h3>2️⃣ Transformation des Données</h3>
+                    <p>
+                        <strong>Intégration avec :</strong> Systèmes de traitement, pipelines ETL, formateurs de données.
+                    </p>
+                    <p>
+                        <strong>Exemple :</strong> Hooks PRE_TOOL pour modifier les inputs, POST_TOOL pour modifier les outputs.
+                    </p>
+                    <div class="code-header">
+                        <span class="dot red"></span>
+                        <span class="dot yellow"></span>
+                        <span class="dot green"></span>
+                        <span>hook_post_tool_timestamp.py</span>
+                    </div>
+                    <pre><code>#!/usr/bin/env python3
+import json
+import sys
+from datetime import datetime
+
+invocation = json.load(sys.stdin)
+output = invocation.get("tool_output_text", "")
+timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+print(json.dumps({
+    "decision": "allow",
+    "hook_specific_output": {
+        "additional_context": f"\n---\n[Generé le {timestamp}]"
+    }
+}))
+sys.exit(0)</code></pre>
+                </div>
+                
+                <div class="card">
+                    <div class="card-icon blue">📊</div>
+                    <h3>3️⃣ Audit & Journalisation</h3>
+                    <p>
+                        <strong>Intégration avec :</strong> SIEM, ELK Stack, Datadog, Splunk, fichiers logs.
+                    </p>
+                    <p>
+                        <strong>Exemple :</strong> Hooks POST_TOOL et POST_AGENT qui journalisent dans un fichier ou une base.
+                    </p>
+                    <div class="code-header">
+                        <span class="dot red"></span>
+                        <span class="dot yellow"></span>
+                        <span class="dot green"></span>
+                        <span>hook_post_agent_audit.py</span>
+                    </div>
+                    <pre><code>#!/usr/bin/env python3
+import json
+import sys
+from pathlib import Path
+
+invocation = json.load(sys.stdin)
+
+log_file = Path("~/vibe_audit.log")
+log_entry = {
+    "timestamp": invocation.get("timestamp"),
+    "session_id": invocation.get("session_id"),
+    "event": "agent_turn_completed"
+}
+
+log_file.write_text(json.dumps(log_entry) + "\n", append=True)
+
+print(json.dumps({"decision": "allow"}))
+sys.exit(0)</code></pre>
+                </div>
+                
+                <div class="card">
+                    <div class="card-icon purple">🔗</div>
+                    <h3>4️⃣ Intégration Externe</h3>
+                    <p>
+                        <strong>Intégration avec :</strong> Slack, Discord, Microsoft Teams, Email, Webhooks.
+                    </p>
+                    <p>
+                        <strong>Exemple :</strong> Hooks POST_AGENT qui déclenchent des actions externes.
+                    </p>
+                    <div class="code-header">
+                        <span class="dot red"></span>
+                        <span class="dot yellow"></span>
+                        <span class="dot green"></span>
+                        <span>hook_post_agent_slack.py</span>
+                    </div>
+                    <pre><code>#!/usr/bin/env python3
+import json
+import sys
+import requests
+
+invocation = json.load(sys.stdin)
+
+webhook_url = "https://hooks.slack.com/services/YOUR/WEBHOOK"
+message = {
+    "text": f"✅ Tâche terminée dans Mistral Vibe (Session: {invocation.get('session_id')})"
+}
+
+try:
+    requests.post(webhook_url, json=message)
+except:
+    pass
+
+print(json.dumps({"decision": "allow"}))
+sys.exit(0)</code></pre>
+                </div>
+                
+                <div class="card">
+                    <div class="card-icon teal">🧠</div>
+                    <h3>5️⃣ Enrichissement du Contexte</h3>
+                    <p>
+                        <strong>Intégration avec :</strong> Bases de connaissances, systèmes de contexte, gestionnaires d'état.
+                    </p>
+                    <p>
+                        <strong>Exemple :</strong> Hooks POST_AGENT qui injectent du contexte.
+                    </p>
+                    <div class="code-header">
+                        <span class="dot red"></span>
+                        <span class="dot yellow"></span>
+                        <span class="dot green"></span>
+                        <span>hook_post_agent_context.py</span>
+                    </div>
+                    <pre><code>#!/usr/bin/env python3
+import json
+import sys
+from datetime import datetime
+import socket
+
+invocation = json.load(sys.stdin)
+
+context = f"""
+Contexte système :
+- Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+- Machine: {socket.gethostname()}
+- Utilisateur: {invocation.get('session_id', 'unknown')}
+"""
+
+print(json.dumps({
+    "decision": "allow",
+    "system_message": context
+}))
+sys.exit(0)</code></pre>
+                </div>
+                
+                <div class="card">
+                    <div class="card-icon green">✅</div>
+                    <h3>6️⃣ Validation & Qualité</h3>
+                    <p>
+                        <strong>Intégration avec :</strong> Systèmes de validation, linters, vérificateurs de qualité.
+                    </p>
+                    <p>
+                        <strong>Exemple :</strong> Hooks PRE_TOOL qui valident les paramètres avant exécution.
+                    </p>
+                    <div class="code-header">
+                        <span class="dot red"></span>
+                        <span class="dot yellow"></span>
+                        <span class="dot green"></span>
+                        <span>hook_pre_tool_validation.py</span>
+                    </div>
+                    <pre><code>#!/usr/bin/env python3
+import json
+import sys
+import re
+
+invocation = json.load(sys.stdin)
+
+if invocation.get("tool_name") == "write_file":
+    content = invocation.get("tool_input", {}).get("content", "")
+    if not content.endswith("\n"):
+        print(json.dumps({
+            "decision": "deny",
+            "reason": "Le contenu du fichier doit se terminer par un saut de ligne"
+        }))
+        sys.exit(0)
+
+print(json.dumps({"decision": "allow"}))
+sys.exit(0)</code></pre>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Cas d'Usage Concrets -->
+    <section class="section">
+        <div class="container">
+            <h2>🎯 Scénarios d'Intégration Concrets</h2>
+            
+            <p>
+                Voici des <strong>scénarios réels</strong> où les hooks apportent une <strong>valeur ajoutée immense</strong> 
+                en termes d'intégration :
+            </p>
+            
+            <div class="timeline">
+                <div class="timeline-item">
+                    <div class="timeline-time">🏢 Entreprise - Sécurité Renforcée</div>
+                    <div class="timeline-content">
+                        <h4>🔒 Protection contre les commandes dangereuses</h4>
+                        <p>
+                            <strong>Contexte :</strong> Votre entreprise utilise Mistral Vibe en production avec accès à des outils système.
+                        </p>
+                        <p>
+                            <strong>Intégration :</strong> Hook PRE_TOOL connecté à votre système de règles de sécurité interne.
+                        </p>
+                        <p>
+                            <strong>Solution :</strong> Un hook PRE_TOOL qui vérifie toutes les commandes bash avant exécution et bloque celles qui sont sur une liste noire définie par votre équipe sécurité.
+                        </p>
+                        <div class="success-box">
+                            <p>
+                                <strong>✅ Résultat :</strong> Votre environnement est protégé. Toutes les commandes dangereuses sont bloquées avant exécution, avec un message clair expliquant pourquoi. L'intégration avec votre SIEM permet un suivi centralisé.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="timeline-item">
+                    <div class="timeline-time">📜 Juridique - Conformité RGPD</div>
+                    <div class="timeline-content">
+                        <h4>📜 Audit et conformité</h4>
+                        <p>
+                            <strong>Contexte :</strong> Vous travaillez dans un secteur réglementé (santé, finance, etc.) et devez respecter le RGPD ou d'autres réglementations.
+                        </p>
+                        <p>
+                            <strong>Intégration :</strong> Hook POST_AGENT connecté à votre système de conformité.
+                        </p>
+                        <p>
+                            <strong>Solution :</strong> Un hook POST_AGENT qui journalise toutes les conversations dans un système centralisé avec horodatage, session ID, et métadonnées complètes, puis envoie ces données à votre outil de conformité.
+                        </p>
+                        <div class="success-box">
+                            <p>
+                                <strong>✅ Résultat :</strong> Vous avez un audit complet de toutes les interactions, prêt pour les vérifications de conformité. Vous pouvez prouver que l'IA n'a pas eu accès à des données sensibles. L'intégration avec votre outil de conformité permet des rapports automatisés.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="timeline-item">
+                    <div class="timeline-time">🚀 DevOps - Automatisation CI/CD</div>
+                    <div class="timeline-content">
+                        <h4>🤖 Intégration CI/CD</h4>
+                        <p>
+                            <strong>Contexte :</strong> Votre équipe utilise Mistral Vibe pour générer du code ou de la documentation.
+                        </p>
+                        <p>
+                            <strong>Intégration :</strong> Hook POST_TOOL connecté à votre pipeline Jenkins/GitHub Actions.
+                        </p>
+                        <p>
+                            <strong>Solution :</strong> Un hook POST_TOOL qui déclenche votre pipeline CI/CD après que Mistral Vibe ait généré du code via write_file.
+                        </p>
+                        <div class="success-box">
+                            <p>
+                                <strong>✅ Résultat :</strong> Votre workflow DevOps est entièrement automatisé : code généré → tests → déploiement. Plus besoin d'intervention manuelle. L'intégration avec votre pipeline CI/CD garantit que chaque modification est testée.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="timeline-item">
+                    <div class="timeline-time">📁 Multi-Projets - Configuration Spécifique</div>
+                    <div class="timeline-content">
+                        <h4>📁 Règles par projet</h4>
+                        <p>
+                            <strong>Contexte :</strong> Vous travaillez sur plusieurs projets avec des règles différentes. Certains projets autorisent l'accès à des outils sensibles, d'autres non.
+                        </p>
+                        <p>
+                            <strong>Intégration :</strong> Hooks configurés par projet avec des fichiers TOML spécifiques.
+                        </p>
+                        <p>
+                            <strong>Solution :</strong> Des fichiers de configuration TOML différents par projet qui définissent quels hooks s'appliquent. Les hooks peuvent lire le contexte du projet actuel depuis votre système de gestion de projets.
+                        </p>
+                        <div class="success-box">
+                            <p>
+                                <strong>✅ Résultat :</strong> Chaque projet a ses propres règles de sécurité et de comportement, sans conflit. Le passage d'un projet à l'autre est transparent. L'intégration avec votre système de gestion de projets permet une configuration centralisée.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="timeline-item">
+                    <div class="timeline-time">💡 Productivité - Enrichissement Intelligent</div>
+                    <div class="timeline-content">
+                        <h4>💡 Contexte automatique</h4>
+                        <p>
+                            <strong>Contexte :</strong> Vous utilisez Mistral Vibe quotidiennement pour diverses tâches.
+                        </p>
+                        <p>
+                            <strong>Intégration :</strong> Hook POST_AGENT connecté à votre système d'information.
+                        </p>
+                        <p>
+                            <strong>Solution :</strong> Un hook POST_AGENT qui injecte automatiquement des informations contextuelles (date, heure, version du projet, utilisateur connecté, etc.) depuis votre annuaire LDAP ou votre système de gestion d'identité.
+                        </p>
+                        <div class="success-box">
+                            <p>
+                                <strong>✅ Résultat :</strong> L'IA connaît toujours le contexte de votre environnement, ce qui améliore la pertinence des réponses et réduit la friction. L'intégration avec votre système d'information garantit que les données sont toujours à jour.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Intégration avec des Outils Spécifiques -->
+    <section class="section" style="background: var(--bg-secondary);">
+        <div class="container">
+            <h2>🛠️ Intégration avec des Outils Spécifiques</h2>
+            
+            <div class="card">
+                <h3>💬 Intégration avec Slack</h3>
+                <p>
+                    Notifiez votre équipe des actions importantes de Mistral Vibe.
+                </p>
+                <p>
+                    <strong>Hook à utiliser :</strong> POST_AGENT ou POST_TOOL
+                </p>
+                <p>
+                    <strong>Exemple d'utilisation :</strong>
+                </p>
+                <ul>
+                    <li>Notifier quand une tâche complexe est terminée</li>
+                    <li>Envoyer des alertes pour les erreurs</li>
+                    <li>Partager les résultats importants</li>
+                </ul>
+                <div class="code-header">
+                    <span class="dot red"></span>
+                    <span class="dot yellow"></span>
+                    <span class="dot green"></span>
+                    <span>Configuration Slack</span>
+                </div>
+                <pre><code>[[hooks]]
+name = "slack-notify-completion"
+type = "post_agent"
+command = "python3 ~/.vibe/hooks/integration/slack_notify.py"
+timeout = 10
+strict = false
+description = "Notifie Slack quand une tâche est terminée"
+
+# Dans votre hook Python :
+import os
+webhook_url = os.getenv("SLACK_WEBHOOK_URL")
+requests.post(webhook_url, json={"text": "Tâche Mistral Vibe terminée !"})</code></pre>
+            </div>
+            
+            <div class="card">
+                <h3>📊 Intégration avec des Systèmes de Monitoring</h3>
+                <p>
+                    Suivez l'utilisation de Mistral Vibe dans vos outils de monitoring.
+                </p>
+                <p>
+                    <strong>Hook à utiliser :</strong> POST_TOOL ou POST_AGENT
+                </p>
+                <p>
+                    <strong>Outils compatibles :</strong> Prometheus, Datadog, New Relic, ELK Stack
+                </p>
+                <div class="code-header">
+                    <span class="dot red"></span>
+                    <span class="dot yellow"></span>
+                    <span class="dot green"></span>
+                    <span>Exemple avec Prometheus</span>
+                </div>
+                <pre><code>#!/usr/bin/env python3
+import json
+import sys
+from prometheus_client import Counter, start_http_server
+
+# Créer un compteur Prometheus
+HOOK_EXECUTIONS = Counter('vibe_hook_executions_total', 
+                          'Nombre total d_exécutions de hooks', 
+                          ['hook_name', 'type', 'status'])
+
+def main():
+    try:
+        invocation = json.load(sys.stdin)
+        hook_name = invocation.get("hook_name", "unknown")
+        hook_type = invocation.get("hook_event_name", "unknown")
+        
+        # Incrémenter le compteur
+        HOOK_EXECUTIONS.labels(hook_name, hook_type, "success").inc()
+        
+        print(json.dumps({"decision": "allow"}))
+        sys.exit(0)
+    except:
+        HOOK_EXECUTIONS.labels(hook_name, hook_type, "error").inc()
+        print(json.dumps({"decision": "allow"}))
+        sys.exit(1)
+
+# Dans un autre processus : start_http_server(8000)</code></pre>
+            </div>
+            
+            <div class="card">
+                <h3>🔄 Intégration avec CI/CD</h3>
+                <p>
+                    Déclenchez automatiquement des pipelines de test et de déploiement.
+                </p>
+                <p>
+                    <strong>Hook à utiliser :</strong> POST_TOOL (sur write_file)
+                </p>
+                <p>
+                    <strong>Outils compatibles :</strong> Jenkins, GitHub Actions, GitLab CI, CircleCI
+                </p>
+                <div class="code-header">
+                    <span class="dot red"></span>
+                    <span class="dot yellow"></span>
+                    <span class="dot green"></span>
+                    <span>Exemple avec GitHub Actions</span>
+                </div>
+                <pre><code>#!/usr/bin/env python3
+import json
+import sys
+import subprocess
+
+invocation = json.load(sys.stdin)
+
+# Déclencher un workflow GitHub Actions
+if invocation.get("tool_name") == "write_file":
+    path = invocation.get("tool_input", {}).get("path", "")
+    if path.endswith(".py"):
+        # Déclencher le workflow
+        subprocess.Popen([
+            "gh", "workflow", "run", "tests.yml",
+            "--repo", "mon-org/mon-repo"
+        ])
+
+print(json.dumps({"decision": "allow"}))
+sys.exit(0)</code></pre>
+            </div>
+            
+            <div class="card">
+                <h3>📁 Intégration avec des Bases de Données</h3>
+                <p>
+                    Stockez les résultats et les métadonnées dans une base de données.
+                </p>
+                <p>
+                    <strong>Hook à utiliser :</strong> POST_TOOL ou POST_AGENT
+                </p>
+                <p>
+                    <strong>Bases de données compatibles :</strong> PostgreSQL, MySQL, MongoDB, SQLite
+                </p>
+                <div class="code-header">
+                    <span class="dot red"></span>
+                    <span class="dot yellow"></span>
+                    <span class="dot green"></span>
+                    <span>Exemple avec PostgreSQL</span>
+                </div>
+                <pre><code>#!/usr/bin/env python3
+import json
+import sys
+import psycopg2
+
+invocation = json.load(sys.stdin)
+
+# Connexion à la base de données
+conn = psycopg2.connect(
+    host="localhost",
+    database="vibe_metrics",
+    user="vibe",
+    password="password"
+)
+
+try:
+    with conn.cursor() as cur:
+        cur.execute("""
+            INSERT INTO hook_executions 
+            (timestamp, session_id, tool_name, status, duration_ms)
+            VALUES (%s, %s, %s, %s, %s)
+        """, (
+            invocation.get("timestamp"),
+            invocation.get("session_id"),
+            invocation.get("tool_name"),
+            invocation.get("tool_status"),
+            invocation.get("duration_ms")
+        ))
+        conn.commit()
+finally:
+    conn.close()
+
+print(json.dumps({"decision": "allow"}))
+sys.exit(0)</code></pre>
+            </div>
+        </div>
+    </section>
+
+    <!-- Bonnes Pratiques d'Intégration -->
+    <section class="section">
+        <div class="container">
+            <h2>🌟 Bonnes Pratiques d'Intégration</h2>
+            
+            <div class="card-grid">
+                <div class="card">
+                    <div class="card-icon green">✅</div>
+                    <h3>Utilisez des Variables d'Environnement</h3>
+                    <p>
+                        Ne codez pas les informations sensibles (tokens, URLs, mots de passe) directement dans vos hooks.
+                    </p>
+                    <div class="code-header">
+                        <span class="dot red"></span>
+                        <span class="dot yellow"></span>
+                        <span class="dot green"></span>
+                        <span>Exemple</span>
+                    </div>
+                    <pre><code># ❌ À éviter
+webhook_url = "https://hooks.slack.com/services/MON/WEBHOOK"
+
+# ✅ À faire
+import os
+webhook_url = os.getenv("SLACK_WEBHOOK_URL")</code></pre>
+                </div>
+                
+                <div class="card">
+                    <div class="card-icon blue">🔒</div>
+                    <h3>Gérez les Erreurs Gracefully</h3>
+                    <p>
+                        Un hook ne doit pas bloquer l'agent en cas d'erreur d'intégration.
+                    </p>
+                    <div class="code-header">
+                        <span class="dot red"></span>
+                        <span class="dot yellow"></span>
+                        <span class="dot green"></span>
+                        <span>Exemple</span>
+                    </div>
+                    <pre><code>try:
+    requests.post(webhook_url, json=message, timeout=5)
+except Exception as e:
+    # Loguer l'erreur mais ne pas bloquer l'agent
+    sys.stderr.write(f"Erreur Slack: {e}\n")
+    pass</code></pre>
+                </div>
+                
+                <div class="card">
+                    <div class="card-icon orange">⚡</div>
+                    <h3>Optimisez les Timeouts</h3>
+                    <p>
+                        Définissez des timeouts appropriés pour les appels réseau.
+                    </p>
+                    <div class="code-header">
+                        <span class="dot red"></span>
+                        <span class="dot yellow"></span>
+                        <span class="dot green"></span>
+                        <span>Exemple</span>
+                    </div>
+                    <pre><code># ✅ Bon timeout pour un webhook
+requests.post(webhook_url, timeout=5)
+
+# ✅ Dans le TOML
+[[hooks]]
+name = "slack-notify"
+type = "post_agent"
+command = "python3 hooks/slack.py"
+timeout = 10  # Donne 5s de marge</code></pre>
+                </div>
+                
+                <div class="card">
+                    <div class="card-icon purple">📊</div>
+                    <h3>Utilisez le Matching</h3>
+                    <p>
+                        Appliquez vos hooks d'intégration uniquement aux outils pertinents.
+                    </p>
+                    <div class="code-header">
+                        <span class="dot red"></span>
+                        <span class="dot yellow"></span>
+                        <span class="dot green"></span>
+                        <span>Exemple</span>
+                    </div>
+                    <pre><code># ✅ Seulement pour write_file
+[[hooks]]
+name = "trigger-ci"
+type = "post_tool"
+command = "python3 hooks/trigger_ci.py"
+match = "write_file"
+timeout = 15
+
+# ✅ Pour plusieurs outils
+match = "write_file,edit_file,create_file"</code></pre>
+                </div>
+                
+                <div class="card">
+                    <div class="card-icon teal">🔄</div>
+                    <h3>Cachez les Résultats</h3>
+                    <p>
+                        Évitez les appels répétitifs aux mêmes APIs externes.
+                    </p>
+                    <div class="code-header">
+                        <span class="dot red"></span>
+                        <span class="dot yellow"></span>
+                        <span class="dot green"></span>
+                        <span>Exemple</span>
+                    </div>
+                    <pre><code>import functools
+import requests
+
+@functools.lru_cache(maxsize=100)
+def get_user_info(user_id):
+    response = requests.get(f"https://api.example.com/users/{user_id}")
+    return response.json()</code></pre>
+                </div>
+                
+                <div class="card">
+                    <div class="card-icon green">📝</div>
+                    <h3>Documentez vos Hooks</h3>
+                    <p>
+                        Ajoutez des descriptions claires dans votre configuration TOML.
+                    </p>
+                    <div class="code-header">
+                        <span class="dot red"></span>
+                        <span class="dot yellow"></span>
+                        <span class="dot green"></span>
+                        <span>Exemple</span>
+                    </div>
+                    <pre><code>[[hooks]]
+name = "slack-notify-completion"
+type = "post_agent"
+command = "python3 hooks/slack_notify.py"
+timeout = 10
+strict = false
+description = "Envoie une notification à Slack #vibe-alerts quand une tâche est terminée. Utilise SLACK_WEBHOOK_URL."</code></pre>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Prochaines Étapes -->
+    <section class="section" style="background: var(--bg-secondary);">
+        <div class="container">
+            <h2>🚀 Prochaines Étapes</h2>
+            
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <div class="feature-card-icon orange">🎯</div>
+                    <h3>Exemples Pratiques</h3>
+                    <p>Consultez des exemples concrets prêts à l'emploi pour chaque type d'intégration.</p>
+                    <a href="examples.html" class="btn btn-primary">🎯 Lire</a>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-card-icon red">🚀</div>
+                    <h3>Concepts Avancés</h3>
+                    <p>Découvrez les fonctionnalités avancées : strict mode, matching complexe, etc.</p>
+                    <a href="advanced.html" class="btn btn-primary">🚀 Lire</a>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-card-icon purple">📚</div>
+                    <h3>Types de Hooks</h3>
+                    <p>Approfondissez votre compréhension des 3 types de hooks et de leurs spécificités.</p>
+                    <a href="types.html" class="btn btn-primary">🏷️ Lire</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-column">
+                    <h4>Documentation</h4>
+                    <ul>
+                        <li><a href="index.html">Accueil</a></li>
+                        <li><a href="architecture.html">Architecture</a></li>
+                        <li><a href="configuration.html">Configuration</a></li>
+                        <li><a href="types.html">Types de Hooks</a></li>
+                        <li><a href="execution.html">Exécution</a></li>
+                        <li><a href="examples.html">Exemples</a></li>
+                        <li><a href="integration.html">Intégration</a></li>
+                        <li><a href="advanced.html">Avancé</a></li>
+                    </ul>
+                </div>
+                <div class="footer-column">
+                    <h4>Intégration</h4>
+                    <ul>
+                        <li><a href="#">Cas d'Usage</a></li>
+                        <li><a href="#">Outils Spécifiques</a></li>
+                        <li><a href="#">Bonnes Pratiques</a></li>
+                    </ul>
+                </div>
+                <div class="footer-column">
+                    <h4>Ressources</h4>
+                    <ul>
+                        <li><a href="https://github.com/rrobbes/mistral-vibe" target="_blank">GitHub</a></li>
+                        <li><a href="https://docs.vibe.mistral.ai/" target="_blank">Doc Officielle</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>Mistral Vibe Hooks Documentation - Projet éducatif rrobbes/mistral-vibe</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        function toggleNav() {
+            document.querySelector('.nav').classList.toggle('active');
+        }
+        document.addEventListener('click', function(event) {
+            const nav = document.querySelector('.nav');
+            const toggle = document.querySelector('.nav-toggle');
+            if (!nav || !toggle) return;
+            if (!nav.contains(event.target) && !toggle.contains(event.target)) {
+                nav.classList.remove('active');
+            }
+        });
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            });
+        });
+    </script>
+</body>
+</html>
