@@ -1,0 +1,478 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Inside the Data Model — Mistral Vibe</title>
+  <meta name="description" content="Comment les données sont représentées, transformées et échangées entre les composants de Mistral Vibe : une visite interactive de vibe/core/types.py.">
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Aller au contenu</a>
+
+  <header class="topbar">
+    <div class="topbar__inner">
+      <a class="brand" href="#top" aria-label="Retour à l'accueil">
+        <span class="brand__mark" aria-hidden="true">{ }</span>
+        <span class="brand__text">Inside the Data Model</span>
+      </a>
+      <nav class="sections-nav" aria-label="Sections">
+        <ol>
+          <li><a href="#overview"><span class="sections-nav__num">1</span>Vue d'ensemble</a></li>
+          <li><a href="#classes"><span class="sections-nav__num">2</span>Classes</a></li>
+          <li><a href="#lifecycle"><span class="sections-nav__num">3</span>Vie d'un message</a></li>
+          <li><a href="#streaming"><span class="sections-nav__num">4</span>Streaming Lab</a></li>
+          <li><a href="#design"><span class="sections-nav__num">5</span>Conception</a></li>
+          <li><a href="#conclusion"><span class="sections-nav__num">6</span>Conclusion</a></li>
+        </ol>
+      </nav>
+    </div>
+    <div class="progress" aria-hidden="true"><div class="progress__bar" id="progress-bar"></div></div>
+  </header>
+
+  <main id="main">
+
+    <!-- ============================================================ HERO -->
+    <section class="hero" id="top" aria-labelledby="hero-title">
+      <div class="hero__text">
+        <p class="eyebrow"><code>vibe/core/types.py</code> · commit <code>5e931ff3</code> · v2.26.1</p>
+        <h1 id="hero-title">Mistral Vibe<span class="hero__dash"> — </span><span class="hero__accent">Inside the Data Model</span></h1>
+        <p class="hero__question">
+          Comment les données sont-elles <strong>représentées</strong>, <strong>transformées</strong>
+          et <strong>échangées</strong> entre les composants de Mistral Vibe&nbsp;?
+        </p>
+        <div class="hero__actions">
+          <a class="btn btn--primary" href="#overview">Commencer la visite</a>
+          <a class="btn" href="types.md">Lire le rapport technique</a>
+        </div>
+      </div>
+
+      <figure class="object-card hero__card" aria-label="Exemple d'objet LLMMessage">
+        <figcaption class="object-card__head">
+          <span class="tag tag--msg">LLMMessage</span>
+          <span class="object-card__hint">un message utilisateur</span>
+        </figcaption>
+<pre class="object-card__body"><code><span class="k">role</span>        <span class="p">=</span> <span class="s">"user"</span>
+<span class="k">content</span>     <span class="p">=</span> <span class="s">"Liste les fichiers de mon projet."</span>
+<span class="k">message_id</span>  <span class="p">=</span> <span class="s">"3f6c…e21a"</span>  <span class="c"># UUID généré</span>
+<span class="k">tool_calls</span>  <span class="p">=</span> <span class="n">None</span>
+<span class="k">injected</span>    <span class="p">=</span> <span class="n">False</span></code></pre>
+      </figure>
+
+      <dl class="stats" aria-label="Chiffres clés">
+        <div class="stat"><dt>lignes</dt><dd>797</dd></div>
+        <div class="stat"><dt>classes</dt><dd>48</dd></div>
+        <div class="stat"><dt>fichiers du moteur qui l'importent</dt><dd>84</dd></div>
+        <div class="stat"><dt>fichiers de tests qui l'importent</dt><dd>144</dd></div>
+      </dl>
+    </section>
+
+    <!-- ============================================================ 1 -->
+    <section class="section" id="overview" aria-labelledby="overview-title">
+      <header class="section__head">
+        <p class="section__num">§1</p>
+        <h2 id="overview-title">Vue d'ensemble</h2>
+        <p class="section__lead">
+          <code>types.py</code> ne s'exécute pas : c'est le <strong>vocabulaire commun</strong> du moteur.
+          Backends, boucle d'agent, outils, sessions et App Server échangent les mêmes objets, définis ici.
+        </p>
+      </header>
+
+      <div class="arch">
+        <p class="arch__hint">Survolez ou cliquez une flèche, un composant ou le socle <code>types.py</code>.
+          <span class="arch__swipe">Faites défiler le schéma horizontalement.</span></p>
+        <div class="arch__scroll">
+          <svg class="arch__svg" viewBox="0 0 1000 372" role="group" aria-labelledby="arch-title arch-desc">
+            <title id="arch-title">Schéma conceptuel des échanges de données</title>
+            <desc id="arch-desc">Interface, App Server, Agent Loop et Backend LLM échangent des données ; l'Agent Loop écrit les fichiers de session ; App Server, Agent Loop, Backend et sessions importent tous vibe/core/types.py, mais pas l'interface.</desc>
+            <defs>
+              <marker id="m-grey" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" fill="#8792ad"/></marker>
+              <marker id="m-msg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" fill="#6aa6ff"/></marker>
+              <marker id="m-event" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" fill="#b195ff"/></marker>
+              <marker id="m-stream" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" fill="#3fd0dc"/></marker>
+              <marker id="m-session" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" fill="#5ee08f"/></marker>
+            </defs>
+
+            <!-- imports of types.py (drawn first, behind everything) -->
+            <g class="imports" aria-hidden="true">
+              <line x1="330" y1="135" x2="330" y2="300"/>
+              <line x1="690" y1="135" x2="690" y2="300"/>
+              <line x1="920" y1="135" x2="920" y2="300"/>
+              <line x1="515" y1="240" x2="515" y2="300"/>
+              <text x="338" y="285">importe</text>
+            </g>
+
+            <!-- components -->
+            <g class="node" data-node="ui" tabindex="0" role="button" aria-label="Composant Interface">
+              <rect x="5" y="40" width="150" height="95" rx="12"/>
+              <text class="node__title" x="80" y="80">Interface</text>
+              <text class="node__sub" x="80" y="104">cli · cli-rust · acp</text>
+            </g>
+            <text class="arch__note" x="80" y="166">n'importe pas</text>
+            <text class="arch__note" x="80" y="182">types.py</text>
+
+            <g class="node" data-node="app" tabindex="0" role="button" aria-label="Composant App Server">
+              <rect x="285" y="40" width="150" height="95" rx="12"/>
+              <text class="node__title" x="360" y="80">App Server</text>
+              <text class="node__sub" x="360" y="104">vibe/app_server</text>
+            </g>
+            <g class="node" data-node="loop" tabindex="0" role="button" aria-label="Composant Agent Loop">
+              <rect x="565" y="40" width="150" height="95" rx="12"/>
+              <text class="node__title" x="640" y="80">Agent Loop</text>
+              <text class="node__sub" x="640" y="104">Python · legacy</text>
+            </g>
+            <g class="node" data-node="llm" tabindex="0" role="button" aria-label="Composant Backend LLM">
+              <rect x="845" y="40" width="150" height="95" rx="12"/>
+              <text class="node__title" x="920" y="80">Backend LLM</text>
+              <text class="node__sub" x="920" y="104">core/llm/backend</text>
+            </g>
+            <g class="node node--small" data-node="disk" tabindex="0" role="button" aria-label="Fichiers de session">
+              <rect x="440" y="190" width="150" height="50" rx="10"/>
+              <text class="node__title" x="515" y="212">Fichiers de session</text>
+              <text class="node__sub" x="515" y="230">core/session</text>
+            </g>
+
+            <!-- flows: forward (left to right) on y=72, backward on y=108 -->
+            <g class="flow flow--grey" data-flow="ui-app" tabindex="0" role="button" aria-label="Flux Interface vers App Server : requêtes">
+              <rect class="flow__hit" x="157" y="46" width="126" height="36"/>
+              <line x1="160" y1="72" x2="279" y2="72" marker-end="url(#m-grey)"/>
+              <text x="220" y="62">requêtes</text>
+            </g>
+            <g class="flow flow--grey" data-flow="app-ui" tabindex="0" role="button" aria-label="Flux App Server vers Interface : événements publics">
+              <rect class="flow__hit" x="157" y="96" width="126" height="38"/>
+              <line x1="280" y1="108" x2="161" y2="108" marker-end="url(#m-grey)"/>
+              <text x="220" y="127">événements publics</text>
+            </g>
+            <g class="flow flow--msg" data-flow="app-loop" tabindex="0" role="button" aria-label="Flux App Server vers Agent Loop : prompt et réponses">
+              <rect class="flow__hit" x="437" y="46" width="126" height="36"/>
+              <line x1="440" y1="72" x2="559" y2="72" marker-end="url(#m-msg)"/>
+              <text x="500" y="62">prompt · réponses</text>
+            </g>
+            <g class="flow flow--event" data-flow="loop-app" tabindex="0" role="button" aria-label="Flux Agent Loop vers App Server : événements">
+              <rect class="flow__hit" x="437" y="96" width="126" height="38"/>
+              <line x1="560" y1="108" x2="441" y2="108" marker-end="url(#m-event)"/>
+              <text x="500" y="127">événements</text>
+            </g>
+            <g class="flow flow--msg" data-flow="loop-llm" tabindex="0" role="button" aria-label="Flux Agent Loop vers Backend LLM : messages et outils">
+              <rect class="flow__hit" x="717" y="46" width="126" height="36"/>
+              <line x1="720" y1="72" x2="839" y2="72" marker-end="url(#m-msg)"/>
+              <text x="780" y="62">messages · outils</text>
+            </g>
+            <g class="flow flow--stream" data-flow="llm-loop" tabindex="0" role="button" aria-label="Flux Backend LLM vers Agent Loop : chunks">
+              <rect class="flow__hit" x="717" y="96" width="126" height="38"/>
+              <line x1="840" y1="108" x2="721" y2="108" marker-end="url(#m-stream)"/>
+              <text x="780" y="127">chunks</text>
+            </g>
+            <g class="flow flow--session" data-flow="loop-disk" tabindex="0" role="button" aria-label="Flux Agent Loop vers fichiers de session : transcription">
+              <rect class="flow__hit" x="540" y="137" width="146" height="52"/>
+              <line x1="592" y1="137" x2="550" y2="186" marker-end="url(#m-session)"/>
+              <text class="flow__side" x="600" y="170">transcription</text>
+            </g>
+
+            <!-- the shared vocabulary -->
+            <g class="node node--types" data-node="types" tabindex="0" role="button" aria-label="Le socle vibe/core/types.py">
+              <rect x="285" y="300" width="710" height="62" rx="12"/>
+              <text class="node__title" x="640" y="327">vibe/core/types.py</text>
+              <text class="node__sub" x="640" y="349">le vocabulaire commun du moteur</text>
+            </g>
+          </svg>
+        </div>
+        <p class="arch__caption">Schéma <strong>conceptuel</strong> : il montre les données échangées, pas chaque appel réel.
+          En gris : modèles publics de l'App Server, qui ne viennent pas de <code>types.py</code>.</p>
+        <aside class="callout" aria-label="Deux moteurs">
+          <p class="callout__title">Deux moteurs d'agent</p>
+          <p>Depuis cette version, le moteur <strong>par défaut</strong> est le <em>Unified Harness</em>, un runtime externe
+            avec ses propres types : il n'utilise de <code>types.py</code> que <code>SessionMetadata</code> et <code>ScheduledLoop</code>.
+            Le schéma montre le moteur <strong>Python</strong> (<code>vibe --legacy-harness</code>), celui qui utilise tout le modèle de données.
+            <a href="types.md#two-runtimes-where-typespy-is-and-isnt-used">Détails dans le rapport</a>.</p>
+        </aside>
+
+        <div class="arch__panel" id="arch-panel" aria-live="polite"></div>
+      </div>
+
+      <p class="families__hint">Cliquez une famille pour voir où ses types circulent.</p>
+      <div class="families">
+        <button type="button" class="family family--msg" data-family="msg" aria-pressed="false">
+          <span class="family__title">Messages</span>
+          <span class="family__text">La conversation et les appels d'outils demandés par le modèle.</span>
+          <span class="family__types"><code>LLMMessage</code> <code>ToolCall</code> <code>MessageList</code></span>
+        </button>
+        <button type="button" class="family family--event" data-family="event" aria-pressed="false">
+          <span class="family__title">Événements</span>
+          <span class="family__text">Ce que la boucle d'agent annonce à l'App Server.</span>
+          <span class="family__types"><code>BaseEvent</code> <code>ToolResultEvent</code> <code>ApprovalRequestEvent</code></span>
+        </button>
+        <button type="button" class="family family--session" data-family="session" aria-pressed="false">
+          <span class="family__title">Sessions</span>
+          <span class="family__text">Ce qui est enregistré sur disque pour reprendre une session.</span>
+          <span class="family__types"><code>SessionMetadata</code> <code>ChildSessionLink</code></span>
+        </button>
+        <button type="button" class="family family--stats" data-family="stats" aria-pressed="false">
+          <span class="family__title">Statistiques</span>
+          <span class="family__text">Tokens consommés, appels d'outils, coût de la session.</span>
+          <span class="family__types"><code>AgentStats</code> <code>LLMUsage</code></span>
+        </button>
+      </div>
+    </section>
+
+    <!-- ============================================================ 2 -->
+    <section class="section" id="classes" aria-labelledby="classes-title">
+      <header class="section__head">
+        <p class="section__num">§2</p>
+        <h2 id="classes-title">Diagrammes de classes</h2>
+        <p class="section__lead">
+          Deux vues UML séparées pour rester lisibles : les messages et le streaming, puis la hiérarchie des événements.
+          Chaque relation dessinée est justifiée par le code.
+        </p>
+      </header>
+
+      <div class="tabs" role="tablist" aria-label="Diagrammes de classes">
+        <button class="tab" role="tab" id="tab-a" aria-controls="diagram-a" aria-selected="true">A · Messages et streaming</button>
+        <button class="tab" role="tab" id="tab-b" aria-controls="diagram-b" aria-selected="false" tabindex="-1">B · Hiérarchie des événements</button>
+      </div>
+
+      <div class="uml">
+        <ul class="uml__legend" aria-label="Légende UML">
+          <li><svg viewBox="0 0 56 14" aria-hidden="true"><line x1="0" y1="7" x2="42" y2="7"/><path d="M42 1 56 7 42 13z" class="legend-hollow"/></svg><span><strong>Héritage</strong> · <code>class X(Parent)</code></span></li>
+          <li><svg viewBox="0 0 56 14" aria-hidden="true"><path d="M0 7 8 2 16 7 8 12z" class="legend-filled"/><line x1="16" y1="7" x2="56" y2="7"/></svg><span><strong>Composition</strong> · champ Pydantic imbriqué, sérialisé dans le parent</span></li>
+          <li><svg viewBox="0 0 56 14" aria-hidden="true"><path d="M0 7 8 2 16 7 8 12z" class="legend-hollow"/><line x1="16" y1="7" x2="56" y2="7"/></svg><span><strong>Agrégation</strong> · conteneur d'objets qui vivent sans lui</span></li>
+          <li><svg viewBox="0 0 56 14" aria-hidden="true"><line x1="0" y1="7" x2="52" y2="7" class="legend-dashed"/><path d="M44 2 54 7 44 12" class="legend-open"/></svg><span><strong>Dépendance</strong> · simple référence (ex. un type de classe)</span></li>
+        </ul>
+        <p class="uml__conventions">Nom en <em>italique</em> : abstrait par intention · <code>«frozen»</code> : instance non modifiable ·
+          les champs dessinés comme relations ne sont pas répétés dans la boîte · <code>[0..1]</code> : peut valoir <code>None</code>.</p>
+
+        <div class="uml__scroll" id="diagram-a" role="tabpanel" aria-labelledby="tab-a">
+          <svg class="uml__svg" id="uml-a" viewBox="0 0 1000 590" role="group" aria-label="Diagramme de classes : messages et streaming"></svg>
+        </div>
+        <div class="uml__scroll" id="diagram-b" role="tabpanel" aria-labelledby="tab-b" hidden>
+          <svg class="uml__svg" id="uml-b" viewBox="0 0 1000 575" role="group" aria-label="Diagramme de classes : hiérarchie des événements"></svg>
+        </div>
+
+        <div class="uml__panel" id="uml-panel" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ 3 -->
+    <section class="section" id="lifecycle" aria-labelledby="lifecycle-title">
+      <header class="section__head">
+        <p class="section__num">§3</p>
+        <h2 id="lifecycle-title">La vie d'un message</h2>
+        <p class="section__lead">
+          L'utilisateur demande <q>Liste les fichiers de mon projet.</q> Suivons, étape par étape,
+          les objets créés entre l'interface, l'App Server, la boucle d'agent, le backend LLM et l'outil.
+        </p>
+      </header>
+
+      <aside class="callout" aria-label="Moteur simulé">
+        <p class="callout__title">Moteur simulé : boucle Python (legacy)</p>
+        <p>Ce parcours suit <code>AgentLoop</code> (<code>vibe --legacy-harness</code>), le moteur qui utilise tout le modèle de
+          <code>types.py</code>. Le moteur par défaut, le Unified Harness, déroule le tour avec ses propres types.
+          Les valeurs affichées sont des <strong>exemples</strong> : aucun modèle ni outil n'est appelé.</p>
+      </aside>
+
+      <div class="sim" id="sim">
+        <div class="sim__toolbar">
+          <div class="sim__controls">
+            <button type="button" class="btn" id="sim-reset">⟲ Recommencer</button>
+            <button type="button" class="btn" id="sim-prev">← Précédent</button>
+            <button type="button" class="btn btn--primary" id="sim-next">Suivant →</button>
+            <span class="sim__counter" id="sim-counter" aria-live="polite">Étape 1 / 9</span>
+          </div>
+          <div class="sim__variant" role="radiogroup" aria-label="Commande demandée par le modèle">
+            <span class="sim__variant-label">Commande demandée&nbsp;:</span>
+            <button type="button" class="seg" role="radio" aria-checked="true" data-variant="ls"><code>ls</code></button>
+            <button type="button" class="seg" role="radio" aria-checked="false" data-variant="rm"><code>rm -rf build</code></button>
+          </div>
+        </div>
+
+        <ol class="sim__dots" id="sim-dots" aria-label="Étapes"></ol>
+
+        <ol class="sim__lanes" aria-label="Composants">
+          <li data-comp="ui">Interface</li>
+          <li data-comp="app">App Server</li>
+          <li data-comp="loop">Agent Loop</li>
+          <li data-comp="list">MessageList</li>
+          <li data-comp="llm">Backend LLM</li>
+          <li data-comp="tool">Outil bash</li>
+        </ol>
+
+        <div class="sim__stage">
+          <div class="sim__story">
+            <p class="sim__flow" id="sim-flow"></p>
+            <h3 id="sim-title"></h3>
+            <div id="sim-text"></div>
+            <div id="sim-links"></div>
+          </div>
+          <div class="sim__state">
+            <p class="panel__label">MessageList</p>
+            <ol class="history" id="sim-history" aria-label="Contenu de la MessageList"></ol>
+            <p class="panel__label">Objets de cette étape</p>
+            <div class="sim__objects" id="sim-objects"></div>
+          </div>
+        </div>
+        <p class="sim__keys">Astuce : avec la section à l'écran, les flèches ← → du clavier changent d'étape.</p>
+      </div>
+    </section>
+
+    <!-- ============================================================ 4 -->
+    <section class="section" id="streaming" aria-labelledby="streaming-title">
+      <header class="section__head">
+        <p class="section__num">§4</p>
+        <h2 id="streaming-title">Streaming Lab</h2>
+        <p class="section__lead">
+          Le modèle répond en fragments. <code>LLMChunk.__add__</code> et <code>LLMMessage.__add__</code>
+          les rassemblent en un seul message, et ce n'est pas qu'une concaténation de texte.
+        </p>
+      </header>
+
+      <div class="lab" id="lab">
+        <div class="sim__toolbar">
+          <div class="sim__variant" role="radiogroup" aria-label="Scénario">
+            <span class="sim__variant-label">Scénario&nbsp;:</span>
+            <button type="button" class="seg" role="radio" aria-checked="true" data-scenario="text">Texte <code>"Bon" + "jour" + " !"</code></button>
+            <button type="button" class="seg" role="radio" aria-checked="false" data-scenario="tool">Arguments d'un appel d'outil</button>
+          </div>
+          <div class="sim__controls">
+            <button type="button" class="btn" id="lab-reset">⟲ Recommencer</button>
+            <button type="button" class="btn" id="lab-prev">← Précédent</button>
+            <button type="button" class="btn btn--primary" id="lab-next">Fragment suivant →</button>
+            <span class="sim__counter" id="lab-counter" aria-live="polite"></span>
+          </div>
+        </div>
+
+        <p class="lab__code"><code>chunk_agg = processed_chunk if chunk_agg is None else chunk_agg + processed_chunk</code>
+          <a href="https://github.com/rrobbes/mistral-vibe/blob/5e931ff306602964a7abbabb7d3026dd76c71e31/vibe/core/agent_loop/_loop.py#L3394-L3398" target="_blank" rel="noopener">_loop.py:3394–3398</a></p>
+
+        <div class="lab__cols">
+          <section class="lab__col" aria-labelledby="lab-in-title">
+            <p class="panel__label" id="lab-in-title">① Fragment reçu</p>
+            <div id="lab-in"></div>
+          </section>
+          <section class="lab__col" aria-labelledby="lab-rules-title">
+            <p class="panel__label" id="lab-rules-title">② Règles appliquées</p>
+            <ul class="lab__rules" id="lab-rules"></ul>
+          </section>
+          <section class="lab__col" aria-labelledby="lab-out-title">
+            <p class="panel__label" id="lab-out-title">③ <code>chunk_agg</code> après l'opération</p>
+            <div id="lab-out"></div>
+            <p class="lab__json" id="lab-json" hidden></p>
+          </section>
+        </div>
+
+        <div class="lab__bottom">
+          <div class="lab__box">
+            <p class="callout__title">Naïf ou réel&nbsp;?</p>
+            <div id="lab-naive"></div>
+          </div>
+          <div class="lab__box">
+            <p class="callout__title">Cas limites : ce que <code>+</code> refuse</p>
+            <div class="lab__edges">
+              <button type="button" class="seg" data-edge="role">Rôles différents</button>
+              <button type="button" class="seg" data-edge="index">Fragment sans <code>index</code></button>
+              <button type="button" class="seg" data-edge="name">Deux noms d'outil</button>
+            </div>
+            <div id="lab-edge" aria-live="polite"><p class="lab__muted">Choisissez un cas pour voir l'exception levée par <code>LLMMessage.__add__</code>.</p></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================ 5 -->
+    <section class="section" id="design" aria-labelledby="design-title">
+      <header class="section__head">
+        <p class="section__num">§5</p>
+        <h2 id="design-title">Choix de conception</h2>
+        <p class="section__lead">
+          Ce que le code montre réellement, classé en trois niveaux : style architectural, patterns et techniques.
+          Chaque choix est présenté avec son problème, sa solution, son avantage et un exemple réel.
+        </p>
+      </header>
+
+      <div class="levels">
+        <div class="level level--style"><h3>Style architectural</h3><p>Comment le système est organisé dans son ensemble.</p></div>
+        <div class="level level--pattern"><h3>Patterns</h3><p>Solutions de conception reconnues, avec une preuve dans le code.</p></div>
+        <div class="level level--tech"><h3>Techniques</h3><p>Moyens offerts par Python et Pydantic.</p></div>
+      </div>
+
+      <div class="design__toolbar">
+        <div class="sim__variant" role="radiogroup" aria-label="Filtrer par niveau">
+          <button type="button" class="seg" role="radio" aria-checked="true" data-level="all">Tous</button>
+          <button type="button" class="seg" role="radio" aria-checked="false" data-level="style">Style</button>
+          <button type="button" class="seg" role="radio" aria-checked="false" data-level="pattern">Patterns</button>
+          <button type="button" class="seg" role="radio" aria-checked="false" data-level="tech">Techniques</button>
+        </div>
+        <button type="button" class="btn" id="design-toggle">Tout déplier</button>
+      </div>
+      <div class="design__grid" id="design-cards"></div>
+
+      <aside class="callout callout--neutral" aria-label="Ce que le code n'implémente pas">
+        <p class="callout__title">Ce que je n'affirme pas</p>
+        <p><strong>Singleton, Factory (GoF)</strong> : absents de <code>types.py</code>. <code>AgentStats.create_fresh()</code> est une
+          <em>méthode de fabrique statique</em>, un idiome, pas le patron Factory.
+          <strong>Adapter</strong> : présent, mais dans les backends LLM qui traduisent chaque API en <code>LLMChunk</code>, pas dans
+          <code>types.py</code> (voir le travail sur <a href="https://github.com/rrobbes/mistral-vibe/tree/main/docs/understanding_vibe/core/backend" target="_blank" rel="noopener">core/backend</a>).</p>
+      </aside>
+    </section>
+
+    <!-- ============================================================ 6 -->
+    <section class="section" id="conclusion" aria-labelledby="conclusion-title">
+      <header class="section__head">
+        <p class="section__num">§6</p>
+        <h2 id="conclusion-title">Conclusion</h2>
+      </header>
+
+      <ol class="takeaways">
+        <li>Le Data Model fournit un <strong>vocabulaire commun</strong> au moteur.
+          <span class="takeaways__proof">48 classes, importées par 84 fichiers du moteur.</span></li>
+        <li>Des modèles <strong>structurés et validés</strong> permettent aux composants de communiquer.
+          <span class="takeaways__proof">Messages, fragments additionnables, événements typés.</span></li>
+        <li>Cette organisation <strong>sépare le cœur</strong> de l'agent des interfaces et des fournisseurs.
+          <span class="takeaways__proof">Aucune interface n'importe <code>types.py</code> ; chaque backend produit des <code>LLMChunk</code>.</span></li>
+      </ol>
+
+      <p class="next__intro"><strong>Et après&nbsp;?</strong> Les types de ce fichier relient plusieurs sujets du projet :</p>
+      <div class="next" id="next-topics">
+        <a class="next__card" href="https://github.com/rrobbes/mistral-vibe/tree/main/docs/understanding_vibe/core/backend" target="_blank" rel="noopener">
+          <span class="next__topic">Backends LLM</span><span class="next__link">produisent les <code>LLMChunk</code></span></a>
+        <a class="next__card" href="https://github.com/rrobbes/mistral-vibe/pull/24" target="_blank" rel="noopener">
+          <span class="next__topic">Agent Loop <small>(PR #24)</small></span><span class="next__link">émet les événements, possède la <code>MessageList</code></span></a>
+        <a class="next__card" href="https://github.com/rrobbes/mistral-vibe/tree/main/docs/understanding_vibe/configuration/permissions" target="_blank" rel="noopener">
+          <span class="next__topic">Permissions</span><span class="next__link"><code>ApprovalRequestEvent</code>, <code>approval_source</code></span></a>
+        <a class="next__card" href="https://github.com/rrobbes/mistral-vibe/tree/main/docs/understanding_vibe/tools" target="_blank" rel="noopener">
+          <span class="next__topic">Outils</span><span class="next__link"><code>ToolCall</code>, <code>ToolResultEvent</code></span></a>
+        <a class="next__card" href="https://github.com/rrobbes/mistral-vibe/tree/main/docs/understanding_vibe/gestion_sessions/sessions" target="_blank" rel="noopener">
+          <span class="next__topic">Sessions</span><span class="next__link"><code>SessionMetadata</code>, transcription</span></a>
+        <a class="next__card" href="https://github.com/rrobbes/mistral-vibe/tree/main/docs/understanding_vibe/configuration/config-system" target="_blank" rel="noopener">
+          <span class="next__topic">Configuration</span><span class="next__link">instantané dans <code>SessionMetadata.config</code></span></a>
+        <a class="next__card next__card--open" href="https://github.com/rrobbes/mistral-vibe/tree/main/harness" target="_blank" rel="noopener">
+          <span class="next__topic">Unified Harness</span><span class="next__link">le moteur par défaut, avec ses propres types : <strong>sujet encore à documenter</strong></span></a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="footer__inner">
+      <div>
+        <p class="footer__title">Sources</p>
+        <ul>
+          <li><a href="https://github.com/rrobbes/mistral-vibe/blob/5e931ff306602964a7abbabb7d3026dd76c71e31/vibe/core/types.py">vibe/core/types.py</a> (commit <code>5e931ff3</code>)</li>
+          <li><a href="types.md">Rapport technique détaillé</a> · <a href="README.md">README</a></li>
+          <li><a href="../../../adr/0002-core-engine-and-delivery-surfaces.md">ADR 0002</a> ·
+              <a href="../../../adr/0003-event-driven-agent-loop.md">ADR 0003</a> ·
+              <a href="../../../adr/0006-local-sessions.md">ADR 0006</a></li>
+        </ul>
+      </div>
+      <div>
+        <p class="footer__title">Projet</p>
+        <ul>
+          <li><a href="https://github.com/rrobbes/mistral-vibe/issues/6">Issue #6</a> · <a href="https://github.com/rrobbes/mistral-vibe/pull/15">PR #15</a></li>
+          <li>Hafsa — groupe Core</li>
+          <li>Réalisé avec l'aide d'un agent IA ; contenus vérifiés dans le code.</li>
+        </ul>
+      </div>
+    </div>
+  </footer>
+
+  <script src="assets/app.js"></script>
+</body>
+</html>
