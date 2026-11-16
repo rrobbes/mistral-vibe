@@ -44,6 +44,7 @@ h1, h2, h3 { font-family: var(--display); text-wrap: balance; line-height: 1.15;
 h1 { font-size: clamp(36px, 6vw, 56px); font-weight: 750; letter-spacing: -.02em }
 h2 { font-size: 30px; font-weight: 750; margin-top: 64px; padding-top: 24px; border-top: 1px solid var(--line) }
 h3 { font-size: 20px; font-weight: 600; margin-top: 36px }
+h4 { font-family: var(--display); font-size: 17px; font-weight: 600; margin: 28px 0 0 }
 h2 + *, h3 + * { margin-top: 14px }
 p, ul, ol { margin-block: 12px }
 a { color: var(--accent) }
@@ -128,6 +129,7 @@ ol.steps > li::before { content: counter(s); font: 600 14px/32px var(--mono); te
       <li><a href="#checkpoints">Checkpoints</a>
         <ul>
           <li><a href="#filestate">Snapshots: FileState</a></li>
+          <li><a href="#old-versions">How old versions are saved</a></li>
           <li><a href="#event-log">The event log</a></li>
           <li><a href="#lifecycle">Turn lifecycle</a></li>
           <li><a href="#manual-edits">Manual edits</a></li>
@@ -221,7 +223,47 @@ ol.steps > li::before { content: counter(s); font: 600 14px/32px var(--mono); te
       <li><strong><code>data is None</code></strong>: the file did not exist; restoring it means <strong>deleting</strong> it.</li>
       <li><strong><code>b"\x00" in data</code></strong>: treated as binary. Not line-diffed, but handled as a single <code>OpaqueChange</code>.</li>
     </ul>
-    <div class="callout note"><div class="t">Note</div><p><code>DiskFilesystem.read_bytes</code> returns <code>None</code> <strong>only</strong> for a missing file and raises for an unreadable one, so a transient read error is never mistaken for a deletion.</p></div>
+    <div class="callout note"><div class="t">Note</div><p>At turn boundaries, <code>DiskFilesystem.read_bytes</code> returns <code>None</code> <strong>only</strong> for a missing file and raises for an unreadable one, so a transient read error is never mistaken for a deletion. The one exception is the pre-tool snapshot (<code>BaseTool.get_file_snapshot_for_path</code>), which logs any read error other than <code>FileNotFoundError</code> and records <code>FileState(None)</code>.</p></div>
+
+    <h3 id="old-versions">How old versions are saved</h3>
+    <p>Every time the agent changes a file, Vibe quietly keeps the version that was there before. This is what makes file restoration possible. Below is exactly what is kept, when, and where.</p>
+    <p><strong>Who saves them.</strong> Not the model. The LLM does not know that snapshots exist and never asks for one. The harness (<code>AgentLoop</code>, through <code>CheckpointRecorder</code>) takes them on <strong>every</strong> user turn, automatically, whether or not you ever use <code>/rewind</code>.</p>
+    <p><strong>What is saved.</strong> A full byte copy of each file (<code>FileState</code>), never a diff, a git commit or a backup file. For every file a turn changes, the log keeps two copies: the content <strong>before</strong> the turn's first change (<code>pre</code>) and the content <strong>at the end</strong> of the turn (<code>after</code>).</p>
+    <p><strong>When it is saved</strong>, in order (<code>vibe/core/agent_loop/_loop.py</code>):</p>
+    <ol>
+      <li><strong>Turn start</strong> (<code>create_checkpoint</code>): a <code>_TurnMark</code> is opened. Files touched in the previous turn are re-read from disk, so changes a <code>bash</code> command made to <em>already tracked</em> files are captured.</li>
+      <li><strong>After you approve a tool call, before it runs</strong>: the loop calls <code>tool.get_file_snapshot(args)</code> in a worker thread and passes the result to <code>add_snapshot</code>. Only <code>write_file</code> and <code>edit</code> implement it. A rejected tool call takes no snapshot.</li>
+      <li><strong>First touch wins</strong>: if the agent edits the same file three times in one turn, only the version from before the first edit is kept. Intermediate versions are never saved.</li>
+      <li><strong>Turn end</strong> (<code>seal_turn</code>, in a <code>finally</code>, so it also runs on error or cancellation): each touched file is re-read; if it changed, an <code>_Edit(before, after)</code> is appended. An unchanged file leaves no trace.</li>
+    </ol>
+    <p><strong>Where it is stored.</strong> Only in RAM, in <code>Checkpointer._events</code>. Nothing is written to <code>~/.vibe</code>, the session log or the project. Two consequences:</p>
+    <ul>
+      <li>Memory grows with <em>file size × number of turns that touched it</em>, since every version is a whole copy.</li>
+      <li>Everything is lost when the process exits, on <code>--resume</code>/<code>--continue</code>, and whenever the message list is reset (<code>/clear</code>, session switch).</li>
+    </ul>
+    <p><strong>Blind spots.</strong> A file created or changed <strong>only</strong> by <code>bash</code>, an MCP tool, a custom tool or a subagent, and never touched by <code>write_file</code>/<code>edit</code>, is not tracked and will not be restored.</p>
+
+    <h4>Is this part of rewind?</h4>
+    <p><strong>Partly.</strong> Saving old versions belongs to the <strong>checkpoints</strong> module, not the rewind module. Rewind is one of two <em>consumers</em> of the same log:</p>
+    <div class="table"><table>
+      <tr><th>Component</th><th>Role with snapshots</th></tr>
+      <tr><td><code>CheckpointRecorder</code> (<code>checkpoints/recorder.py</code>)</td><td class="wrap-ok"><strong>Records</strong> them on every turn. Always on.</td></tr>
+      <tr><td><code>RewindManager</code> (<code>rewind/manager.py</code>)</td><td class="wrap-ok"><strong>Restores</strong> them: <code>rewind_to_message(restore_files=True)</code> → <code>restore_plan_to_turn</code> → <code>FileStore.apply</code>.</td></tr>
+      <tr><td><code>ReviewManager</code> (<code>review/manager.py</code>)</td><td class="wrap-ok"><strong>Reverts</strong> single hunks from them (keep / revert).</td></tr>
+    </table></div>
+    <p>So the <strong>file</strong> half of a rewind depends entirely on these snapshots, while the <strong>conversation</strong> half (truncation, fork) does not use them at all. A rewind <em>without</em> file restoration reads no snapshot, but still discards the snapshots of dropped turns (<code>drop_turns_from</code>).</p>
+
+    <h4>Worked example</h4>
+    <div class="table"><table>
+      <tr><th>Message</th><th>Agent action</th><th>Saved <code>pre</code> for <code>foo.py</code></th></tr>
+      <tr><td>#0 "create foo.py"</td><td><code>write_file</code> → v1</td><td><code>None</code> (did not exist)</td></tr>
+      <tr><td>#2 "refactor it"</td><td><code>edit</code> → v2, then <code>edit</code> → v3</td><td>v1 (v2 never saved)</td></tr>
+    </table></div>
+    <ul>
+      <li>Rewind to <strong>#2</strong> with files → <code>foo.py</code> goes back to <strong>v1</strong>.</li>
+      <li>Rewind to <strong>#0</strong> with files → <code>foo.py</code> is <strong>deleted</strong> (<code>pre</code> of the earliest dropped turn is <code>None</code>).</li>
+      <li>Rewind to <strong>#2</strong> without files → conversation truncated, <code>foo.py</code> stays v3.</li>
+    </ul>
 
     <h3 id="event-log">The event log</h3>
     <p><code>Checkpointer</code> keeps one ordered list of events, each stamped with a monotonic <code>seq</code>:</p>

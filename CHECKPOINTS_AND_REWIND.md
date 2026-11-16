@@ -19,6 +19,7 @@ persistence modes) · [0003 Event Driven Agent Loop](docs/adr/0003-event-driven-
 - [Architecture](#architecture)
 - [Checkpoints — `vibe/core/checkpoints/`](#checkpoints--vibecorecheckpoints)
   - [Snapshots: `FileState`](#snapshots-filestate)
+  - [How old versions are saved](#how-old-versions-are-saved)
   - [The event log](#the-event-log)
   - [Turn lifecycle](#turn-lifecycle)
   - [Manual edits](#manual-edits)
@@ -113,9 +114,83 @@ A snapshot is a whole-file byte copy, `FileState(data: bytes | None)`:
   single `OpaqueChange`.
 
 > [!NOTE]
-> `DiskFilesystem.read_bytes` returns `None` **only** for a missing file and
-> raises for an unreadable one, so a transient read error is never mistaken
-> for a deletion.
+> At turn boundaries, `DiskFilesystem.read_bytes` returns `None` **only** for a
+> missing file and raises for an unreadable one, so a transient read error is
+> never mistaken for a deletion. The one exception is the pre-tool snapshot
+> (`BaseTool.get_file_snapshot_for_path`), which logs any read error other than
+> `FileNotFoundError` and records `FileState(None)`.
+
+### How old versions are saved
+
+Every time the agent changes a file, Vibe quietly keeps the version that was
+there before. This is what makes file restoration possible. Below is exactly
+what is kept, when, and where.
+
+**Who saves them.** Not the model. The LLM does not know that snapshots exist
+and never asks for one. The harness (`AgentLoop`, through `CheckpointRecorder`)
+takes them on **every** user turn, automatically, whether or not you ever use
+`/rewind`.
+
+**What is saved.** A full byte copy of each file (`FileState`), never a diff,
+a git commit or a backup file. For every file a turn changes, the log keeps two
+copies: the content **before** the turn's first change (`pre`) and the content
+**at the end** of the turn (`after`).
+
+**When it is saved**, in order (`vibe/core/agent_loop/_loop.py`):
+
+1. **Turn start** (`create_checkpoint`): a `_TurnMark` is opened. Files touched
+   in the previous turn are re-read from disk, so changes a `bash` command made
+   to *already tracked* files are captured.
+2. **After you approve a tool call, before it runs**: the loop calls
+   `tool.get_file_snapshot(args)` in a worker thread and passes the result to
+   `add_snapshot`. Only `write_file` and `edit` implement it. A rejected tool
+   call takes no snapshot.
+3. **First touch wins**: if the agent edits the same file three times in one
+   turn, only the version from before the first edit is kept. Intermediate
+   versions are never saved.
+4. **Turn end** (`seal_turn`, in a `finally`, so it also runs on error or
+   cancellation): each touched file is re-read; if it changed, an `_Edit(before,
+   after)` is appended. An unchanged file leaves no trace.
+
+**Where it is stored.** Only in RAM, in `Checkpointer._events`. Nothing is
+written to `~/.vibe`, the session log or the project. Two consequences:
+
+- Memory grows with *file size × number of turns that touched it*, since every
+  version is a whole copy.
+- Everything is lost when the process exits, on `--resume`/`--continue`, and
+  whenever the message list is reset (`/clear`, session switch).
+
+**Blind spots.** A file created or changed **only** by `bash`, an MCP tool, a
+custom tool or a subagent, and never touched by `write_file`/`edit`, is not
+tracked and will not be restored.
+
+#### Is this part of rewind?
+
+**Partly.** Saving old versions belongs to the **checkpoints** module, not the
+rewind module. Rewind is one of two *consumers* of the same log:
+
+| Component | Role with snapshots |
+| --- | --- |
+| `CheckpointRecorder` (`checkpoints/recorder.py`) | **Records** them on every turn. Always on. |
+| `RewindManager` (`rewind/manager.py`) | **Restores** them: `rewind_to_message(restore_files=True)` → `restore_plan_to_turn` → `FileStore.apply`. |
+| `ReviewManager` (`review/manager.py`) | **Reverts** single hunks from them (keep / revert). |
+
+So the **file** half of a rewind depends entirely on these snapshots, while the
+**conversation** half (truncation, fork) does not use them at all. A rewind
+*without* file restoration reads no snapshot, but still discards the snapshots
+of dropped turns (`drop_turns_from`).
+
+#### Worked example
+
+| Message | Agent action | Saved `pre` for `foo.py` |
+| --- | --- | --- |
+| #0 "create foo.py" | `write_file` → v1 | `None` (did not exist) |
+| #2 "refactor it" | `edit` → v2, then `edit` → v3 | v1 (v2 never saved) |
+
+- Rewind to **#2** with files → `foo.py` goes back to **v1**.
+- Rewind to **#0** with files → `foo.py` is **deleted** (`pre` of the earliest
+  dropped turn is `None`).
+- Rewind to **#2** without files → conversation truncated, `foo.py` stays v3.
 
 ### The event log
 
