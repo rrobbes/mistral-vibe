@@ -1,0 +1,1294 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exemples de Hooks - Mistral Vibe</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Fira+Code&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <div class="logo"><div class="logo-icon">V</div><span>Mistral Vibe Hooks</span></div>
+            <button class="nav-toggle" onclick="toggleNav()">☰</button>
+            <nav class="nav">
+                <a href="index.html">Accueil</a>
+                <a href="architecture.html">Architecture</a>
+                <a href="configuration.html">Configuration</a>
+                <a href="types.html">Types de Hooks</a>
+                <a href="execution.html">Exécution</a>
+                <a href="examples.html" class="active">Exemples</a>
+                <a href="integration.html">Intégration</a>
+                <a href="advanced.html">Avancé</a>
+            </nav>
+        </div>
+    </header>
+
+    <section class="hero" style="padding: 2rem 0;">
+        <div class="container">
+            <h1>🎯 Exemples Complets de Hooks</h1>
+            <p style="max-width: 800px; margin: 0 auto;">
+                Découvrez des <strong>exemples prêts à l'emploi</strong> pour chaque type de hook.
+                Copiez, collez, et adaptez ces exemples pour vos besoins spécifiques.
+            </p>
+        </div>
+    </section>
+
+    <!-- Par Catégorie -->
+    <section class="section">
+        <div class="container">
+            <h2>📁 Exemples par Catégorie</h2>
+            
+            <div class="card">
+                <h3>🎯 Comment utiliser ces exemples ?</h3>
+                <ol>
+                    <li>
+                        <strong>Créez un dossier</strong> pour vos hooks :
+                        <pre><code>mkdir -p ~/.vibe/hooks/security ~/.vibe/hooks/audit ~/.vibe/hooks/transform</code></pre>
+                    </li>
+                    <li>
+                        <strong>Créez les fichiers Python/Bash</strong> avec le code des exemples
+                    </li>
+                    <li>
+                        <strong>Rendez-les exécutables</strong> :
+                        <pre><code>chmod +x ~/.vibe/hooks/**/*.py</code></pre>
+                    </li>
+                    <li>
+                        <strong>Configurez</strong> vos hooks dans <code>.vibe/hooks.toml</code>
+                    </li>
+                    <li>
+                        <strong>Testez</strong> avec Mistral Vibe
+                    </li>
+                </ol>
+                
+                <div class="info-box">
+                    <p>
+                        <strong>ℹ️ Astuce :</strong> Vous pouvez aussi placer les hooks dans <code>./.vibe/hooks/</code> 
+                        à la racine de votre projet pour qu'ils ne s'appliquent qu'à ce projet.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Sécurité -->
+    <section class="section" style="background: var(--bg-secondary);">
+        <div class="container">
+            <h2>🔒 Exemples de Sécurité</h2>
+            
+            <div class="card">
+                <h3>🛡️ Bloquer les Commandes Bash Dangereuses</h3>
+                <p>
+                    <strong>Type :</strong> <code>pre_tool</code><br>
+                    <strong>Match :</strong> <code>bash</code><br>
+                    <strong>Strict :</strong> <code>true</code><br>
+                    <strong>Description :</strong> Bloque les commandes bash dangereuses comme rm -rf, chmod -R, etc.
+                </p>
+                
+                <div class="code-header">
+                    <span class="dot red"></span>
+                    <span class="dot yellow"></span>
+                    <span class="dot green"></span>
+                    <span>~/.vibe/hooks/security/block_dangerous_bash.py</span>
+                </div>
+                <pre><code>#!/usr/bin/env python3
+"""
+Hook PRE_TOOL pour bloquer les commandes bash dangereuses.
+
+Ce hook intercepte tous les appels à l'outil 'bash' et vérifie
+si la commande contient des patterns dangereux.
+"""
+
+import json
+import sys
+import re
+
+
+def is_dangerous(command: str) -> tuple[bool, str]:
+    """Vérifie si une commande est dangereuse."""
+    
+    # Patterns dangereux avec leur description
+    dangerous_patterns = [
+        (r'rm\s+-r[f]?\s+', 'rm -rf ou rm -r'),
+        (r'chmod\s+-R\s+', 'chmod -R'),
+        (r':\s*\(\s*:\s*\|\s*:\s*\)\s*;', 'Fork bomb'),
+        (r'dd\s+if=/dev/', 'dd depuis /dev/'),
+        (r'cat\s+/etc/shadow', 'Lecture de /etc/shadow'),
+        (r'wget\s+.*\|\s*sh', 'Téléchargement et exécution'),
+        (r'curl\s+.*\|\s*sh', 'Téléchargement et exécution'),
+        (r'\>\s*/etc/', 'Écriture dans /etc/'),
+        (r'mv\s+.+\s+/dev/null', 'Déplacement vers /dev/null'),
+        (r'find\s+.*\s+-exec\s+', 'find avec -exec'),
+    ]
+    
+    for pattern, description in dangerous_patterns:
+        if re.search(pattern, command, re.IGNORECASE):
+            return True, f"Commande dangereuse détectée : {description}"
+    
+    # Commandes spécifiques dangereuses
+    dangerous_commands = [
+        'rm -rf /',
+        'rm -rf *',
+        ':(){ :|:& };:',
+        'mkfs',
+        'fdformat',
+    ]
+    
+    for cmd in dangerous_commands:
+        if cmd in command:
+            return True, f"Commande interdite : {cmd}"
+    
+    return False, ""
+
+
+def main():
+    """Point d'entrée du hook."""
+    try:
+        # Lire l'invocation depuis stdin
+        invocation = json.load(sys.stdin)
+        
+        # Vérifier si c'est un appel bash
+        if invocation.get("tool_name") != "bash":
+            # Pas un appel bash, autoriser
+            print(json.dumps({"decision": "allow"}))
+            sys.exit(0)
+        
+        # Extraire la commande
+        command = invocation.get("tool_input", {}).get("command", "")
+        if not command:
+            print(json.dumps({"decision": "allow"}))
+            sys.exit(0)
+        
+        # Vérifier si la commande est dangereuse
+        is_dangerous_cmd, reason = is_dangerous(command)
+        
+        if is_dangerous_cmd:
+            # Bloquer la commande
+            print(json.dumps({
+                "decision": "deny",
+                "reason": reason
+            }))
+            sys.exit(0)
+        
+        # Autoriser la commande
+        print(json.dumps({"decision": "allow"}))
+        sys.exit(0)
+        
+    except json.JSONDecodeError:
+        # Erreur de parsing JSON
+        print(json.dumps({
+            "decision": "deny",
+            "reason": "Erreur de parsing de l'invocation"
+        }))
+        sys.exit(1)
+    except Exception as e:
+        # Autre erreur
+        print(json.dumps({
+            "decision": "deny",
+            "reason": f"Erreur dans le hook : {str(e)}"
+        }))
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()</code></pre>
+                
+                <div class="code-header">
+                    <span class="dot red"></span>
+                    <span class="dot yellow"></span>
+                    <span class="dot green"></span>
+                    <span>.vibe/hooks.toml</span>
+                </div>
+                <pre><code>[[hooks]]
+name = "security-block-dangerous-bash"
+type = "pre_tool"
+command = "python3 ~/.vibe/hooks/security/block_dangerous_bash.py"
+match = "bash"
+timeout = 10
+strict = true
+description = "Bloque les commandes bash dangereuses"
+</code></pre>
+            </div>
+            
+            <div class="card">
+                <h3>🔐 Restreindre l'Accès aux Fichiers</h3>
+                <p>
+                    <strong>Type :</strong> <code>pre_tool</code><br>
+                    <strong>Match :</strong> <code>read_file,write_file</code><br>
+                    <strong>Strict :</strong> <code>true</code><br>
+                    <strong>Description :</strong> Empêche l'accès aux fichiers en dehors du répertoire de travail.
+                </p>
+                
+                <div class="code-header">
+                    <span class="dot red"></span>
+                    <span class="dot yellow"></span>
+                    <span class="dot green"></span>
+                    <span>~/.vibe/hooks/security/restrict_file_access.py</span>
+                </div>
+                <pre><code>#!/usr/bin/env python3
+"""
+Hook PRE_TOOL pour restreindre l'accès aux fichiers.
+
+Ce hook vérifie que les opérations de lecture/écriture
+ne sortent pas du répertoire de travail courant.
+"""
+
+import json
+import sys
+from pathlib import Path
+
+
+def is_allowed_path(target_path: str, cwd: str) -> bool:
+    """Vérifie si un chemin est autorisé (dans cwd)."""
+    try:
+        # Résoudre les chemins
+        target = Path(target_path).resolve()
+        base = Path(cwd).resolve()
+        
+        # Vérifier que target commence par base
+        return str(target).startswith(str(base))
+    except Exception:
+        return False
+
+
+def main():
+    """Point d'entrée du hook."""
+    try:
+        invocation = json.load(sys.stdin)
+        
+        # Vérifier si c'est un appel à read_file ou write_file
+        tool_name = invocation.get("tool_name")
+        if tool_name not in ["read_file", "write_file"]:
+            print(json.dumps({"decision": "allow"}))
+            sys.exit(0)
+        
+        # Extraire le path
+        path = invocation.get("tool_input", {}).get("path", "")
+        if not path:
+            print(json.dumps({"decision": "allow"}))
+            sys.exit(0)
+        
+        # Extraire le répertoire de travail
+        cwd = invocation.get("cwd", "/")
+        
+        # Vérifier si le path est autorisé
+        if not is_allowed_path(path, cwd):
+            print(json.dumps({
+                "decision": "deny",
+                "reason": f"Accès interdit en dehors de {cwd}"
+            }))
+            sys.exit(0)
+        
+        # Autoriser
+        print(json.dumps({"decision": "allow"}))
+        sys.exit(0)
+        
+    except Exception as e:
+        print(json.dumps({
+            "decision": "deny",
+            "reason": f"Erreur dans le hook : {str(e)}"
+        }))
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()</code></pre>
+                
+                <div class="code-header">
+                    <span class="dot red"></span>
+                    <span class="dot yellow"></span>
+                    <span class="dot green"></span>
+                    <span>.vibe/hooks.toml (ajout)</span>
+                </div>
+                <pre><code>[[hooks]]
+name = "security-restrict-file-access"
+type = "pre_tool"
+command = "python3 ~/.vibe/hooks/security/restrict_file_access.py"
+match = "read_file"
+timeout = 10
+strict = true
+description = "Restreint l'accès aux fichiers"
+
+[[hooks]]
+name = "security-restrict-file-write"
+type = "pre_tool"
+command = "python3 ~/.vibe/hooks/security/restrict_file_access.py"
+match = "write_file"
+timeout = 10
+strict = true
+description = "Restreint l'écriture de fichiers"
+</code></pre>
+            </div>
+            
+            <div class="card">
+                <h3>🛑 Bloquer Certains Outils Complètement</h3>
+                <p>
+                    <strong>Type :</strong> <code>pre_tool</code><br>
+                    <strong>Match :</strong> <code>*</code> (tous les outils)<br>
+                    <strong>Strict :</strong> <code>true</code><br>
+                    <strong>Description :</strong> Bloque complètement certains outils comme bash, python, etc.
+                </p>
+                
+                <div class="code-header">
+                    <span class="dot red"></span>
+                    <span class="dot yellow"></span>
+                    <span class="dot green"></span>
+                    <span>~/.vibe/hooks/security/block_tools.py</span>
+                </div>
+                <pre><code>#!/usr/bin/env python3
+"""
+Hook PRE_TOOL pour bloquer certains outils complètement.
+"""
+
+import json
+import sys
+
+
+# Liste des outils bloqués
+BLOCKED_TOOLS = {
+    "bash": "Les commandes shell sont désactivées",
+    "python": "L'exécution de code Python est désactivée",
+    "sh": "Les scripts shell sont désactivés",
+    "zsh": "Les scripts zsh sont désactivés",
+    "powershell": "PowerShell est désactivé",
+}
+
+
+def main():
+    """Point d'entrée du hook."""
+    try:
+        invocation = json.load(sys.stdin)
+        
+        tool_name = invocation.get("tool_name", "")
+        
+        if tool_name in BLOCKED_TOOLS:
+            print(json.dumps({
+                "decision": "deny",
+                "reason": BLOCKED_TOOLS[tool_name]
+            }))
+            sys.exit(0)
+        
+        # Autoriser par défaut
+        print(json.dumps({"decision": "allow"}))
+        sys.exit(0)
+        
+    except Exception as e:
+        print(json.dumps({"decision": "allow"}))  # Ne pas bloquer par erreur
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()</code></pre>
+                
+                <div class="code-header">
+                    <span class="dot red"></span>
+                    <span class="dot yellow"></span>
+                    <span class="dot green"></span>
+                    <span>.vibe/hooks.toml (ajout)</span>
+                </div>
+                <pre><code>[[hooks]]
+name = "security-block-tools"
+type = "pre_tool"
+command = "python3 ~/.vibe/hooks/security/block_tools.py"
+match = "*"
+timeout = 5
+strict = true
+description = "Bloque les outils sensibles"
+</code></pre>
+            </div>
+        </div>
+    </section>
+
+    <!-- Audit -->
+    <section class="section">
+        <div class="container">
+            <h2>📊 Exemples d'Audit</h2>
+            
+            <div class="card">
+                <h3>📝 Journaliser Tous les Appels d'Outils</h3>
+                <p>
+                    <strong>Type :</strong> <code>post_tool</code><br>
+                    <strong>Match :</strong> <code>*</code> (tous les outils)<br>
+                    <strong>Strict :</strong> <code>false</code><br>
+                    <strong>Description :</strong> Journalise tous les appels d'outils dans un fichier structuré.
+                </p>
+                
+                <div class="code-header">
+                    <span class="dot red"></span>
+                    <span class="dot yellow"></span>
+                    <span class="dot green"></span>
+                    <span>~/.vibe/hooks/audit/log_tool_calls.py</span>
+                </div>
+                <pre><code>#!/usr/bin/env python3
+"""
+Hook POST_TOOL pour journaliser tous les appels d'outils.
+
+Ce hook écrit un log structuré de chaque appel d'outil
+avec son résultat, sa durée, et son statut.
+"""
+
+import json
+import sys
+from datetime import datetime
+from pathlib import Path
+import os
+
+
+LOG_DIR = Path("~/vibe_audit").expanduser()
+LOG_FILE = LOG_DIR / "tool_calls.jsonl"
+
+
+def main():
+    """Point d'entrée du hook."""
+    try:
+        invocation = json.load(sys.stdin)
+        
+        # Créer le répertoire de log s'il n'existe pas
+        LOG_DIR.mkdir(parents=True, exist_ok=True)
+        
+        # Créer l'entrée de log
+        log_entry = {
+            "timestamp": datetime.now().isoformat(),
+            "session_id": invocation.get("session_id"),
+            "tool_name": invocation.get("tool_name"),
+            "tool_call_id": invocation.get("tool_call_id"),
+            "tool_input": invocation.get("tool_input", {}),
+            "tool_status": invocation.get("tool_status"),
+            "tool_output": invocation.get("tool_output"),
+            "tool_error": invocation.get("tool_error"),
+            "duration_ms": invocation.get("duration_ms"),
+            "cwd": invocation.get("cwd"),
+        }
+        
+        # Écrire dans le fichier de log (format JSONL)
+        with open(LOG_FILE, "a") as f:
+            f.write(json.dumps(log_entry) + "\n")
+        
+        # Toujours autoriser
+        print(json.dumps({"decision": "allow"}))
+        sys.exit(0)
+        
+    except Exception as e:
+        # En cas d'erreur, on autorise mais on loggue l'erreur
+        print(json.dumps({"decision": "allow"}))
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()</code></pre>
+                
+                <div class="code-header">
+                    <span class="dot red"></span>
+                    <span class="dot yellow"></span>
+                    <span class="dot green"></span>
+                    <span>.vibe/hooks.toml</span>
+                </div>
+                <pre><code>[[hooks]]
+name = "audit-log-tool-calls"
+type = "post_tool"
+command = "python3 ~/.vibe/hooks/audit/log_tool_calls.py"
+match = "*"
+timeout = 10
+strict = false
+description = "Journalise tous les appels d'outils"
+</code></pre>
+                
+                <div class="info-box">
+                    <p>
+                        <strong>💡 Astuce :</strong> Le format <strong>JSONL</strong> (JSON Lines) est parfait pour les logs :
+                        <ul>
+                            <li>Chaque ligne est un JSON valide</li>
+                            <li>Facile à parser avec <code>jq</code>, Python, etc.</li>
+                            <li>On peut streamer les logs en temps réel</li>
+                        </ul>
+                        Pour lire les logs : <code>tail -f ~/vibe_audit/tool_calls.jsonl | jq</code>
+                    </p>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h3>📋 Journaliser les Conversations Complètes</h3>
+                <p>
+                    <strong>Type :</strong> <code>post_agent</code><br>
+                    <strong>Strict :</strong> <code>false</code><br>
+                    <strong>Description :</strong> Journalise chaque tour de conversation avec métadonnées.
+                </p>
+                
+                <div class="code-header">
+                    <span class="dot red"></span>
+                    <span class="dot yellow"></span>
+                    <span class="dot green"></span>
+                    <span>~/.vibe/hooks/audit/log_conversations.py</span>
+                </div>
+                <pre><code>#!/usr/bin/env python3
+"""
+Hook POST_AGENT pour journaliser les conversations.
+
+Ce hook écrit un log de chaque tour de conversation.
+"""
+
+import json
+import sys
+from datetime import datetime
+from pathlib import Path
+
+
+CONVERSATION_LOG = Path("~/vibe_conversations.jsonl").expanduser()
+
+
+def main():
+    """Point d'entrée du hook."""
+    try:
+        invocation = json.load(sys.stdin)
+        
+        # Créer l'entrée de log
+        log_entry = {
+            "timestamp": datetime.now().isoformat(),
+            "event": "agent_turn",
+            "session_id": invocation.get("session_id"),
+            "transcript_path": invocation.get("transcript_path"),
+            "cwd": invocation.get("cwd"),
+            "parent_session_id": invocation.get("parent_session_id"),
+        }
+        
+        # Écrire dans le fichier de log
+        with open(CONVERSATION_LOG, "a") as f:
+            f.write(json.dumps(log_entry) + "\n")
+        
+        # Toujours autoriser
+        print(json.dumps({"decision": "allow"}))
+        sys.exit(0)
+        
+    except Exception as e:
+        print(json.dumps({"decision": "allow"}))
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()</code></pre>
+                
+                <div class="code-header">
+                    <span class="dot red"></span>
+                    <span class="dot yellow"></span>
+                    <span class="dot green"></span>
+                    <span>.vibe/hooks.toml</span>
+                </div>
+                <pre><code>[[hooks]]
+name = "audit-log-conversations"
+type = "post_agent"
+command = "python3 ~/.vibe/hooks/audit/log_conversations.py"
+timeout = 5
+strict = false
+description = "Journalise les conversations"
+</code></pre>
+            </div>
+            
+            <div class="card">
+                <h3>⚠️ Journaliser les Erreurs</h3>
+                <p>
+                    <strong>Type :</strong> <code>post_tool</code><br>
+                    <strong>Match :</strong> <code>*</code><br>
+                    <strong>Strict :</strong> <code>false</code><br>
+                    <strong>Description :</strong> Journalise uniquement les appels d'outils qui ont échoué.
+                </p>
+                
+                <div class="code-header">
+                    <span class="dot red"></span>
+                    <span class="dot yellow"></span>
+                    <span class="dot green"></span>
+                    <span>~/.vibe/hooks/audit/log_errors.py</span>
+                </div>
+                <pre><code>#!/usr/bin/env python3
+"""
+Hook POST_TOOL pour journaliser les erreurs d'outils.
+"""
+
+import json
+import sys
+from datetime import datetime
+from pathlib import Path
+
+
+ERROR_LOG = Path("~/vibe_errors.jsonl").expanduser()
+
+
+def main():
+    """Point d'entrée du hook."""
+    try:
+        invocation = json.load(sys.stdin)
+        
+        # Ne logger que les erreurs
+        if invocation.get("tool_status") != "failure":
+            print(json.dumps({"decision": "allow"}))
+            sys.exit(0)
+        
+        # Créer l'entrée de log
+        log_entry = {
+            "timestamp": datetime.now().isoformat(),
+            "session_id": invocation.get("session_id"),
+            "tool_name": invocation.get("tool_name"),
+            "tool_call_id": invocation.get("tool_call_id"),
+            "tool_input": invocation.get("tool_input", {}),
+            "tool_error": invocation.get("tool_error"),
+            "tool_output": invocation.get("tool_output"),
+            "duration_ms": invocation.get("duration_ms"),
+            "cwd": invocation.get("cwd"),
+        }
+        
+        # Écrire dans le fichier de log
+        with open(ERROR_LOG, "a") as f:
+            f.write(json.dumps(log_entry) + "\n")
+        
+        # Toujours autoriser
+        print(json.dumps({"decision": "allow"}))
+        sys.exit(0)
+        
+    except Exception as e:
+        print(json.dumps({"decision": "allow"}))
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()</code></pre>
+                
+                <div class="code-header">
+                    <span class="dot red"></span>
+                    <span class="dot yellow"></span>
+                    <span class="dot green"></span>
+                    <span>.vibe/hooks.toml</span>
+                </div>
+                <pre><code>[[hooks]]
+name = "audit-log-errors"
+type = "post_tool"
+command = "python3 ~/.vibe/hooks/audit/log_errors.py"
+match = "*"
+timeout = 5
+strict = false
+description = "Journalise les erreurs d'outils"
+</code></pre>
+            </div>
+        </div>
+    </section>
+
+    <!-- Transformation -->
+    <section class="section" style="background: var(--bg-secondary);">
+        <div class="container">
+            <h2>🔄 Exemples de Transformation</h2>
+            
+            <div class="card">
+                <h3>⏰ Ajouter un Timestamp aux Sorties</h3>
+                <p>
+                    <strong>Type :</strong> <code>post_tool</code><br>
+                    <strong>Match :</strong> <code>read_file,bash</code><br>
+                    <strong>Strict :</strong> <code>false</code><br>
+                    <strong>Description :</strong> Ajoute un timestamp à la fin de chaque sortie de ces outils.
+                </p>
+                
+                <div class="code-header">
+                    <span class="dot red"></span>
+                    <span class="dot yellow"></span>
+                    <span class="dot green"></span>
+                    <span>~/.vibe/hooks/transform/add_timestamp.py</span>
+                </div>
+                <pre><code>#!/usr/bin/env python3
+"""
+Hook POST_TOOL pour ajouter un timestamp aux sorties.
+"""
+
+import json
+import sys
+from datetime import datetime
+
+
+def main():
+    """Point d'entrée du hook."""
+    try:
+        invocation = json.load(sys.stdin)
+        
+        # Ajouter un timestamp
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        additional_context = f"\n---\n[Généré le {timestamp}]"
+        
+        print(json.dumps({
+            "decision": "allow",
+            "hook_specific_output": {
+                "additional_context": additional_context
+            }
+        }))
+        sys.exit(0)
+        
+    except Exception as e:
+        print(json.dumps({"decision": "allow"}))
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()</code></pre>
+                
+                <div class="code-header">
+                    <span class="dot red"></span>
+                    <span class="dot yellow"></span>
+                    <span class="dot green"></span>
+                    <span>.vibe/hooks.toml</span>
+                </div>
+                <pre><code>[[hooks]]
+name = "transform-add-timestamp"
+type = "post_tool"
+command = "python3 ~/.vibe/hooks/transform/add_timestamp.py"
+match = "read_file"
+timeout = 5
+strict = false
+description = "Ajoute un timestamp aux sorties read_file"
+
+[[hooks]]
+name = "transform-add-timestamp-bash"
+type = "post_tool"
+command = "python3 ~/.vibe/hooks/transform/add_timestamp.py"
+match = "bash"
+timeout = 5
+strict = false
+description = "Ajoute un timestamp aux sorties bash"
+</code></pre>
+            </div>
+            
+            <div class="card">
+                <h3>🎭 Modifier les Arguments avant Exécution</h3>
+                <p>
+                    <strong>Type :</strong> <code>pre_tool</code><br>
+                    <strong>Match :</strong> <code>bash</code><br>
+                    <strong>Strict :</strong> <code>false</code><br>
+                    <strong>Description :</strong> Ajoute automatiquement --color=always aux commandes ls.
+                </p>
+                
+                <div class="code-header">
+                    <span class="dot red"></span>
+                    <span class="dot yellow"></span>
+                    <span class="dot green"></span>
+                    <span>~/.vibe/hooks/transform/add_colors_to_ls.py</span>
+                </div>
+                <pre><code>#!/usr/bin/env python3
+"""
+Hook PRE_TOOL pour ajouter --color=always aux commandes ls.
+"""
+
+import json
+import sys
+import re
+
+
+def main():
+    """Point d'entrée du hook."""
+    try:
+        invocation = json.load(sys.stdin)
+        
+        # Vérifier si c'est un appel bash
+        if invocation.get("tool_name") != "bash":
+            print(json.dumps({"decision": "allow"}))
+            sys.exit(0)
+        
+        # Extraire la commande
+        command = invocation.get("tool_input", {}).get("command", "")
+        
+        # Vérifier si c'est une commande ls
+        if not command.strip().startswith("ls"):
+            print(json.dumps({"decision": "allow"}))
+            sys.exit(0)
+        
+        # Ajouter --color=always si pas déjà présent
+        if "--color" not in command and "-color" not in command:
+            # Remplacer ls par ls --color=always
+            new_command = re.sub(r'\bls\b', 'ls --color=always', command, count=1)
+            
+            print(json.dumps({
+                "decision": "allow",
+                "hook_specific_output": {
+                    "tool_input": {"command": new_command}
+                }
+            }))
+            sys.exit(0)
+        
+        # Sinon, autoriser sans modification
+        print(json.dumps({"decision": "allow"}))
+        sys.exit(0)
+        
+    except Exception as e:
+        print(json.dumps({"decision": "allow"}))
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()</code></pre>
+                
+                <div class="code-header">
+                    <span class="dot red"></span>
+                    <span class="dot yellow"></span>
+                    <span class="dot green"></span>
+                    <span>.vibe/hooks.toml</span>
+                </div>
+                <pre><code>[[hooks]]
+name = "transform-add-colors-to-ls"
+type = "pre_tool"
+command = "python3 ~/.vibe/hooks/transform/add_colors_to_ls.py"
+match = "bash"
+timeout = 5
+strict = false
+description = "Ajoute --color=always aux commandes ls"
+</code></pre>
+            </div>
+            
+            <div class="card">
+                <h3>🔒 Masquer les Informations Sensibles</h3>
+                <p>
+                    <strong>Type :</strong> <code>post_tool</code><br>
+                    <strong>Match :</strong> <code>*</code> (tous les outils)<br>
+                    <strong>Strict :</strong> <code>false</code><br>
+                    <strong>Description :</strong> Masque les mots de passe, tokens, et clés API dans les sorties.
+                </p>
+                
+                <div class="code-header">
+                    <span class="dot red"></span>
+                    <span class="dot yellow"></span>
+                    <span class="dot green"></span>
+                    <span>~/.vibe/hooks/transform/mask_secrets.py</span>
+                </div>
+                <pre><code>#!/usr/bin/env python3
+"""
+Hook POST_TOOL pour masquer les informations sensibles.
+"""
+
+import json
+import sys
+import re
+
+
+# Liste des mots-clés sensibles
+SENSITIVE_KEYWORDS = [
+    r'password',
+    r'passwd',
+    r'secret',
+    r'token',
+    r'apikey',
+    r'api_key',
+    r'auth',
+    r'authorization',
+    r'private_key',
+    r'access_key',
+    r'aws_access_key_id',
+    r'aws_secret_access_key',
+]
+
+
+def mask_secrets(text: str) -> str:
+    """Masque les informations sensibles dans un texte."""
+    
+    # Pour chaque mot-clé sensible
+    for keyword in SENSITIVE_KEYWORDS:
+        # Pattern pour matcher : keyword = valeur ou keyword: valeur
+        pattern = rf'({keyword})\s*[=:]\s*["\']?([^\s"\'&\n]+)["\']?'
+        replacement = r'\1=[MASKED]'
+        text = re.sub(pattern, replacement, text, flags=re.IGNORECASE)
+    
+    return text
+
+
+def main():
+    """Point d'entrée du hook."""
+    try:
+        invocation = json.load(sys.stdin)
+        
+        # Récupérer la sortie
+        output_text = invocation.get("tool_output_text", "")
+        
+        # Masquer les secrets
+        masked_output = mask_secrets(output_text)
+        
+        # Remplacer la sortie
+        print(json.dumps({
+            "decision": "deny",
+            "reason": masked_output,
+            "hook_specific_output": {
+                "additional_context": "\n[Les informations sensibles ont été masquées]"
+            }
+        }))
+        sys.exit(0)
+        
+    except Exception as e:
+        print(json.dumps({"decision": "allow"}))
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()</code></pre>
+                
+                <div class="code-header">
+                    <span class="dot red"></span>
+                    <span class="dot yellow"></span>
+                    <span class="dot green"></span>
+                    <span>.vibe/hooks.toml</span>
+                </div>
+                <pre><code>[[hooks]]
+name = "transform-mask-secrets"
+type = "post_tool"
+command = "python3 ~/.vibe/hooks/transform/mask_secrets.py"
+match = "*"
+timeout = 10
+strict = false
+description = "Masque les informations sensibles"
+</code></pre>
+            </div>
+        </div>
+    </section>
+
+    <!-- Intégration -->
+    <section class="section">
+        <div class="container">
+            <h2>🔗 Exemples d'Intégration</h2>
+            
+            <div class="card">
+                <h3>💬 Notifier Slack après Chaque Tour</h3>
+                <p>
+                    <strong>Type :</strong> <code>post_agent</code><br>
+                    <strong>Strict :</strong> <code>false</code><br>
+                    <strong>Description :</strong> Envoie une notification à Slack après chaque tour de conversation.
+                </p>
+                
+                <div class="code-header">
+                    <span class="dot red"></span>
+                    <span class="dot yellow"></span>
+                    <span class="dot green"></span>
+                    <span>~/.vibe/hooks/integration/slack_notify.py</span>
+                </div>
+                <pre><code>#!/usr/bin/env python3
+"""
+Hook POST_AGENT pour notifier Slack.
+
+Ce hook envoie une notification à Slack après chaque tour
+de conversation. Utilise une variable d'environnement pour
+le webhook URL.
+"""
+
+import json
+import sys
+import os
+import requests
+
+
+SLACK_WEBHOOK_URL = os.getenv("SLACK_WEBHOOK_URL")
+
+
+def main():
+    """Point d'entrée du hook."""
+    try:
+        invocation = json.load(sys.stdin)
+        
+        # Si pas de webhook configuré, ignorer
+        if not SLACK_WEBHOOK_URL:
+            print(json.dumps({"decision": "allow"}))
+            sys.exit(0)
+        
+        # Construire le message
+        message = {
+            "text": f"✅ Mistral Vibe a terminé un tour",
+            "blocks": [
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": f"*✅ Mistral Vibe - Tour Terminé*"
+                    }
+                },
+                {
+                    "type": "divider"
+                },
+                {
+                    "type": "section",
+                    "fields": [
+                        {
+                            "type": "mrkdwn",
+                            "text": f"*Session:*\n{invocation.get('session_id', 'unknown')}"
+                        },
+                        {
+                            "type": "mrkdwn",
+                            "text": f"*Répertoire:*\n{invocation.get('cwd', 'unknown')}"
+                        }
+                    ]
+                },
+                {
+                    "type": "context",
+                    "elements": [
+                        {
+                            "type": "mrkdwn",
+                            "text": " Hooks Integration"
+                        }
+                    ]
+                }
+            ]
+        }
+        
+        # Envoyer à Slack
+        try:
+            response = requests.post(
+                SLACK_WEBHOOK_URL,
+                json=message,
+                timeout=5
+            )
+            response.raise_for_status()
+        except Exception as e:
+            # Ne pas bloquer l'agent si Slack échoue
+            pass
+        
+        # Toujours autoriser
+        print(json.dumps({"decision": "allow"}))
+        sys.exit(0)
+        
+    except Exception as e:
+        print(json.dumps({"decision": "allow"}))
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()</code></pre>
+                
+                <div class="code-header">
+                    <span class="dot red"></span>
+                    <span class="dot yellow"></span>
+                    <span class="dot green"></span>
+                    <span>Configuration</span>
+                </div>
+                <pre><code># Dans votre shell (ou dans ~/.bashrc / ~/.zshrc)
+export SLACK_WEBHOOK_URL="https://hooks.slack.com/services/YOUR/WEBHOOK/URL"
+
+# Dans .vibe/hooks.toml
+[[hooks]]
+name = "integration-slack-notify"
+type = "post_agent"
+command = "python3 ~/.vibe/hooks/integration/slack_notify.py"
+timeout = 10
+strict = false
+description = "Notifie Slack après chaque tour"
+</code></pre>
+            </div>
+            
+            <div class="card">
+                <h3>🔄 Déclencher un Pipeline CI/CD</h3>
+                <p>
+                    <strong>Type :</strong> <code>post_tool</code><br>
+                    <strong>Match :</strong> <code>write_file</code><br>
+                    <strong>Strict :</strong> <code>false</code><br>
+                    <strong>Description :</strong> Déclenche un pipeline CI/CD après l'écriture d'un fichier.
+                </p>
+                
+                <div class="code-header">
+                    <span class="dot red"></span>
+                    <span class="dot yellow"></span>
+                    <span class="dot green"></span>
+                    <span>~/.vibe/hooks/integration/trigger_ci_cd.py</span>
+                </div>
+                <pre><code>#!/usr/bin/env python3
+"""
+Hook POST_TOOL pour déclencher un pipeline CI/CD.
+
+Ce hook vérifie si le fichier écrit est un fichier source
+et déclenche un pipeline CI/CD si nécessaire.
+"""
+
+import json
+import sys
+import os
+import subprocess
+from pathlib import Path
+
+
+# Extensions de fichiers sources
+SOURCE_EXTENSIONS = ['.py', '.js', '.ts', '.go', '.rs', '.java', '.cpp', '.c', '.h']
+
+# Commandes CI/CD
+CI_CD_COMMANDS = {
+    '.py': 'make test',
+    '.js': 'npm test',
+    '.ts': 'npm test',
+    '.go': 'go test ./...',
+}
+
+
+def should_trigger_ci(file_path: str) -> str | None:
+    """Vérifie si on doit déclencher un pipeline CI/CD."""
+    
+    path = Path(file_path)
+    ext = path.suffix.lower()
+    
+    if ext in SOURCE_EXTENSIONS:
+        return CI_CD_COMMANDS.get(ext, 'make test')
+    
+    return None
+
+
+def main():
+    """Point d'entrée du hook."""
+    try:
+        invocation = json.load(sys.stdin)
+        
+        # Vérifier si c'est un appel write_file
+        if invocation.get("tool_name") != "write_file":
+            print(json.dumps({"decision": "allow"}))
+            sys.exit(0)
+        
+        # Vérifier si on doit déclencher le CI/CD
+        path = invocation.get("tool_input", {}).get("path", "")
+        command = should_trigger_ci(path)
+        
+        if not command:
+            print(json.dumps({"decision": "allow"}))
+            sys.exit(0)
+        
+        # Vérifier si on est dans un dépôt git
+        cwd = invocation.get("cwd", ".")
+        git_dir = Path(cwd) / ".git"
+        
+        if not git_dir.exists():
+            print(json.dumps({"decision": "allow"}))
+            sys.exit(0)
+        
+        # Exécuter la commande CI/CD en arrière-plan
+        try:
+            process = subprocess.Popen(
+                ["sh", "-c", command],
+                cwd=cwd,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL
+            )
+            # On ne wait pas, on retourne immédiatement
+        except Exception as e:
+            # Ne pas bloquer l'agent
+            pass
+        
+        # Toujours autoriser
+        print(json.dumps({"decision": "allow"}))
+        sys.exit(0)
+        
+    except Exception as e:
+        print(json.dumps({"decision": "allow"}))
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()</code></pre>
+                
+                <div class="code-header">
+                    <span class="dot red"></span>
+                    <span class="dot yellow"></span>
+                    <span class="dot green"></span>
+                    <span>.vibe/hooks.toml</span>
+                </div>
+                <pre><code>[[hooks]]
+name = "integration-trigger-ci-cd"
+type = "post_tool"
+command = "python3 ~/.vibe/hooks/integration/trigger_ci_cd.py"
+match = "write_file"
+timeout = 5
+strict = false
+description = "Déclenche un pipeline CI/CD après write_file"
+</code></pre>
+                
+                <div class="warning-box">
+                    <p>
+                        <strong>⚠️ Attention :</strong> 
+                        <ul>
+                            <li>Ce hook déclenche des commandes en <strong>arrière-plan</strong></li>
+                            <li>Il ne wait pas la fin de l'exécution</li>
+                            <li>Les erreurs ne sont pas visibles dans Mistral Vibe</li>
+                            <li>Pour un vrai pipeline, utilisez plutôt des GitHub Actions ou GitLab CI</li>
+                        </ul>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Prochaines Étapes -->
+    <section class="section" style="background: var(--bg-secondary);">
+        <div class="container">
+            <h2>🚀 Prochaines Étapes</h2>
+            
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <div class="feature-card-icon teal">🔗</div>
+                    <h3>Intégration</h3>
+                    <p>Apprenez à intégrer les hooks avec vos outils et workflows existants.</p>
+                    <a href="integration.html" class="btn btn-primary">🔗 Lire</a>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-card-icon red">🚀</div>
+                    <h3>Concepts Avancés</h3>
+                    <p>Découvrez les fonctionnalités avancées et les patterns avancés.</p>
+                    <a href="advanced.html" class="btn btn-primary">🚀 Lire</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-column">
+                    <h4>Documentation</h4>
+                    <ul>
+                        <li><a href="index.html">Accueil</a></li>
+                        <li><a href="architecture.html">Architecture</a></li>
+                        <li><a href="configuration.html">Configuration</a></li>
+                        <li><a href="types.html">Types de Hooks</a></li>
+                        <li><a href="execution.html">Exécution</a></li>
+                        <li><a href="examples.html">Exemples</a></li>
+                        <li><a href="integration.html">Intégration</a></li>
+                        <li><a href="advanced.html">Avancé</a></li>
+                    </ul>
+                </div>
+                <div class="footer-column">
+                    <h4>Exemples par Catégorie</h4>
+                    <ul>
+                        <li><a href="#">Sécurité</a></li>
+                        <li><a href="#">Audit</a></li>
+                        <li><a href="#">Transformation</a></li>
+                        <li><a href="#">Intégration</a></li>
+                    </ul>
+                </div>
+                <div class="footer-column">
+                    <h4>Ressources</h4>
+                    <ul>
+                        <li><a href="https://github.com/rrobbes/mistral-vibe" target="_blank">GitHub</a></li>
+                        <li><a href="https://docs.vibe.mistral.ai/" target="_blank">Doc Officielle</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>Mistral Vibe Hooks Documentation - Projet éducatif rrobbes/mistral-vibe</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        function toggleNav() {
+            document.querySelector('.nav').classList.toggle('active');
+        }
+        document.addEventListener('click', function(event) {
+            const nav = document.querySelector('.nav');
+            const toggle = document.querySelector('.nav-toggle');
+            if (!nav || !toggle) return;
+            if (!nav.contains(event.target) && !toggle.contains(event.target)) {
+                nav.classList.remove('active');
+            }
+        });
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            });
+        });
+    </script>
+</body>
+</html>
